@@ -49,7 +49,9 @@ fact-check:
     admin-token-name: token
   agent:
     base-url: ${FACTCHECK_AGENT_BASE_URL:http://127.0.0.1:8001}
-    timeout: 60
+    # 读超时（秒）。必须大于 Python 侧 DETECT_TOTAL_BUDGET（默认 45s），
+    # 否则 Java 会先判失败，而 Agent 仍在执行（可能已写入向量索引），造成两侧状态不一致
+    timeout: ${FACTCHECK_AGENT_TIMEOUT:90}
     semantic-threshold: 0.92
     exact-enabled: true
     semantic-enabled: true

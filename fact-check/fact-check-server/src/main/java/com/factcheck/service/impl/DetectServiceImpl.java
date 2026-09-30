@@ -321,11 +321,14 @@ public class DetectServiceImpl implements DetectService {
 
         try {
             AgentClient.DetectResult result = agentClient.detect(content);
-            log.info("Agent 检测返回：recordId={}, canJudge={}, verdict={}",
-                    recordId, result.isCanJudge(), result.getVerdict());
+            log.info("Agent 检测返回：recordId={}, error={}, canJudge={}, verdict={}",
+                    recordId, result.isError(), result.isCanJudge(), result.getVerdict());
 
+            // error=true 表示 Agent 侧故障（LLM 调用失败 / 输出无法解析）：
+            // 记为"检测失败"允许重试，而不是把人工队列灌满
+            boolean agentFailed = result.isError();
             Integer verdict = mapVerdict(result.getVerdict());
-            boolean canJudge = result.isCanJudge() && verdict != null;
+            boolean canJudge = !agentFailed && result.isCanJudge() && verdict != null;
 
             FactCheckRecord.FactCheckRecordBuilder updateBuilder = FactCheckRecord.builder()
                     .id(recordId)
@@ -338,6 +341,9 @@ public class DetectServiceImpl implements DetectService {
                         .confidence(result.getConfidence() != null ? BigDecimal.valueOf(result.getConfidence()) : null)
                         .reasoningChain(result.getReasoningChain())
                         .completeTime(LocalDateTime.now());
+            } else if (agentFailed) {
+                updateBuilder.status(3)
+                        .aiSummary(result.getHumanReason() != null ? result.getHumanReason() : "检测服务异常，请稍后重试");
             } else {
                 updateBuilder.status(1)
                         .aiSummary(result.getHumanReason() != null ? result.getHumanReason() : "AI 无法判断，转人工诊断");
@@ -354,6 +360,16 @@ public class DetectServiceImpl implements DetectService {
                         .type(1)
                         .title("检测完成")
                         .content("您的消息已完成检测，点击查看结论")
+                        .relatedId(recordId)
+                        .isRead(0)
+                        .createTime(LocalDateTime.now())
+                        .build());
+            } else if (agentFailed) {
+                messageMapper.insert(Message.builder()
+                        .userId(record.getUserId())
+                        .type(6)
+                        .title("检测失败")
+                        .content("很抱歉，检测服务暂时不可用，请稍后重新提交")
                         .relatedId(recordId)
                         .isRead(0)
                         .createTime(LocalDateTime.now())
