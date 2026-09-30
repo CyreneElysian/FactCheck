@@ -14,3 +14,25 @@
   box-sizing: border-box;
 }
 .authority-hit { color: #67c23a; font-size: 26rpx; margin-bottom: 12rpx; }
+
+/* 已选图片预览 */
+.image-preview {
+  margin-bottom: 20rpx;
+  padding: 16rpx;
+  background: #f5f5f5;
+  border-radius: 8rpx;
+}
+.preview-img {
+  width: 100%;
+  border-radius: 8rpx;
+}
+.preview-tip {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: #909399;
+}
+.remove-img {
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  color: #f56c6c;
+}

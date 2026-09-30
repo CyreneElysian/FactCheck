@@ -5,6 +5,13 @@
       <view class="picker">分类：{{categories[categoryIndex]}}</view>
     </picker>
     <textarea class="textarea" placeholder="请输入要诊断的消息（1-5000字）" maxlength="5000" value="{{content}}" bindinput="onContentInput"></textarea>
+
+    <view wx:if="{{previewPath || imageUrl}}" class="image-preview">
+      <image class="preview-img" src="{{previewPath || imageUrl}}" mode="widthFix" />
+      <view class="preview-tip">提交时将按「图片检测」处理</view>
+      <view class="remove-img" bindtap="onRemoveImage">移除图片</view>
+    </view>
+
     <button class="btn-primary" loading="{{submitting}}" bindtap="onSubmit">提交检测</button>
     <button class="btn-plain" style="margin-top: 16rpx" bindtap="onChooseImage">上传图片识别</button>
   </view>
@@ -12,6 +19,8 @@
   <view class="card" wx:if="{{result}}">
     <view class="title">检测结果</view>
     <view wx:if="{{result.status === 0}}" class="muted">正在检测，请稍候...</view>
+    <view wx:elif="{{result.status === 1}}" class="muted">该消息已进入人工诊断队列，请稍后查看</view>
+    <view wx:elif="{{result.status === 3}}" class="muted">检测失败，请重新提交</view>
     <block wx:else>
       <view wx:if="{{result.authorityInfo}}" class="authority-hit">
         已命中权威信息：{{result.authorityInfo.title}}

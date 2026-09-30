@@ -8,9 +8,13 @@ Page({
     loading: false,
     loginError: ''
   },
-  onLoad() {
-    const token = wx.getStorageSync('token')
-    if (token) {
+  async onLoad() {
+    // 若 app.onLaunch 的静默登录已成功，直接进入首页，无需再手动点登录
+    const app = getApp()
+    if (app && app.globalData.loginReady) {
+      await app.globalData.loginReady
+    }
+    if (wx.getStorageSync('token')) {
       wx.switchTab({ url: '/pages/index/index' })
     }
   },
