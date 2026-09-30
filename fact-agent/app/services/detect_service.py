@@ -1,12 +1,22 @@
 """
 事实检测服务
 
-流程：生成搜索词 -> 搜索 -> 组装提示词 -> LLM 判断 -> 解析 JSON 结果。
+流程：生成搜索词 -> 搜索 -> 抓取正文 -> 组装提示词 -> LLM 判断 -> 校验并解析结果。
+
+时间预算：
+单次 detect 受 DETECT_TOTAL_BUDGET（默认 45s）约束，各步骤按剩余时间设置请求超时；
+预算耗尽则提前收尾并转人工。该预算必须小于 Java 侧读超时（fact-check.agent.timeout，默认 90s），
+否则会出现"Java 已判失败、Python 仍在跑"的状态不一致。
+
+安全：
+用户文本与抓取到的网页正文均为不可信输入，统一做标签转义后放入 <untrusted_*> 标签，
+并在系统提示中声明其只是数据；模型输出经强制校验，不合规一律转人工。
 """
 import json
 import logging
 import re
-from typing import List
+import time
+from typing import List, Optional
 
 import requests
 
@@ -19,6 +29,15 @@ from .search import SearchResult, SearchTool
 
 logger = logging.getLogger(__name__)
 
+# 允许的结论取值
+VALID_VERDICTS = ("TRUE", "FALSE", "UNVERIFIED")
+
+# 不可信输入中的标签字面量，转义后再拼接，避免伪造提示词边界（提示词注入）
+_TAG_PATTERN = re.compile(r"</?\s*untrusted_[a-z_]+\s*>", re.IGNORECASE)
+
+# 相关性估计中词面重合所占权重（其余为位置权重）
+_OVERLAP_WEIGHT = 0.45
+
 
 class DetectService:
     """LLM 事实检测服务"""
@@ -27,61 +46,99 @@ class DetectService:
         self.search_tool = search_tool
         self.llm = llm
 
+    # ------------------------------------------------------------------
+    # 主流程
+    # ------------------------------------------------------------------
+
     def detect(self, text: str) -> DetectResponse:
         """
         对文本进行事实检测
+
+        Returns:
+            DetectResponse；error=True 表示服务侧故障（应标记为"检测失败"而非转人工）
         """
+        deadline = time.monotonic() + max(5, settings.DETECT_TOTAL_BUDGET)
         text = (text or "").strip()
+        if len(text) > settings.DETECT_MAX_TEXT_LENGTH:
+            logger.warning("待检测文本过长（%d 字），已截断至 %d 字",
+                           len(text), settings.DETECT_MAX_TEXT_LENGTH)
+            text = text[: settings.DETECT_MAX_TEXT_LENGTH]
         logger.info("开始事实检测：text=%s", text[:200])
 
-        # 1. 生成搜索词（让 LLM 生成多个查询词，失败则退回原句）
-        queries = self._build_queries(text)
+        # 1. 生成搜索词（LLM 生成，失败退回原句）
+        queries = self._build_queries(text, deadline)
 
         # 2. 搜索
-        results = self._search(queries, settings.SEARCH_TOP_K)
+        results = self._search(queries, settings.SEARCH_TOP_K, deadline)
         logger.info("搜索到 %d 条结果", len(results))
 
-        # 2.1 抓取部分网页正文，补充证据上下文
-        results = self._enrich_results(results)
+        # 3. 抓取部分网页正文，补充证据上下文
+        results = self._enrich_results(results, deadline)
 
-        # 3. 组装提示词
+        # 4. 组装提示词
+        safe_text = self._sanitize_untrusted(text)
         evidence_text = self._format_evidence(results)
-        prompt = USER_PROMPT_TEMPLATE.format(text=text, evidence=evidence_text or "无搜索结果")
+        prompt = USER_PROMPT_TEMPLATE.format(
+            text=safe_text, evidence=evidence_text or "无搜索结果"
+        )
 
-        # 4. 调用 LLM
+        # 5. 调用 LLM
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ]
+        remaining = self._remaining(deadline)
+        if remaining <= 1:
+            logger.warning("检测预算已耗尽，未调用 LLM，直接转人工")
+            return DetectResponse(
+                can_judge=False,
+                human_reason="检测超时（超过整体时间预算），请稍后重试或转人工诊断",
+                evidence=self._build_evidence(results, text),
+                error=True,
+            )
         try:
-            llm_text = self.llm.chat(messages)
+            llm_text = self.llm.chat(messages, timeout=min(settings.LLM_TIMEOUT, remaining))
         except Exception as exc:
             logger.error("LLM 检测调用失败：%s", exc)
             return DetectResponse(
                 can_judge=False,
                 human_reason=f"LLM 调用失败：{exc}",
-                evidence=self._build_evidence(results),
+                evidence=self._build_evidence(results, text),
+                error=True,
             )
 
-        # 5. 解析 LLM 输出
-        return self._parse_response(llm_text, results)
+        # 6. 校验并解析 LLM 输出
+        return self._parse_response(llm_text, results, text)
 
-    def _build_queries(self, text: str) -> List[str]:
-        """生成搜索查询词：优先让 LLM 生成，失败则退回原句"""
+    # ------------------------------------------------------------------
+    # 搜索词与检索
+    # ------------------------------------------------------------------
+
+    def _build_queries(self, text: str, deadline: float) -> List[str]:
+        """生成搜索查询词：优先让 LLM 生成，失败或超预算则退回原句"""
         fallback = [text[:80], "事实核查 " + text[:60]]
         if not self.llm.api_key:
+            return fallback
+        remaining = self._remaining(deadline)
+        if remaining <= 2:
+            logger.warning("预算不足，跳过 LLM 生成搜索词，使用原句")
             return fallback
         try:
             prompt = (
                 "你是事实核查助手，请为下面这条消息生成 1-3 个适合搜索引擎检索的查询词。"
-                "每个查询词一行，不要编号，不要解释。" + chr(10) + "消息：" + text
+                "每个查询词一行，不要编号，不要解释。\n消息：" + self._sanitize_untrusted(text)
             )
-            raw = self.llm.chat([
-                {"role": "system", "content": "你只输出搜索查询词，每行一个。"},
-                {"role": "user", "content": prompt},
-            ])
-            lines = [line.strip() for line in raw.splitlines() if line.strip()]
-            lines = [line for line in lines if not line.startswith(("1", "2", "3", "-", "查询"))]
+            raw = self.llm.chat(
+                [
+                    {"role": "system", "content": "你只输出搜索查询词，每行一个。"},
+                    {"role": "user", "content": prompt},
+                ],
+                timeout=min(settings.LLM_TIMEOUT, remaining),
+            )
+            lines = [line.strip() for line in (raw or "").splitlines() if line.strip()]
+            # 只去掉明显的编号前缀，避免把"3·15晚会"这类合法查询词误删
+            lines = [re.sub(r"^\s*(?:\d{1,2}[.、)]|[-*])\s*", "", line) for line in lines]
+            lines = [line for line in lines if line]
             queries = lines[:3]
             if queries:
                 logger.info("LLM 生成搜索词：%s", queries)
@@ -90,13 +147,17 @@ class DetectService:
             logger.warning("LLM 生成搜索词失败，使用原句：%s", exc)
         return fallback
 
-    def _search(self, queries: List[str], top_k: int) -> List[SearchResult]:
-        """执行搜索并去重（按 URL）"""
+    def _search(self, queries: List[str], top_k: int, deadline: float) -> List[SearchResult]:
+        """执行搜索并按 URL 去重"""
         seen_urls = set()
         merged: List[SearchResult] = []
         for query in queries:
+            timeout = self._remaining(deadline)
+            if timeout <= 1:
+                logger.warning("预算不足，提前结束搜索（已完成 %d 个查询）", len(merged))
+                break
             try:
-                for item in self.search_tool.search(query, top_k):
+                for item in self.search_tool.search(query, top_k, timeout=timeout):
                     if item.url and item.url in seen_urls:
                         continue
                     if item.url:
@@ -106,28 +167,30 @@ class DetectService:
                 logger.warning("搜索失败（query=%s）：%s", query, exc)
         return merged
 
-    def _enrich_results(self, results: List[SearchResult]) -> List[SearchResult]:
-        """抓取前 N 条结果的网页正文，用于补充证据"""
+    def _enrich_results(self, results: List[SearchResult], deadline: float) -> List[SearchResult]:
+        """抓取前 N 条结果的网页正文，写入 content（不覆盖原始 snippet）"""
         fetch_top = settings.SEARCH_FETCH_TOP
         if fetch_top <= 0:
             return results
         for item in results[:fetch_top]:
             if not item.url:
                 continue
+            timeout = self._remaining(deadline)
+            if timeout <= 2:
+                logger.info("预算不足，停止抓取网页正文")
+                break
             try:
-                text = self._fetch_page_text(item.url)
+                text = self._fetch_page_text(item.url, timeout=min(settings.SEARCH_PAGE_TIMEOUT, timeout))
                 if text:
-                    # 用网页正文替换/补充 snippet，限制长度避免提示词过长
-                    item.snippet = text[:1200]
-                    logger.info("已抓取网页正文：url=%s, length=%d", item.url, len(item.snippet))
+                    item.content = text[: settings.SEARCH_PAGE_MAX_CHARS]
+                    logger.info("已抓取网页正文：url=%s, length=%d", item.url, len(item.content))
             except Exception as exc:
                 logger.warning("网页抓取失败，使用搜索摘要：url=%s, error=%s", item.url, exc)
         return results
 
     @staticmethod
-    def _fetch_page_text(url: str, timeout: int | None = None) -> str:
+    def _fetch_page_text(url: str, timeout: int = 10) -> str:
         """抓取网页并提取纯文本"""
-        timeout = timeout or settings.SEARCH_PAGE_TIMEOUT
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                           "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"
@@ -145,56 +208,200 @@ class DetectService:
         text = re.sub(r"\s+", " ", text).strip()
         return text
 
+    # ------------------------------------------------------------------
+    # 提示词组装
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _sanitize_untrusted(value: object) -> str:
+        """
+        转义不可信输入中的提示词边界标签字面量，防止内容伪造 </untrusted_claim> 之类边界
+        """
+        if value is None:
+            return ""
+        return _TAG_PATTERN.sub("[已过滤标签]", str(value))
+
     def _format_evidence(self, results: List[SearchResult]) -> str:
-        """格式化证据列表供提示词使用"""
+        """格式化证据列表供提示词使用（含来源、发布时间，正文优先于摘要）"""
         lines = []
         for i, r in enumerate(results[:10], 1):
-            lines.append(f"{i}. 标题：{r.title}\n   链接：{r.url}\n   摘要：{r.snippet}\n   来源：{r.source}")
+            body = r.content or r.snippet or ""
+            parts = [
+                f"{i}. 标题：{self._sanitize_untrusted(r.title)}",
+                f"   链接：{self._sanitize_untrusted(r.url)}",
+                f"   来源：{self._sanitize_untrusted(r.source)}",
+            ]
+            if r.date:
+                parts.append(f"   发布时间：{self._sanitize_untrusted(r.date)}")
+            parts.append(f"   内容：{self._sanitize_untrusted(body)}")
+            lines.append("\n".join(parts))
         return "\n".join(lines)
 
-    def _parse_response(self, llm_text: str, search_results: List[SearchResult]) -> DetectResponse:
-        """解析 LLM 返回的 JSON，并补充来源可信度"""
+    # ------------------------------------------------------------------
+    # 输出校验与解析
+    # ------------------------------------------------------------------
+
+    def _parse_response(self, llm_text: str, search_results: List[SearchResult],
+                        claim_text: str) -> DetectResponse:
+        """解析 LLM 返回的 JSON，做强制校验，并补充来源可信度与相关度"""
         data = self._extract_json(llm_text)
-        if data is None:
+        if not isinstance(data, dict):
+            logger.warning("LLM 输出无法解析为 JSON，标记为服务侧故障")
             return DetectResponse(
                 can_judge=False,
-                human_reason="LLM 输出无法解析，需要人工诊断",
-                evidence=self._build_evidence(search_results),
+                human_reason="LLM 输出无法解析，已标记为检测失败，可重试",
+                evidence=self._build_evidence(search_results, claim_text),
+                error=True,
             )
 
-        evidence = []
-        for item in data.get("evidence") or []:
-            url = item.get("url", "")
-            if not item.get("source_credibility"):
-                item["source_credibility"] = score_source(url)
-            evidence.append(Evidence(**item))
+        can_judge = bool(data.get("can_judge", False))
+        verdict = data.get("verdict")
+        if isinstance(verdict, str):
+            verdict = verdict.strip().upper()
+        if verdict not in VALID_VERDICTS:
+            verdict = None
 
-        # 如果 LLM 给的证据为空，回填搜索结果
-        if not evidence and search_results:
-            evidence = self._build_evidence(search_results)
+        # 结论缺失或非法：模型确实没给出可用结论，转人工复核（不算服务故障）
+        if can_judge and verdict is None:
+            logger.warning("LLM 声称可判定但 verdict 非法，转人工：verdict=%s", data.get("verdict"))
+            return DetectResponse(
+                can_judge=False,
+                human_reason="模型未给出合法结论（verdict 取值非法），转人工复核",
+                evidence=self._build_evidence(search_results, claim_text),
+                error=False,
+            )
+
+        confidence = self._coerce_confidence(data.get("confidence"))
+        reasoning = data.get("reasoning_chain")
+        reasoning = str(reasoning) if reasoning is not None else None
+        human_reason = data.get("human_reason")
+        human_reason = str(human_reason) if human_reason is not None else None
+
+        evidence = self._parse_evidence(data.get("evidence"), claim_text, search_results)
+
+        if not can_judge:
+            # can_judge=false 时不应带结论与置信度
+            verdict = None
+            confidence = None
+            if not human_reason:
+                human_reason = "AI 无法判断，转人工诊断"
 
         return DetectResponse(
-            can_judge=bool(data.get("can_judge", False)),
-            verdict=data.get("verdict"),
-            confidence=data.get("confidence"),
-            reasoning_chain=data.get("reasoning_chain"),
+            can_judge=can_judge,
+            verdict=verdict,
+            confidence=confidence,
+            reasoning_chain=reasoning,
             evidence=evidence,
-            human_reason=data.get("human_reason"),
+            human_reason=human_reason,
+            error=False,
         )
 
-    def _build_evidence(self, results: List[SearchResult]) -> List[Evidence]:
-        """将搜索结果转换为 Evidence 列表"""
-        return [
-            Evidence(
+    def _parse_evidence(self, raw_evidence: object, claim_text: str,
+                        search_results: List[SearchResult]) -> List[Evidence]:
+        """安全地构造证据列表；模型未给出证据时回填搜索结果，并按相关度降序"""
+        evidence: List[Evidence] = []
+        if isinstance(raw_evidence, list):
+            for item in raw_evidence:
+                if not isinstance(item, dict):
+                    logger.warning("跳过非法证据条目（非对象）：%s", type(item).__name__)
+                    continue
+                url = item.get("url") or ""
+                rule_score = score_source(str(url))
+                model_score = self._coerce_unit(item.get("source_credibility"), None)
+                if model_score is not None and abs(model_score - rule_score) > 0.01:
+                    # 可信度以确定性域名规则为准：模型自报的数字无法复核，不予采信
+                    logger.debug("忽略模型自报的来源可信度：url=%s, model=%s, rule=%s",
+                                 url, model_score, rule_score)
+                ev = Evidence(
+                    title=str(item.get("title") or ""),
+                    url=str(url),
+                    snippet=str(item.get("snippet") or ""),
+                    source=str(item.get("source") or ""),
+                    source_credibility=rule_score,
+                    relevance_score=self._coerce_unit(item.get("relevance_score"), None),
+                )
+                evidence.append(ev)
+
+        if not evidence:
+            evidence = self._build_evidence(search_results, claim_text)
+
+        # 模型未给相关度时按位置+词面重合估计，保证列表可按相关度排序
+        for rank, ev in enumerate(evidence):
+            if ev.relevance_score is None or ev.relevance_score <= 0:
+                ev.relevance_score = self._estimate_relevance(
+                    claim_text, ev.title, ev.snippet, rank
+                )
+        evidence.sort(key=lambda e: e.relevance_score or 0.0, reverse=True)
+        return evidence
+
+    def _build_evidence(self, results: List[SearchResult], claim_text: str) -> List[Evidence]:
+        """将搜索结果转换为 Evidence 列表（按相关度降序）"""
+        evidence = []
+        for rank, r in enumerate(results[:10]):
+            body = r.content or r.snippet or ""
+            evidence.append(Evidence(
                 title=r.title,
                 url=r.url,
                 snippet=r.snippet,
                 source=r.source,
                 source_credibility=score_source(r.url),
-                relevance_score=0.5,
-            )
-            for r in results[:10]
-        ]
+                relevance_score=self._estimate_relevance(claim_text, r.title, body, rank),
+            ))
+        evidence.sort(key=lambda e: e.relevance_score or 0.0, reverse=True)
+        return evidence
+
+    # ------------------------------------------------------------------
+    # 工具方法
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _remaining(deadline: float) -> int:
+        """剩余预算（秒，向下取整，最小 0）"""
+        return max(0, int(deadline - time.monotonic()))
+
+    @staticmethod
+    def _coerce_confidence(value: object) -> Optional[float]:
+        """置信度归一到 [0,1]，非法值返回 None"""
+        try:
+            num = float(value)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            return None
+        return round(min(1.0, max(0.0, num)), 4)
+
+    @staticmethod
+    def _coerce_unit(value: object, default: Optional[float]) -> Optional[float]:
+        """把 0-1 区间的字段归一；非法值回落到 default"""
+        try:
+            num = float(value)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            return default
+        return round(min(1.0, max(0.0, num)), 4)
+
+    @staticmethod
+    def _bigrams(text: str) -> set:
+        """提取字符二元组，用于中文词面重合估计（去掉空白与标点）"""
+        cleaned = re.sub(r"[\s\W_]+", "", text or "", flags=re.UNICODE)
+        if len(cleaned) < 2:
+            return set()
+        return {cleaned[i:i + 2] for i in range(len(cleaned) - 1)}
+
+    def _estimate_relevance(self, claim: str, title: str, body: str, rank: int) -> float:
+        """
+        估计证据相关度（0-1）：位置分与词面重合的加权
+
+        - 位置分：越靠前越高，rank 0 -> 1.0，之后按 0.08 递减
+        - 词面重合：待检测消息与（标题+内容）的字符二元组重合率
+        模型已给出 relevance_score 时不会走到这里。
+        """
+        position = max(0.0, 1.0 - 0.08 * rank)
+        claim_grams = self._bigrams(claim)
+        if not claim_grams:
+            overlap = 0.0
+        else:
+            evidence_grams = self._bigrams(f"{title} {body}")
+            overlap = len(claim_grams & evidence_grams) / len(claim_grams)
+        score = (1 - _OVERLAP_WEIGHT) * position + _OVERLAP_WEIGHT * min(1.0, overlap)
+        return round(min(1.0, max(0.0, score)), 4)
 
     @staticmethod
     def _extract_json(text: str):

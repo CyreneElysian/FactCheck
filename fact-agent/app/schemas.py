@@ -30,13 +30,18 @@ class DetectRequest(BaseModel):
 
 
 class Evidence(BaseModel):
-    """证据"""
+    """证据
+
+    source_credibility / relevance_score 允许缺省：
+    模型不一定会给出这两个值，缺失时由 detect_service 用域名规则与
+    "位置 + 词面重合"启发式补齐，保证下发给 Java 时均为 0-1 的数值。
+    """
     title: str = ""
     url: str = ""
     snippet: str = ""
     source: str = ""
-    source_credibility: float = Field(0.0, description="来源可信度 0-1")
-    relevance_score: float = Field(0.0, description="相关度 0-1")
+    source_credibility: Optional[float] = Field(None, description="来源可信度 0-1")
+    relevance_score: Optional[float] = Field(None, description="相关度 0-1")
 
 
 class DetectResponse(BaseModel):
@@ -47,11 +52,19 @@ class DetectResponse(BaseModel):
     reasoning_chain: Optional[str] = Field(None, description="推理链")
     evidence: List[Evidence] = Field(default_factory=list, description="证据列表")
     human_reason: Optional[str] = Field(None, description="需要人工的原因")
+    error: bool = Field(
+        False,
+        description="是否为服务侧故障（LLM 调用失败 / 输出无法解析）。"
+                    "为 True 时 Java 侧应标记为“检测失败”而非“待人工诊断”，"
+                    "避免模型抖动把人工队列灌满。"
+    )
 
 
 class HealthResponse(BaseModel):
     """健康检查响应"""
     status: str = "ok"
     search_tool: str = ""
+    search_offline: bool = Field(False, description="搜索源是否不联网（dummy），为 True 时检测只依赖模型自身知识")
     embedding_model: str = ""
     llm_model: str = ""
+    llm_configured: bool = Field(False, description="是否已配置 LLM_API_KEY")

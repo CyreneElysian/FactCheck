@@ -1,49 +1,74 @@
 # FactCheck Python Agent
 
-事实检测项目的 Python Agent 服务，提供语义去重、LLM 事实检测能力。
+事实检测项目的 Python Agent 服务，提供语义去重（bge + FAISS）与联网 LLM 事实检测能力。
 
 ## 接口
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET | /health | 健康检查 |
-| POST | /dedup | 语义去重 |
-| POST | /index/add | 新增向量索引 |
-| POST | /detect | LLM 事实检测 |
+| GET | /health | 健康检查（回显搜索源、是否联网、模型与 Key 配置） |
+| POST | /dedup | 语义去重：`{text}` → `{matched, record_id, score, matched_text}` |
+| POST | /index/add | 新增向量索引：`{record_id, text}` |
+| POST | /detect | LLM 事实检测：`{text}` → `{can_judge, verdict, confidence, reasoning_chain, evidence[], human_reason, error}` |
+
+`error=true` 表示服务侧故障（LLM 调用失败 / 输出无法解析 / 超出时间预算），
+Java 侧应据此记为**检测失败**（可重试），而不是把消息转入人工诊断队列。
 
 ## 安装与启动（推荐 Python 3.10）
 
 ```bash
 cd fact-agent
-python -m venv venv
-# Windows:
-venv\Scripts\activate
-# Linux/Mac:
-source venv/bin/activate
+python -m venv .venv
+# Windows: .venv\Scripts\activate    Linux/macOS: source .venv/bin/activate
 
 pip install -r requirements.txt
 
-# 方式一：直接运行
-uvicorn app.main:app --host 0.0.0.0 --port 8001
+cp .env.example .env
+# 编辑 .env：填入 LLM_API_KEY；要联网核查请设置 SEARCH_TOOL=tavily|bocha|serpapi 与 SEARCH_API_KEY
 
-# 方式二：拷贝 .env.example 为 .env 并修改配置后，可安装 python-dotenv 加载环境变量
+uvicorn app.main:app --host 0.0.0.0 --port 8001
 ```
+
+> ⚠️ **必须以单 worker 运行，不要加 `--workers`**：语义去重索引是进程内内存态，
+> 多 worker 会各持一份索引并互相覆盖。需要横向扩展时应改为外部向量库（Qdrant/Milvus）。
 
 ## 环境变量
 
-见 `.env.example`。主要配置：
-- `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`：OpenAI 兼容 LLM
-- `LLM_RETRY`：LLM 调用失败重试次数，默认 2
-- `SEARCH_TOOL`：`dummy`（不联网，本地联调）/ `tavily` / `serpapi` / `bocha`
-- `SEARCH_FETCH_TOP`：抓取网页正文的前 N 条结果数量，默认 2；设为 0 关闭
-- `DEDUP_THRESHOLD`：语义去重阈值，默认 0.92
-- `EMBEDDING_MODEL`：默认 `BAAI/bge-small-zh-v1.5`
+完整清单见 `.env.example`，主要的：
+
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` | — | OpenAI 兼容 LLM |
+| `LLM_TIMEOUT` / `LLM_RETRY` | `60` / `2` | 单次请求超时（秒）与重试次数 |
+| `LLM_TEMPERATURE` | `0.1` | 事实核查需要稳定 JSON 输出，不建议调高 |
+| `SEARCH_TOOL` | `dummy` | `dummy`（不联网）/ `tavily` / `serpapi` / `bocha` |
+| `SEARCH_TOP_K` / `SEARCH_FETCH_TOP` | `10` / `3` | 检索条数 / 抓取正文条数；抓取设为 0 可关闭 |
+| `SEARCH_TIMEOUT` / `SEARCH_PAGE_TIMEOUT` | `20` / `10` | 单次搜索 / 单次抓取超时（秒） |
+| `SEARCH_PAGE_MAX_CHARS` | `1500` | 单条证据保留的网页正文字符数 |
+| `DETECT_TOTAL_BUDGET` | `45` | 单次检测整体时间预算（秒），**必须小于** Java 侧 `fact-check.agent.timeout`（默认 90） |
+| `DETECT_MAX_TEXT_LENGTH` | `5000` | 待检测文本上限，超出截断 |
+| `DEDUP_THRESHOLD` | `0.92` | 语义去重阈值（S10 可配） |
+| `DEDUP_MIN_TEXT_LENGTH` | `8` | 低于该长度只做精确去重 |
+| `EMBEDDING_MODEL` | `BAAI/bge-small-zh-v1.5` | 支持 HuggingFace 名称或本地目录；**相对路径相对 `fact-agent/` 解析** |
+| `AGENT_DATA_DIR` | `./data` | FAISS 索引与元数据目录（相对 `fact-agent/` 解析） |
+| `INTERNAL_TOKEN` | 空 | 内部鉴权；留空则不校验。**Java 侧目前不发送 `X-Internal-Token`，配了会 401** |
 
 ## Java 调用约定
 
-Java 通过 HTTP 调用，默认地址 `http://127.0.0.1:8001`。若配置了 `INTERNAL_TOKEN`，请求头需携带 `X-Internal-Token`。
+Java 通过 HTTP 调用，默认地址 `http://127.0.0.1:8001`。
+若配置了 `INTERNAL_TOKEN`，请求头需携带 `X-Internal-Token`（见上方注意事项）。
 
-## 说明
+## 实现说明
 
-- 首次调用 `/dedup` 或 `/index/add` 时会自动下载并加载 Embedding 模型，耗时较长。
-- 未配置真实搜索源时，`SEARCH_TOOL=dummy`，LLM 将主要依赖自身知识判断。
+- **语义去重**：`IndexFlatIP` + 向量归一化（等价余弦相似度），索引与元数据持久化在 `data/`。
+  写盘采用"临时文件 + 原子替换"，并用锁保护并发；加载失败时把可疑文件另存为 `.bak`，
+  **不会**用空索引覆盖原文件。
+- **联网检测**：LLM 生成 1-3 个查询词 → 多查询检索并按 URL 去重 → 抓取前 N 条网页正文
+  （正文存 `content`，不覆盖原始摘要）→ 组装提示词 → 强制校验 JSON 输出。
+- **来源可信度（S13）**：由确定性域名规则表 `app/services/credibility.py` 决定，
+  **不采信模型自报的可信度**（自报数字无法复核）。规则表为起步版，未收录域名落到 0.3。
+- **相关度**：模型未给出时按"位置分 + 词面重合"估计（0.55/0.45 加权），证据按相关度降序返回。
+- **时间预算**：各步骤按整体预算的剩余时间设置超时，预算耗尽提前收尾并转人工。
+- **防提示词注入**：用户文本与网页正文属于不可信输入，统一放入 `<untrusted_*>` 标签、
+  转义边界字面量，系统提示声明其仅为数据，输出侧再做字段强制校验。
+- 首次调用 `/dedup` 或 `/index/add` 时会加载 Embedding 模型，耗时较长。
