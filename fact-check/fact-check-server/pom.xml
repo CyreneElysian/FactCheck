@@ -83,6 +83,20 @@
     </dependencies>
 
     <build>
+        <!--
+          application-local.yml 存放本地真实密钥（已在 .gitignore 中）。
+          显式排除，避免被打进可分发的 jar 产物。
+          本地运行请使用 local profile（IDE 直接从 src/main/resources 读取），
+          或通过环境变量 / spring.config.additional-location 启动参数注入。
+        -->
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <excludes>
+                    <exclude>application-local.yml</exclude>
+                </excludes>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
