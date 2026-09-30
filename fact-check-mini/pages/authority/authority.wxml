@@ -1,0 +1,8 @@
+<view class="container">
+  <view class="card" wx:for="{{records}}" wx:key="id">
+    <view class="title">{{item.title}}</view>
+    <view class="muted">{{item.source}}　{{item.publishTime}}</view>
+    <view style="margin-top: 12rpx">{{item.content}}</view>
+  </view>
+  <empty wx:if="{{!records.length}}" text="暂无权威信息"></empty>
+</view>

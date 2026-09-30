@@ -1,0 +1,11 @@
+.login-page { min-height: 100vh; background: #409eff; }
+.header { padding: 120rpx 40rpx 80rpx; color: #fff; }
+.header-title { font-size: 56rpx; font-weight: bold; }
+.header-sub { margin-top: 12rpx; font-size: 28rpx; opacity: 0.9; }
+.login-card {
+  background: #fff;
+  margin: 0 30rpx;
+  border-radius: 16rpx;
+  padding: 40rpx 30rpx;
+}
+.error { color: #f56c6c; margin-bottom: 20rpx; font-size: 26rpx; }

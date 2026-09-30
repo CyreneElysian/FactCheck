@@ -1,0 +1,13 @@
+<view class="container">
+  <view class="card" wx:for="{{records}}" wx:key="id">
+    <view class="row">
+      <text class="muted">#{{item.id}}</text>
+      <text class="{{item.verdict === 1 ? 'verdict-true' : item.verdict === 2 ? 'verdict-false' : 'verdict-unknown'}}">
+        {{item.verdict === 1 ? '真' : item.verdict === 2 ? '假' : item.status === 1 ? '待人工' : '检测中'}}
+      </text>
+    </view>
+    <view style="margin: 12rpx 0">{{item.content}}</view>
+    <button class="btn-plain" bindtap="goDetail" data-id="{{item.id}}">详情</button>
+  </view>
+  <empty wx:if="{{!records.length}}" text="暂无历史记录"></empty>
+</view>

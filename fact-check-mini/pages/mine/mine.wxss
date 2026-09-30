@@ -1,0 +1,31 @@
+.mine-header {
+  background: #409eff;
+  color: #fff;
+  border-radius: 16rpx;
+  padding: 40rpx 30rpx;
+  display: flex;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+.avatar {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
+  background: #fff;
+  color: #409eff;
+  font-size: 44rpx;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 24rpx;
+}
+.nickname { font-size: 34rpx; font-weight: bold; }
+.menu-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+.menu-item:last-child { border-bottom: none; }
+.arrow { color: #c0c0c0; font-size: 36rpx; }

@@ -1,0 +1,23 @@
+<view class="login-page">
+  <view class="header">
+    <view class="header-title">事实检测</view>
+    <view class="header-sub">输入即查，远离谣言</view>
+  </view>
+
+  <view class="login-card">
+    <view wx:if="{{loginError}}" class="error">{{loginError}}</view>
+    <view wx:if="{{loading}}" class="muted" style="margin-bottom: 20rpx">正在登录...</view>
+
+    <block wx:if="{{!needBind}}">
+      <button class="btn-primary" loading="{{loading}}" bindtap="onWechatLogin">微信登录</button>
+      <view class="muted" style="margin-top: 16rpx; text-align: center">未注册用户请先登录 Web 端注册</view>
+    </block>
+
+    <block wx:else>
+      <view class="muted" style="margin-bottom: 20rpx">当前微信未绑定账号，请先绑定 Web 端账号</view>
+      <input class="input" placeholder="用户名" value="{{username}}" bindinput="onInput" data-field="username" />
+      <input class="input" placeholder="密码" password value="{{password}}" bindinput="onInput" data-field="password" />
+      <button class="btn-primary" loading="{{loading}}" bindtap="onBind">绑定并登录</button>
+    </block>
+  </view>
+</view>

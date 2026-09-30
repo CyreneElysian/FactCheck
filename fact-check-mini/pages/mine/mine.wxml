@@ -1,0 +1,18 @@
+<view class="container">
+  <view class="mine-header">
+    <view class="avatar">{{initial}}</view>
+    <view>
+      <view class="nickname">{{userInfo.nickname || userInfo.username || '用户'}}</view>
+      <view class="muted">{{userInfo.username}}</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="menu-item" wx:for="{{menus}}" wx:key="path" bindtap="onMenu" data-path="{{item.path}}" data-tab="{{item.tab}}">
+      <text>{{item.text}}</text>
+      <text class="arrow">›</text>
+    </view>
+  </view>
+
+  <button class="btn-plain" style="margin-top: 20rpx" bindtap="onLogout">退出登录</button>
+</view>

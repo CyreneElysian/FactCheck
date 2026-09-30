@@ -1,0 +1,8 @@
+<view class="container">
+  <view class="card" wx:for="{{records}}" wx:key="id">
+    <view>{{item.recordContent}}</view>
+    <view class="muted">类型：{{item.reasonType}}　状态：{{item.status === 0 ? '待处理' : item.status === 1 ? '已采纳' : '已驳回'}}</view>
+    <view wx:if="{{item.handleResult}}" class="muted">处理结果：{{item.handleResult}}</view>
+  </view>
+  <empty wx:if="{{!records.length}}" text="暂无申诉"></empty>
+</view>

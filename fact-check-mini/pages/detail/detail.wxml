@@ -1,0 +1,14 @@
+<view class="container">
+  <view class="card">
+    <view class="title">检测详情 #{{id}}</view>
+    <view wx:if="{{record.authorityInfo}}" class="authority-hit">已命中权威信息：{{record.authorityInfo.title}}</view>
+    <view class="muted">内容</view>
+    <view style="margin: 8rpx 0 16rpx">{{record.content}}</view>
+    <view wx:if="{{record.category}}" class="muted">分类：{{record.category}}</view>
+    <view class="{{record.verdict === 1 ? 'verdict-true' : record.verdict === 2 ? 'verdict-false' : 'verdict-unknown'}}" style="margin-top: 12rpx">
+      结论：{{verdictText}}
+    </view>
+    <view wx:if="{{record.reasoningChain}}" class="muted" style="margin-top: 12rpx">推理链：{{record.reasoningChain}}</view>
+    <view wx:if="{{record.aiSummary}}" class="muted" style="margin-top: 12rpx">AI 说明：{{record.aiSummary}}</view>
+  </view>
+</view>

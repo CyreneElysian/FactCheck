@@ -1,0 +1,11 @@
+<view class="container">
+  <view class="card" wx:for="{{records}}" wx:key="id">
+    <view class="row">
+      <text>{{item.title}}</text>
+      <text class="muted">{{item.isRead === 1 ? '已读' : '未读'}}</text>
+    </view>
+    <view style="margin: 12rpx 0">{{item.content}}</view>
+    <button wx:if="{{item.isRead === 0}}" class="btn-plain" bindtap="onRead" data-id="{{item.id}}">标记已读</button>
+  </view>
+  <button class="btn-primary" bindtap="onReadAll">全部已读</button>
+</view>
