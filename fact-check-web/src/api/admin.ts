@@ -28,7 +28,7 @@ export const handleAppeal = (id: number | string, data: any) => request.post(`/a
 export const getStatsOverview = () => request.get('/admin/stats/overview')
 
 /** 操作日志 */
-export const pageAdminLogs = (params: any) => request.get('/admin/logs', { params })
+export const pageAdminLogs = (params: any) => request.get('/admin/stats/logs', { params })
 
 /** 权威信息分页（管理端） */
 export const pageAdminAuthority = (params: any) => request.get('/admin/authority/list', { params })
