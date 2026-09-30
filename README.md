@@ -192,6 +192,10 @@ uvicorn app.main:app --host 0.0.0.0 --port 8001
 ```
 
 > 首次调用 `/dedup` 或 `/index/add` 会下载并加载 embedding 模型，耗时较长。
+>
+> ⚠️ **不要加 `--workers`**：语义去重索引是进程内内存态，多 worker 会各持一份并互相覆盖。
+>
+> 启动日志会自检搜索源与 LLM 配置：若为 `dummy` 会明确告警"不联网"，缺 Key 会报错，便于第一时间发现"看起来能跑、实际没联网"。
 
 ### 4. 启动 Java 后端
 
@@ -301,14 +305,28 @@ py -3.10 fact-check/scripts/generate_test_data.py
 | --- | --- | --- |
 | `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` | — | OpenAI 兼容 LLM |
 | `LLM_TIMEOUT` / `LLM_RETRY` | `60` / `2` | 超时（秒）与重试次数 |
+| `LLM_TEMPERATURE` | `0.1` | 事实核查要求稳定输出 JSON，不建议调高 |
 | `SEARCH_TOOL` | `dummy` | `dummy` 不联网；联网请改 `tavily` / `serpapi` / `bocha` |
-| `SEARCH_TOP_K` / `SEARCH_FETCH_TOP` | `5` / `2` | 检索条数 / 抓取正文条数 |
+| `SEARCH_TOP_K` / `SEARCH_FETCH_TOP` | `10` / `3` | 检索条数 / 抓取正文条数 |
+| `SEARCH_TIMEOUT` / `SEARCH_PAGE_TIMEOUT` | `20` / `10` | 单次搜索 / 单次抓取超时（秒） |
+| `DETECT_TOTAL_BUDGET` | `45` | 单次检测的整体时间预算（秒），必须小于 Java 侧 `fact-check.agent.timeout`（默认 `90`） |
+| `DETECT_MAX_TEXT_LENGTH` | `5000` | 待检测文本上限，超出截断 |
 | `DEDUP_THRESHOLD` | `0.92` | 语义去重阈值 |
 | `DEDUP_MIN_TEXT_LENGTH` | `8` | 最短语义去重文本长度 |
-| `EMBEDDING_MODEL` | `BAAI/bge-small-zh-v1.5` | 可用 HuggingFace 名称或本地路径 |
-| `INTERNAL_TOKEN` | 空 | 内部鉴权；留空则不校验 |
+| `EMBEDDING_MODEL` | `BAAI/bge-small-zh-v1.5` | 可用 HuggingFace 名称或本地路径；**相对路径一律相对 `fact-agent/` 解析** |
+| `AGENT_DATA_DIR` | `./data` | FAISS 索引目录（相对 `fact-agent/` 解析） |
+| `INTERNAL_TOKEN` | 空 | 内部鉴权；留空则不校验（Java 侧目前不发送该请求头，配了会 401） |
 
-> ⚠️ **默认 `SEARCH_TOOL=dummy`，即不联网**，此时检测退化为纯 LLM 自身知识判断。要体现“联网核查”能力，必须配置真实搜索源。
+> ⚠️ **默认 `SEARCH_TOOL=dummy`，即不联网**，此时检测退化为纯 LLM 自身知识判断。要体现"联网核查"能力，必须配置真实搜索源。
+>
+> ⚠️ **必须以单 worker 运行**（`uvicorn app.main:app --port 8001`，不要加 `--workers`）：语义去重索引是进程内内存态，多 worker 会各持一份并互相覆盖。
+
+**AI 侧的几个关键设计**
+
+- **时间预算**：单次 `/detect` 整体不超过 `DETECT_TOTAL_BUDGET`，各步骤按剩余预算分配超时，避免"Java 已判失败、Agent 仍在跑"。
+- **失败语义**：`error=true` 表示服务侧故障（LLM 失败 / 输出无法解析），Java 记为**检测失败（status=3）**可重试；只有 AI 确实判断不了才转人工。
+- **证据可信度**：由确定性域名规则表（`app/services/credibility.py`）决定，**不采信模型自报的可信度**；相关度按"位置 + 词面重合"估计，证据按相关度降序返回。
+- **防提示词注入**：用户文本与抓取正文一律作为不可信数据放入 `<untrusted_*>` 标签，转义边界字面量，系统提示声明"仅为数据"，输出侧再做字段强制校验。
 
 ---
 
@@ -339,16 +357,22 @@ py -3.10 fact-check/scripts/generate_test_data.py
 
 ## 项目状态与已知不足
 
-项目已完成**端到端可运行**的完整链路（含真实运行记录：检测提交 → 轮询拿到结论 → 站内信/热度榜/权威信息均为 200），但作为作品集项目仍有明确短板，已逐项记录在 [`docs/项目改进清单.md`](docs/项目改进清单.md)（按 P0–P5 分级，含证据与修复方案）。主要缺口：
+项目已完成**端到端可运行**的完整链路，并有真实运行记录：
 
-- **零自动化测试**：Java / Python / 前端三个模块均无测试代码。
-- **未接入 Docker / CI**：技术方案建议的 Docker Compose 编排尚未落地，环境搭建依赖手工步骤。
-- **内容安全审核（S2）尚未实质实现**：`ContentSafetyServiceImpl` 目前是空实现（仅日志），图片审核未接入。
-- **内容审核相关日志表、记录详情缓存、`/api/admin/ratings/summary`** 等设计与文档中提及但未实现的点。
-- **热度权重未全部接入**：查看详情（+0.5）与发布权威信息（+5）两个权重尚未生效。
-- **小程序端**：记录详情页较薄（缺证据列表/评分/收藏/申诉入口），未实现微信原生分享，无分页与未读红点。
-- **部分文档描述与实现不一致**：管理端部分接口路径、Python Agent 内部接口字段命名以代码为准。
-- **无初始分类字典**：消息分类为代码内固定枚举，数据库无字典表。
+- 真实联网核查已验证：`SEARCH_TOOL=tavily` 时，检索 → 抓取正文 → LLM 判定（`FALSE`，confidence 0.91–0.95）→ 返回 6–7 条带真实域名与可信度的证据，单次耗时约 15s（预算 45s）。
+- 历史上还有：检测提交 → 轮询拿到结论 → 站内信/热度榜/权威信息均为 200（见 nginx 访问日志）。
+
+作为作品集项目仍有明确短板，已逐项记录在 [`docs/项目改进清单.md`](docs/项目改进清单.md)（按 P0–P5 分级，含证据与修复方案）。主要缺口：
+
+- **零自动化测试**：Java / Python / 前端三个模块均无测试代码（P4-42）。
+- **未接入 Docker / CI**：技术方案建议的 Docker Compose 编排尚未落地，环境搭建依赖手工步骤（P4-43）。
+- **内容安全审核（S2）尚未实质实现**：`ContentSafetyServiceImpl` 目前是空实现（仅日志），图片审核未接入（P2-13）。
+- **热度权重未全部接入**：查看详情（+0.5）与发布权威信息（+5）两个权重尚未生效（P2-14）。
+- **限流只覆盖检测提交**：登录/注册尚未限流（P2-16）；后端尚未接入 Bean Validation 参数校验（P2-17）。
+- **小程序端**：记录详情页较薄（缺证据列表/评分/收藏/申诉入口），未实现微信原生分享，无分页与未读红点（P3-30~33）。
+- **来源可信度域名表较窄**：仅覆盖主流站点，省级疾控等权威机构自建域名会落到兜底值 0.3，后续应扩充或改为管理员维护。
+- **内部鉴权未启用**：Python 侧支持 `X-Internal-Token`，但 Java 侧尚未发送该头（P2-21）。
+- **无初始分类字典**：消息分类为代码内固定枚举，数据库无字典表（设计如此，非缺陷）。
 
 > 已知问题均已在改进清单中排序，未做隐藏。
 
