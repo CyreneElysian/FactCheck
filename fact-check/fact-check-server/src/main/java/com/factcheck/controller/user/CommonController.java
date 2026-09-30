@@ -2,6 +2,7 @@ package com.factcheck.controller.user;
 
 import com.factcheck.constant.MessageConstant;
 import com.factcheck.result.Result;
+import com.factcheck.util.UploadValidator;
 import com.factcheck.utils.AliOssUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,14 +33,14 @@ public class CommonController {
      */
     @PostMapping("/upload")
     public Result<String> upload(@RequestParam("file") MultipartFile file) {
-        log.info("文件上传：{}", file.getOriginalFilename());
+        log.info("文件上传：filename={}, size={}", file.getOriginalFilename(), file.getSize());
+        // 扩展名白名单与 5MB 大小限制，校验不通过会抛出 BaseException 由全局异常处理器返回
+        String extension = UploadValidator.validateImage(file);
         try {
-            String originalFilename = file.getOriginalFilename();
-            String extension = originalFilename != null && originalFilename.lastIndexOf(".") >= 0
-                    ? originalFilename.substring(originalFilename.lastIndexOf(".")) : "";
             String datePath = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM"));
             String objectName = "fact-check/" + datePath + "/" + UUID.randomUUID() + extension;
             String url = aliOssUtil.upload(file.getBytes(), objectName);
+            log.info("文件上传成功：url={}", url);
             return Result.success(url);
         } catch (IOException e) {
             log.error("文件上传失败", e);

@@ -13,7 +13,11 @@ public class MessageConstant {
     public static final String USER_NOT_LOGIN = "用户未登录";
     public static final String ADMIN_NOT_LOGIN = "管理员未登录";
     public static final String UPLOAD_FAILED = "文件上传失败";
+    public static final String UPLOAD_FILE_EMPTY = "上传文件不能为空";
+    public static final String UPLOAD_TYPE_NOT_SUPPORTED = "仅支持 jpg/jpeg/png/webp 格式的图片";
+    public static final String UPLOAD_SIZE_EXCEEDED = "图片大小不能超过 5MB";
     public static final String OCR_FAILED = "图片识别失败";
+    public static final String OCR_NOT_CONFIGURED = "图片识别服务未配置，暂不支持图片检测";
     public static final String CONTENT_ILLEGAL = "内容涉嫌违规，请修改后重试";
     public static final String RECORD_NOT_FOUND = "检测记录不存在";
     public static final String APPEAL_NOT_FOUND = "申诉记录不存在";

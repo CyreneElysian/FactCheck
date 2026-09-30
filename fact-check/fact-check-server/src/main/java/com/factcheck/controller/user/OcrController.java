@@ -3,6 +3,7 @@ package com.factcheck.controller.user;
 import com.factcheck.constant.MessageConstant;
 import com.factcheck.result.Result;
 import com.factcheck.service.OcrService;
+import com.factcheck.util.UploadValidator;
 import com.factcheck.utils.AliOssUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,11 +38,10 @@ public class OcrController {
      */
     @PostMapping("/recognize")
     public Result<Map<String, String>> recognize(@RequestParam("file") MultipartFile file) {
-        log.info("上传图片并OCR识别：{}", file.getOriginalFilename());
+        log.info("上传图片并OCR识别：filename={}, size={}", file.getOriginalFilename(), file.getSize());
+        // 扩展名白名单与 5MB 大小限制，校验不通过会抛出 BaseException 由全局异常处理器返回
+        String extension = UploadValidator.validateImage(file);
         try {
-            String originalFilename = file.getOriginalFilename();
-            String extension = originalFilename != null && originalFilename.lastIndexOf(".") >= 0
-                    ? originalFilename.substring(originalFilename.lastIndexOf(".")) : "";
             String datePath = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM"));
             String objectName = "fact-check/image/" + datePath + "/" + UUID.randomUUID() + extension;
             String imageUrl = aliOssUtil.upload(file.getBytes(), objectName);
@@ -50,6 +50,7 @@ public class OcrController {
             Map<String, String> data = new HashMap<>();
             data.put("imageUrl", imageUrl);
             data.put("text", text);
+            log.info("图片OCR识别成功：textLength={}", text == null ? 0 : text.length());
             return Result.success(data);
         } catch (IOException e) {
             log.error("图片上传或OCR识别失败", e);

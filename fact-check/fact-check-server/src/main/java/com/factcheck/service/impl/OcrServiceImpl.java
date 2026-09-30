@@ -53,8 +53,8 @@ public class OcrServiceImpl implements OcrService {
         }
         if (ocrProperties.getEndpoint() == null || ocrProperties.getEndpoint().isEmpty()
                 || ocrProperties.getAppCode() == null || ocrProperties.getAppCode().isEmpty()) {
-            log.error("OCR 未配置：请在 application.yml 中配置 fact-check.ocr.endpoint 和 fact-check.ocr.app-code");
-            throw new BaseException(MessageConstant.OCR_FAILED);
+            log.error("OCR 未配置：请配置 fact-check.ocr.app-code（application-local.yml 或环境变量 FACTCHECK_OCR_APP_CODE）");
+            throw new BaseException(MessageConstant.OCR_NOT_CONFIGURED);
         }
 
         try {
