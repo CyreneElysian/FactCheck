@@ -1,0 +1,68 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+spring:
+  profiles:
+    # 本地需要真实密钥时：设置环境变量 FACTCHECK_PROFILE=local，
+    # 或在启动参数中加 --spring.profiles.active=local（读取未纳入版本库的 application-local.yml）
+    active: ${FACTCHECK_PROFILE:dev}
+  main:
+    allow-circular-references: true
+  datasource:
+    druid:
+      driver-class-name: ${fact-check.datasource.driver-class-name}
+      url: jdbc:mysql://${fact-check.datasource.host}:${fact-check.datasource.port}/${fact-check.datasource.database}?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
+      username: ${fact-check.datasource.username}
+      password: ${fact-check.datasource.password}
+  redis:
+    host: ${fact-check.redis.host}
+    port: ${fact-check.redis.port}
+    # 密码由 application-dev.yml / application-local.yml 或环境变量 FACTCHECK_REDIS_PASSWORD 提供；
+    # 值为空字符串时不发送 AUTH，可直连未设密码的本地 Redis
+    password: ${fact-check.redis.password}
+    database: ${fact-check.redis.database}
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.factcheck.entity
+  configuration:
+    map-underscore-to-camel-case: true
+
+logging:
+  level:
+    com:
+      factcheck:
+        mapper: debug
+        service: info
+        controller: info
+
+fact-check:
+  jwt:
+    # 密钥支持环境变量覆盖；此处仅为本地开发用的随机默认值，生产环境必须通过环境变量注入
+    user-secret-key: ${FACTCHECK_JWT_USER_SECRET:bb2db55ab568443cad7e2b90ac27df2da28470d56153496fbcdf1234a557e573}
+    user-ttl: 7200000
+    user-token-name: authentication
+    admin-secret-key: ${FACTCHECK_JWT_ADMIN_SECRET:82262ed0b16642118251477ffc75771129e689ae31e240fc9ca3c83481a93973}
+    admin-ttl: 7200000
+    admin-token-name: token
+  agent:
+    base-url: ${FACTCHECK_AGENT_BASE_URL:http://127.0.0.1:8001}
+    timeout: 60
+    semantic-threshold: 0.92
+    exact-enabled: true
+    semantic-enabled: true
+    min-text-length: 8
+  ocr:
+    endpoint: ${FACTCHECK_OCR_ENDPOINT:https://ocrapi-advanced.taobao.com/ocrservice/advanced}
+    # 留空表示未配置：OcrServiceImpl 会直接抛出"OCR 识别失败"，避免用占位符发起无效请求
+    app-code: ${FACTCHECK_OCR_APP_CODE:}
+  alioss:
+    endpoint: ${fact-check.alioss.endpoint}
+    access-key-id: ${fact-check.alioss.access-key-id}
+    access-key-secret: ${fact-check.alioss.access-key-secret}
+    bucket-name: ${fact-check.alioss.bucket-name}
+  wechat:
+    appid: ${fact-check.wechat.appid}
+    secret: ${fact-check.wechat.secret}

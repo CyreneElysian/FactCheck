@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.factcheck.mapper.UserMapper">
+
+    <select id="getByUsername" resultType="com.factcheck.entity.User">
+        select id, username, password, nickname, avatar, role, status,
+               wechat_openid, wechat_unionid, last_login_time, create_time, update_time
+        from t_user
+        where username = #{username}
+    </select>
+
+    <select id="getById" resultType="com.factcheck.entity.User">
+        select id, username, password, nickname, avatar, role, status,
+               wechat_openid, wechat_unionid, last_login_time, create_time, update_time
+        from t_user
+        where id = #{id}
+    </select>
+
+    <select id="getByOpenid" resultType="com.factcheck.entity.User">
+        select id, username, password, nickname, avatar, role, status,
+               wechat_openid, wechat_unionid, last_login_time, create_time, update_time
+        from t_user
+        where wechat_openid = #{openid}
+    </select>
+
+    <insert id="insert" parameterType="com.factcheck.entity.User"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into t_user (username, password, nickname, avatar, role, status,
+                            wechat_openid, wechat_unionid, last_login_time, create_time, update_time)
+        values (#{username}, #{password}, #{nickname}, #{avatar}, #{role}, #{status},
+                #{wechatOpenid}, #{wechatUnionid}, #{lastLoginTime}, #{createTime}, #{updateTime})
+    </insert>
+
+    <update id="update" parameterType="com.factcheck.entity.User">
+        update t_user
+        <set>
+            <if test="password != null">password = #{password},</if>
+            <if test="nickname != null">nickname = #{nickname},</if>
+            <if test="avatar != null">avatar = #{avatar},</if>
+            <if test="role != null">role = #{role},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="wechatOpenid != null">wechat_openid = #{wechatOpenid},</if>
+            <if test="wechatUnionid != null">wechat_unionid = #{wechatUnionid},</if>
+            <if test="lastLoginTime != null">last_login_time = #{lastLoginTime},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </set>
+        where id = #{id}
+    </update>
+
+    <update id="cancel">
+        update t_user
+        set status = 2,
+            wechat_openid = null,
+            wechat_unionid = null,
+            update_time = now()
+        where id = #{id}
+    </update>
+</mapper>

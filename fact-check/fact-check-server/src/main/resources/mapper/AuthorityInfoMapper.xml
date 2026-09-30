@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.factcheck.mapper.AuthorityInfoMapper">
+
+    <select id="getById" resultType="com.factcheck.entity.AuthorityInfo">
+        select id, title, content, category, source, source_url, cover_image, status,
+               publish_time, create_by, update_by, create_time, update_time
+        from t_authority_info
+        where id = #{id}
+    </select>
+
+    <select id="pagePublished" resultType="com.factcheck.entity.AuthorityInfo">
+        select id, title, content, category, source, source_url, cover_image, status,
+               publish_time, create_by, update_by, create_time, update_time
+        from t_authority_info
+        where status = 1
+        <if test="category != null and category != ''">and category = #{category}</if>
+        <if test="keyword != null and keyword != ''">and title like concat('%', #{keyword}, '%')</if>
+        order by publish_time desc
+    </select>
+
+    <select id="listPublishedForMatch" resultType="com.factcheck.entity.AuthorityInfo">
+        select id, title, content, category, source, source_url, cover_image, status,
+               publish_time, create_by, update_by, create_time, update_time
+        from t_authority_info
+        where status = 1
+        order by publish_time desc
+        limit 100
+    </select>
+
+    <select id="pageAll" resultType="com.factcheck.entity.AuthorityInfo">
+        select id, title, content, category, source, source_url, cover_image, status,
+               publish_time, create_by, update_by, create_time, update_time
+        from t_authority_info
+        order by create_time desc
+    </select>
+
+    <insert id="insert" parameterType="com.factcheck.entity.AuthorityInfo"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into t_authority_info(title, content, category, source, source_url, cover_image,
+                                     status, publish_time, create_by, update_by, create_time, update_time)
+        values(#{title}, #{content}, #{category}, #{source}, #{sourceUrl}, #{coverImage},
+               #{status}, #{publishTime}, #{createBy}, #{updateBy}, #{createTime}, #{updateTime})
+    </insert>
+
+    <update id="update" parameterType="com.factcheck.entity.AuthorityInfo">
+        update t_authority_info
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="content != null">content = #{content},</if>
+            <if test="category != null">category = #{category},</if>
+            <if test="source != null">source = #{source},</if>
+            <if test="sourceUrl != null">source_url = #{sourceUrl},</if>
+            <if test="coverImage != null">cover_image = #{coverImage},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="publishTime != null">publish_time = #{publishTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        delete from t_authority_info where id = #{id}
+    </delete>
+</mapper>

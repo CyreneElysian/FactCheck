@@ -1,0 +1,269 @@
+package com.factcheck.service.impl;
+
+import com.alibaba.fastjson.JSONObject;
+import com.factcheck.constant.MessageConstant;
+import com.factcheck.constant.StatusConstant;
+import com.factcheck.context.BaseContext;
+import com.factcheck.dto.PasswordEditDTO;
+import com.factcheck.dto.UserLoginDTO;
+import com.factcheck.dto.UserProfileDTO;
+import com.factcheck.dto.UserRegisterDTO;
+import com.factcheck.dto.WechatBindDTO;
+import com.factcheck.dto.WechatLoginDTO;
+import com.factcheck.entity.User;
+import com.factcheck.exception.AccountExistsException;
+import com.factcheck.exception.AccountLockedException;
+import com.factcheck.exception.AccountNotFoundException;
+import com.factcheck.exception.LoginFailedException;
+import com.factcheck.exception.PasswordErrorException;
+import com.factcheck.exception.UserNotLoginException;
+import com.factcheck.mapper.UserMapper;
+import com.factcheck.properties.WeChatProperties;
+import com.factcheck.service.UserService;
+import com.factcheck.utils.HttpClientUtil;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * 用户服务实现
+ */
+@Service
+@Slf4j
+public class UserServiceImpl implements UserService {
+
+    private static final String WECHAT_CODE2SESSION_URL = "https://api.weixin.qq.com/sns/jscode2session";
+
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
+    @Autowired
+    private UserMapper userMapper;
+    @Autowired
+    private WeChatProperties weChatProperties;
+
+    /**
+     * 用户注册
+     */
+    @Override
+    public User register(UserRegisterDTO userRegisterDTO) {
+        log.info("用户注册：username={}", userRegisterDTO.getUsername());
+        User exist = userMapper.getByUsername(userRegisterDTO.getUsername());
+        if (exist != null) {
+            throw new AccountExistsException(MessageConstant.ACCOUNT_EXISTS);
+        }
+
+        User user = User.builder()
+                .username(userRegisterDTO.getUsername())
+                .password(passwordEncoder.encode(userRegisterDTO.getPassword()))
+                .nickname(StringUtils.hasLength(userRegisterDTO.getNickname())
+                        ? userRegisterDTO.getNickname() : userRegisterDTO.getUsername())
+                .role(0)
+                .status(StatusConstant.ENABLE)
+                .createTime(LocalDateTime.now())
+                .updateTime(LocalDateTime.now())
+                .build();
+        userMapper.insert(user);
+        log.info("用户注册成功：userId={}, username={}", user.getId(), user.getUsername());
+        return user;
+    }
+
+    /**
+     * 用户/管理员登录
+     */
+    @Override
+    public User login(UserLoginDTO userLoginDTO) {
+        log.info("用户登录：username={}", userLoginDTO.getUsername());
+        User user = userMapper.getByUsername(userLoginDTO.getUsername());
+        if (user == null) {
+            throw new AccountNotFoundException(MessageConstant.ACCOUNT_NOT_FOUND);
+        }
+        if (!StatusConstant.ENABLE.equals(user.getStatus())) {
+            throw new AccountLockedException(MessageConstant.ACCOUNT_LOCKED);
+        }
+        if (!passwordEncoder.matches(userLoginDTO.getPassword(), user.getPassword())) {
+            throw new PasswordErrorException(MessageConstant.PASSWORD_ERROR);
+        }
+
+        User update = User.builder()
+                .id(user.getId())
+                .lastLoginTime(LocalDateTime.now())
+                .updateTime(LocalDateTime.now())
+                .build();
+        userMapper.update(update);
+        user.setLastLoginTime(update.getLastLoginTime());
+        return user;
+    }
+
+    /**
+     * 微信小程序登录
+     */
+    @Override
+    public User wechatLogin(WechatLoginDTO wechatLoginDTO) {
+        log.info("微信小程序登录：code={}", wechatLoginDTO.getCode());
+        String openid = getOpenidByCode(wechatLoginDTO.getCode());
+        User user = userMapper.getByOpenid(openid);
+        if (user == null) {
+            throw new AccountNotFoundException(MessageConstant.WECHAT_NOT_BOUND);
+        }
+        if (!StatusConstant.ENABLE.equals(user.getStatus())) {
+            throw new AccountLockedException(MessageConstant.ACCOUNT_LOCKED);
+        }
+        return user;
+    }
+
+    /**
+     * 微信小程序绑定 Web 账号
+     */
+    @Override
+    public User bindWechat(WechatBindDTO wechatBindDTO) {
+        log.info("微信绑定Web账号：username={}", wechatBindDTO.getUsername());
+        JSONObject session = callWechatCode2Session(wechatBindDTO.getCode());
+        String openid = session.getString("openid");
+        if (!StringUtils.hasLength(openid)) {
+            throw new LoginFailedException(MessageConstant.WECHAT_LOGIN_FAILED);
+        }
+        User boundUser = userMapper.getByOpenid(openid);
+        if (boundUser != null) {
+            throw new AccountExistsException("该微信已绑定其他账号");
+        }
+
+        User user = userMapper.getByUsername(wechatBindDTO.getUsername());
+        if (user == null) {
+            throw new AccountNotFoundException(MessageConstant.ACCOUNT_NOT_FOUND);
+        }
+        if (!StatusConstant.ENABLE.equals(user.getStatus())) {
+            throw new AccountLockedException(MessageConstant.ACCOUNT_LOCKED);
+        }
+        if (!passwordEncoder.matches(wechatBindDTO.getPassword(), user.getPassword())) {
+            throw new PasswordErrorException(MessageConstant.PASSWORD_ERROR);
+        }
+
+        User update = User.builder()
+                .id(user.getId())
+                .wechatOpenid(openid)
+                .wechatUnionid(session.getString("unionid"))
+                .updateTime(LocalDateTime.now())
+                .build();
+        userMapper.update(update);
+        return userMapper.getById(user.getId());
+    }
+
+    /**
+     * 查询当前用户信息
+     */
+    @Override
+    public User getProfile() {
+        Long userId = BaseContext.getCurrentId();
+        log.info("查询当前用户信息：userId={}", userId);
+        if (userId == null) {
+            throw new UserNotLoginException(MessageConstant.USER_NOT_LOGIN);
+        }
+        User user = userMapper.getById(userId);
+        if (user == null) {
+            throw new AccountNotFoundException(MessageConstant.ACCOUNT_NOT_FOUND);
+        }
+        return user;
+    }
+
+    /**
+     * 修改用户资料
+     */
+    @Override
+    public void updateProfile(UserProfileDTO userProfileDTO) {
+        Long userId = BaseContext.getCurrentId();
+        log.info("修改用户资料：userId={}, nickname={}, avatar={}", userId, userProfileDTO.getNickname(), userProfileDTO.getAvatar());
+        if (userId == null) {
+            throw new UserNotLoginException(MessageConstant.USER_NOT_LOGIN);
+        }
+        User update = User.builder()
+                .id(userId)
+                .nickname(userProfileDTO.getNickname())
+                .avatar(userProfileDTO.getAvatar())
+                .updateTime(LocalDateTime.now())
+                .build();
+        userMapper.update(update);
+    }
+
+    /**
+     * 修改密码
+     */
+    @Override
+    public void updatePassword(PasswordEditDTO passwordEditDTO) {
+        Long userId = BaseContext.getCurrentId();
+        log.info("修改密码：userId={}", userId);
+        if (userId == null) {
+            throw new UserNotLoginException(MessageConstant.USER_NOT_LOGIN);
+        }
+        User user = userMapper.getById(userId);
+        if (user == null) {
+            throw new AccountNotFoundException(MessageConstant.ACCOUNT_NOT_FOUND);
+        }
+        if (!passwordEncoder.matches(passwordEditDTO.getOldPassword(), user.getPassword())) {
+            throw new PasswordErrorException(MessageConstant.PASSWORD_ERROR);
+        }
+        User update = User.builder()
+                .id(userId)
+                .password(passwordEncoder.encode(passwordEditDTO.getNewPassword()))
+                .updateTime(LocalDateTime.now())
+                .build();
+        userMapper.update(update);
+    }
+
+    /**
+     * 注销当前账号
+     */
+    @Override
+    public void cancelAccount() {
+        Long userId = BaseContext.getCurrentId();
+        log.info("用户注销账号：userId={}", userId);
+        if (userId == null) {
+            throw new UserNotLoginException(MessageConstant.USER_NOT_LOGIN);
+        }
+        userMapper.cancel(userId);
+    }
+
+    /**
+     * 调用微信 code2session 接口，用 code 换 openid
+     */
+    private String getOpenidByCode(String code) {
+        JSONObject json = callWechatCode2Session(code);
+        String openid = json.getString("openid");
+        if (!StringUtils.hasLength(openid)) {
+            throw new LoginFailedException(MessageConstant.WECHAT_LOGIN_FAILED);
+        }
+        return openid;
+    }
+
+    /**
+     * 调用微信 code2session 接口，获取 unionid（可能为空）
+     */
+    private String getUnionidByCode(String code) {
+        JSONObject json = callWechatCode2Session(code);
+        return json.getString("unionid");
+    }
+
+    /**
+     * 调用微信 code2session 接口
+     */
+    private JSONObject callWechatCode2Session(String code) {
+        Map<String, String> params = new HashMap<>();
+        params.put("appid", weChatProperties.getAppid());
+        params.put("secret", weChatProperties.getSecret());
+        params.put("js_code", code);
+        params.put("grant_type", "authorization_code");
+        String response = HttpClientUtil.doGet(WECHAT_CODE2SESSION_URL, params);
+        log.info("微信 code2session 响应：{}", response);
+        JSONObject json = JSONObject.parseObject(response);
+        Integer errcode = json.getInteger("errcode");
+        if (errcode != null && errcode != 0) {
+            throw new LoginFailedException(MessageConstant.WECHAT_LOGIN_FAILED);
+        }
+        return json;
+    }
+}

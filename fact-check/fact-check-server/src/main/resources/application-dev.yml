@@ -1,0 +1,36 @@
+# ============================================================================
+# dev profile —— 可安全提交到版本库的默认配置
+#
+# 本文件不包含任何真实密钥。所有敏感项均支持环境变量覆盖。
+# 需要完整功能（OSS 上传、微信登录、图片 OCR）时，请使用 local profile：
+#
+#   1) 复制 application-local.yml.example 为 application-local.yml
+#   2) 填入真实密钥（application-local.yml 已在 .gitignore 中，不会被提交）
+#   3) 启动时激活：设置环境变量 FACTCHECK_PROFILE=local
+#      或在启动参数中加 --spring.profiles.active=local
+#
+# 也可以不用 local profile，直接注入环境变量（见各项的 ${...:默认值} 写法）。
+# ============================================================================
+fact-check:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    host: ${FACTCHECK_DB_HOST:localhost}
+    port: ${FACTCHECK_DB_PORT:3306}
+    database: ${FACTCHECK_DB_NAME:fact_check}
+    username: ${FACTCHECK_DB_USERNAME:root}
+    # 本地 MySQL 若设置了密码，请通过 FACTCHECK_DB_PASSWORD 或 application-local.yml 提供
+    password: ${FACTCHECK_DB_PASSWORD:}
+  alioss:
+    endpoint: ${FACTCHECK_OSS_ENDPOINT:}
+    access-key-id: ${FACTCHECK_OSS_AK:}
+    access-key-secret: ${FACTCHECK_OSS_SK:}
+    bucket-name: ${FACTCHECK_OSS_BUCKET:}
+  redis:
+    host: ${FACTCHECK_REDIS_HOST:localhost}
+    port: ${FACTCHECK_REDIS_PORT:6379}
+    # 留空表示本地 Redis 未设密码（不会发送 AUTH）
+    password: ${FACTCHECK_REDIS_PASSWORD:}
+    database: ${FACTCHECK_REDIS_DB:0}
+  wechat:
+    appid: ${FACTCHECK_WECHAT_APPID:}
+    secret: ${FACTCHECK_WECHAT_SECRET:}

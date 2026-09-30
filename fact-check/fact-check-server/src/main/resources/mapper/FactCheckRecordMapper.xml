@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.factcheck.mapper.FactCheckRecordMapper">
+
+    <select id="getByContentHash" resultType="com.factcheck.entity.FactCheckRecord">
+        select id, user_id, content, content_hash, category, source_type, image_url, status,
+               verdict, verdict_source, confidence, reasoning_chain, ai_summary, version,
+               hit_count, assignee_id, deadline, authority_id, create_time, update_time, complete_time
+        from t_fact_check_record
+        where content_hash = #{contentHash}
+    </select>
+
+    <select id="getById" resultType="com.factcheck.entity.FactCheckRecord">
+        select id, user_id, content, content_hash, category, source_type, image_url, status,
+               verdict, verdict_source, confidence, reasoning_chain, ai_summary, version,
+               hit_count, assignee_id, deadline, authority_id, create_time, update_time, complete_time
+        from t_fact_check_record
+        where id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.factcheck.entity.FactCheckRecord"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into t_fact_check_record
+            (user_id, content, content_hash, category, source_type, image_url, status,
+             verdict, verdict_source, confidence, reasoning_chain, ai_summary, version,
+             hit_count, assignee_id, deadline, authority_id, create_time, update_time, complete_time)
+        values
+            (#{userId}, #{content}, #{contentHash}, #{category}, #{sourceType}, #{imageUrl}, #{status},
+             #{verdict}, #{verdictSource}, #{confidence}, #{reasoningChain}, #{aiSummary}, #{version},
+             #{hitCount}, #{assigneeId}, #{deadline}, #{authorityId}, #{createTime}, #{updateTime}, #{completeTime})
+    </insert>
+
+    <update id="update" parameterType="com.factcheck.entity.FactCheckRecord">
+        update t_fact_check_record
+        <set>
+            <if test="content != null">content = #{content},</if>
+            <if test="category != null">category = #{category},</if>
+            <if test="sourceType != null">source_type = #{sourceType},</if>
+            <if test="imageUrl != null">image_url = #{imageUrl},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="verdict != null">verdict = #{verdict},</if>
+            <if test="verdictSource != null">verdict_source = #{verdictSource},</if>
+            <if test="confidence != null">confidence = #{confidence},</if>
+            <if test="reasoningChain != null">reasoning_chain = #{reasoningChain},</if>
+            <if test="aiSummary != null">ai_summary = #{aiSummary},</if>
+            <if test="version != null">version = #{version},</if>
+            <if test="hitCount != null">hit_count = #{hitCount},</if>
+            <if test="assigneeId != null">assignee_id = #{assigneeId},</if>
+            <if test="deadline != null">deadline = #{deadline},</if>
+            <if test="authorityId != null">authority_id = #{authorityId},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="completeTime != null">complete_time = #{completeTime},</if>
+        </set>
+        where id = #{id}
+    </update>
+
+    <update id="updateHitCount">
+        update t_fact_check_record
+        set hit_count = hit_count + 1,
+            update_time = now()
+        where id = #{id}
+    </update>
+
+    <update id="resetToDetecting">
+        update t_fact_check_record
+        set status = 0,
+            verdict = null,
+            verdict_source = null,
+            confidence = null,
+            reasoning_chain = null,
+            ai_summary = null,
+            update_time = now()
+        where id = #{id}
+    </update>
+
+    <select id="listByStatus" resultType="com.factcheck.entity.FactCheckRecord">
+        select id, user_id, content, content_hash, category, source_type, image_url, status,
+               verdict, verdict_source, confidence, reasoning_chain, ai_summary, version,
+               hit_count, assignee_id, deadline, authority_id, create_time, update_time, complete_time
+        from t_fact_check_record
+        where status = #{status}
+        order by hit_count desc, create_time asc
+    </select>
+
+    <select id="adminPage" resultType="com.factcheck.entity.FactCheckRecord">
+        select id, user_id, content, content_hash, category, source_type, image_url, status,
+               verdict, verdict_source, confidence, reasoning_chain, ai_summary, version,
+               hit_count, assignee_id, deadline, authority_id, create_time, update_time, complete_time
+        from t_fact_check_record
+        <where>
+            <if test="category != null and category != ''">and category = #{category}</if>
+            <if test="status != null">and status = #{status}</if>
+            <if test="verdict != null">and verdict = #{verdict}</if>
+            <if test="keyword != null and keyword != ''">and content like concat('%', #{keyword}, '%')</if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <select id="page" resultType="com.factcheck.entity.FactCheckRecord">
+        select id, user_id, content, content_hash, category, source_type, image_url, status,
+               verdict, verdict_source, confidence, reasoning_chain, ai_summary, version,
+               hit_count, assignee_id, deadline, authority_id, create_time, update_time, complete_time
+        from t_fact_check_record
+        <where>
+            <if test="userId != null">and user_id = #{userId}</if>
+            <if test="category != null and category != ''">and category = #{category}</if>
+            <if test="status != null">and status = #{status}</if>
+        </where>
+        order by create_time desc
+    </select>
+</mapper>

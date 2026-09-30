@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.factcheck.mapper.AppealMapper">
+
+    <select id="getById" resultType="com.factcheck.entity.Appeal">
+        select id, record_id, user_id, reason_type, content, status, handle_result,
+               handled_by, handle_time, create_time
+        from t_appeal
+        where id = #{id}
+    </select>
+
+    <select id="pageByUser" resultType="com.factcheck.entity.Appeal">
+        select id, record_id, user_id, reason_type, content, status, handle_result,
+               handled_by, handle_time, create_time
+        from t_appeal
+        <where>
+            <if test="userId != null">and user_id = #{userId}</if>
+            <if test="status != null">and status = #{status}</if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <select id="page" resultType="com.factcheck.entity.Appeal">
+        select id, record_id, user_id, reason_type, content, status, handle_result,
+               handled_by, handle_time, create_time
+        from t_appeal
+        <where>
+            <if test="status != null">and status = #{status}</if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <insert id="insert" parameterType="com.factcheck.entity.Appeal"
+            useGeneratedKeys="true" keyProperty="id">
+        insert into t_appeal(record_id, user_id, reason_type, content, status, handle_result,
+                             handled_by, handle_time, create_time)
+        values(#{recordId}, #{userId}, #{reasonType}, #{content}, #{status}, #{handleResult},
+               #{handledBy}, #{handleTime}, #{createTime})
+    </insert>
+
+    <update id="update" parameterType="com.factcheck.entity.Appeal">
+        update t_appeal
+        <set>
+            <if test="status != null">status = #{status},</if>
+            <if test="handleResult != null">handle_result = #{handleResult},</if>
+            <if test="handledBy != null">handled_by = #{handledBy},</if>
+            <if test="handleTime != null">handle_time = #{handleTime},</if>
+        </set>
+        where id = #{id}
+    </update>
+</mapper>
