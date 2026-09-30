@@ -1,8 +1,17 @@
 """
 生成联调测试数据脚本（可重复执行）
 
+前置条件：
+    - 已执行 sql/fact_check_schema.sql 与 sql/fact_check_init.sql
+    - MySQL 与 Redis 已启动，且本文件底部的连接配置与实际一致
+
+依赖：
+    py -3.10 -m pip install pymysql bcrypt redis
+
 用法：
     py -3.10 fact-check/scripts/generate_test_data.py
+
+生成内容：演示用户、权威信息、检测记录、证据、站内信、收藏/评分/申诉、Redis 热度
 """
 import hashlib
 import sys
@@ -133,7 +142,9 @@ def main():
         with conn.cursor(pymysql.cursors.DictCursor) as cursor:
             print("=== 1. 用户 ===")
             uid = ensure_user(cursor, "demo_user", "demo123", "演示用户", 0)
-            admin_id = ensure_user(cursor, "demo_admin", "admin123", "演示管理员", 1)
+            # 管理员由 sql/fact_check_init.sql 创建（admin / Admin@123456），此处保持一致，
+            # 避免出现两个密码不同的管理员账号；已存在时 ensure_user 会直接复用
+            ensure_user(cursor, "admin", "Admin@123456", "系统管理员", 1)
 
             print("=== 2. 权威信息 ===")
             auth1 = ensure_authority(cursor, "央行宣布降低存款准备金率",
@@ -191,7 +202,7 @@ def main():
         conn.commit()
         print("Test data generated OK")
         print("普通用户：demo_user / demo123")
-        print("管理员：demo_admin / admin123")
+        print("管理员：admin / Admin@123456（由 sql/fact_check_init.sql 创建）")
     except Exception as e:
         conn.rollback()
         print("Generate failed:", e)
