@@ -23,16 +23,20 @@ public class FactCheckApplication {
     public static void main(String[] args) {
         SpringApplication app = new SpringApplication(FactCheckApplication.class);
 
-        // 启动时打印生效的 profile 与解析后的数据源地址，便于快速定位配置问题：
-        //   - 只看得到 profile 而 dbUrl 是 null / 仍带 ${...} → 说明对应的 application-<profile>.yml 没被加载
-        //   - 常见原因：本地密钥文件 application-local.yml 未放到 src/main/resources，
-        //     或构建时把该文件排除掉了（见 fact-check-server/pom.xml 的 dist profile 说明）
+        // 启动时打印生效的 profile 与解析后的配置，便于快速定位配置问题：
+        //   - dbUrl 为 null 或仍带 ${...} → 对应的 application-<profile>.yml 没被加载
+        //   - ossBucket 为空 → 说明 application-local.yml 没生效（本地密钥没读到）
+        //   - 常见原因：本地密钥文件不在 src/main/resources，或构建时把它排除掉了
+        //     （见 fact-check-server/pom.xml 中 dist profile 的说明）
+        // 注意：数据源的键是 spring.datasource.druid.*（在 application.yml 里拼装），
+        //      而不是 fact-check.datasource.*（那只是分项配置）。
         app.addListeners((ApplicationListener<ApplicationEnvironmentPreparedEvent>) event -> {
             ConfigurableEnvironment env = event.getEnvironment();
-            log.info("启动环境：activeProfiles={}, dbUrl={}, dbUsername={}",
+            log.info("启动环境：activeProfiles={}, dbUrl={}, dbUsername={}, ossBucket={}",
                     Arrays.toString(env.getActiveProfiles()),
-                    env.getProperty("fact-check.datasource.url"),
-                    env.getProperty("fact-check.datasource.username"));
+                    env.getProperty("spring.datasource.druid.url"),
+                    env.getProperty("spring.datasource.druid.username"),
+                    env.getProperty("fact-check.alioss.bucket-name"));
         });
 
         app.run(args);
