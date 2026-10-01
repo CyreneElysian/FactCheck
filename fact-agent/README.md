@@ -27,7 +27,16 @@ cp .env.example .env
 # 编辑 .env：填入 LLM_API_KEY；要联网核查请设置 SEARCH_TOOL=tavily|bocha|serpapi 与 SEARCH_API_KEY
 
 uvicorn app.main:app --host 0.0.0.0 --port 8001
+
+# 等价方式：直接以模块方式启动（监听地址与端口取自 .env 的 AGENT_HOST / AGENT_PORT）
+python -m app.main
 ```
+
+> 判断是否真的起来了：日志里必须出现 **`Uvicorn running on http://...`**。
+> 若只看到"搜索源已启用 / 检测时间预算"这几行然后就回到命令提示符，
+> 说明只是执行了模块级初始化而没有启动服务（本文件已补上 `__main__` 入口，正常不会再出现）。
+>
+> 自检一行即可确认配置是否生效：`/health` 返回的 `search_offline`（是否不联网）与 `llm_configured`。
 
 > ⚠️ **必须以单 worker 运行，不要加 `--workers`**：语义去重索引是进程内内存态，
 > 多 worker 会各持一份索引并互相覆盖。需要横向扩展时应改为外部向量库（Qdrant/Milvus）。

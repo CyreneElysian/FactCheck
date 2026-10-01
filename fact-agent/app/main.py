@@ -142,3 +142,23 @@ def detect(req: DetectRequest, x_internal_token: str = Header("", alias="X-Inter
             human_reason=f"检测服务内部错误：{type(exc).__name__}",
             error=True,
         )
+
+
+if __name__ == "__main__":
+    # 支持 `python -m app.main` 直接启动服务。
+    #
+    # 注意：如果不写这个入口，直接 `python -m app.main` 只会执行模块级代码
+    # （加载模型与索引、打印启动自检），然后到文件末尾就退出了 —— 服务并没有起来，
+    # 这是最容易踩的坑。要看到 "Uvicorn running on http://..." 才算真的启动。
+    #
+    # 必须单 worker：语义去重索引是进程内内存态，多 worker 会各持一份并互相覆盖。
+    # 端口与监听地址取自 .env 的 AGENT_HOST / AGENT_PORT。
+    #
+    # 这里直接传 app 实例而不是 "app.main:app" 字符串：
+    # 以 `python -m app.main` 启动时本模块已经是 __main__，再按字符串导入会
+    # 把模块加载第二遍（模型加载两次，且出现两个 DedupService 实例同时写同一份索引文件，
+    # 而锁是实例级的、跨实例并不互斥）。
+    import uvicorn
+
+    logger.info("以 __main__ 方式启动：http://%s:%s（单 worker）", settings.HOST, settings.PORT)
+    uvicorn.run(app, host=settings.HOST, port=settings.PORT)
