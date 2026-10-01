@@ -175,7 +175,18 @@ cp application-local.yml.example application-local.yml
 # 编辑 application-local.yml，填入你的 MySQL 密码、OSS 密钥、微信 AppSecret
 ```
 
-`application-local.yml` 已在 `.gitignore` 中，**不会被提交**，也不会被打进 jar。
+`application-local.yml` 已在 `.gitignore` 中，**不会被提交**。
+
+> ⚠️ 它默认会被**本地构建**打进来（这是有意的，见下方说明）；构建"可分发产物"时请加 `-Pdist`：
+>
+> ```bash
+> mvn clean package -Pdist -DskipTests   # 该 profile 会把 application-local.yml 排除在产物之外
+> ```
+>
+> **为什么不默认排除**：IDEA 与 `mvn spring-boot:run` 运行时用的类路径是 `target/classes`，
+> 一旦在默认构建里排除该文件，`target/classes` 里就不会有它，激活 `local` profile 后
+> `${fact-check.datasource.*}` 会全部无法解析，启动直接失败：
+> `java.sql.SQLException: ${fact-check.datasource.driver-class-name}`。
 
 ### 3. 启动 Python Agent
 
@@ -205,8 +216,13 @@ mvn package -DskipTests
 java -jar fact-check-server/target/fact-check-server-1.0-SNAPSHOT.jar --spring.profiles.active=local
 ```
 
-- IDE 运行：直接运行 `FactCheckApplication`，并把 Active profiles 设为 `local`（会读取 `src/main/resources/application-local.yml`）。
-- 用 jar 运行：`application-local.yml` 未打进 jar，请通过 `--spring.config.additional-location=file:./fact-check/fact-check-server/src/main/resources/` 指定外部配置目录，或直接注入环境变量（见[配置说明](#配置说明)）。
+- **IDE 运行（推荐）**：直接运行 `FactCheckApplication`，把 **Active profiles 设为 `local`**。
+  默认构建会把 `src/main/resources/application-local.yml` 复制到 `target/classes`，因此 IDEA 能直接读到。
+  启动日志会打印一行 `启动环境：activeProfiles=[local], dbUrl=..., dbUsername=...`，
+  如果 `dbUrl` 是 `null` 或仍带着 `${...}`，就说明配置文件没被加载。
+- **用 jar 运行**：默认构建的 jar 里已含该文件，同样加 `--spring.profiles.active=local` 即可；
+  若用的是 `-Pdist` 构建的 jar（不含本地配置），则改用环境变量注入，或用
+  `--spring.config.additional-location=file:./fact-check/fact-check-server/src/main/resources/` 指定外部配置目录。
 
 ### 5. 构建并部署前端
 
@@ -305,6 +321,7 @@ py -3.10 fact-agent/eval/evaluate.py --mode live --subset 10
 - `application.yml`：公共配置（JWT、Agent 地址、OCR、去重开关、限流阈值等），不含任何真实密钥。
 - `application-dev.yml`（已入库）：安全默认值 + 环境变量占位，可零配置启动（数据库用 localhost/root）。
 - `application-local.yml`（**未入库**）：本地真实密钥，需激活 `local` profile。
+  **默认构建会把它复制到 `target/classes`**（这样 IDEA 才能读到）；要构建不含密钥的产物请用 `mvn package -Pdist`。
 - `application-local.yml.example`（已入库）：模板。
 
 关键配置项：
