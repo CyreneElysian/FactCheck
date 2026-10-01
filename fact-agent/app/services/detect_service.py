@@ -14,6 +14,7 @@
 """
 import json
 import logging
+import math
 import re
 import time
 from typing import List, Optional
@@ -298,41 +299,83 @@ class DetectService:
 
     def _parse_evidence(self, raw_evidence: object, claim_text: str,
                         search_results: List[SearchResult]) -> List[Evidence]:
-        """安全地构造证据列表；模型未给出证据时回填搜索结果，并按相关度降序"""
-        evidence: List[Evidence] = []
+        """合并"模型给出的证据"与"检索到的结果"，并按相关度降序返回
+
+        设计要点（由离线单测暴露的问题驱动）：
+        - 模型给出的证据优先（它读过正文，相关性判断更准），但**不再整体丢弃检索结果**——
+          否则检索到的权威来源会因为模型没提到而完全消失，管理员也就看不到。
+        - 按 URL 去重：同一 URL 以模型给出的文本为准，检索结果只做补充。
+        - title/url/snippet 全空的条目直接丢弃，避免空行顶掉真实证据。
+        - 合并后最多保留 10 条（与提示词中给模型的条数一致）。
+        """
+        merged: List[Evidence] = []
+        seen_urls = set()
+
+        def _key(url: str) -> str:
+            return (url or "").strip().rstrip("/").lower()
+
         if isinstance(raw_evidence, list):
             for item in raw_evidence:
                 if not isinstance(item, dict):
                     logger.warning("跳过非法证据条目（非对象）：%s", type(item).__name__)
                     continue
-                url = item.get("url") or ""
-                rule_score = score_source(str(url))
+                title = str(item.get("title") or "").strip()
+                url = str(item.get("url") or "").strip()
+                snippet = str(item.get("snippet") or "").strip()
+                if not (title or url or snippet):
+                    logger.warning("跳过空证据条目（title/url/snippet 均为空）")
+                    continue
+                key = _key(url)
+                if key and key in seen_urls:
+                    continue
+                if key:
+                    seen_urls.add(key)
+
+                rule_score = score_source(url)
                 model_score = self._coerce_unit(item.get("source_credibility"), None)
                 if model_score is not None and abs(model_score - rule_score) > 0.01:
                     # 可信度以确定性域名规则为准：模型自报的数字无法复核，不予采信
                     logger.debug("忽略模型自报的来源可信度：url=%s, model=%s, rule=%s",
                                  url, model_score, rule_score)
-                ev = Evidence(
-                    title=str(item.get("title") or ""),
-                    url=str(url),
-                    snippet=str(item.get("snippet") or ""),
-                    source=str(item.get("source") or ""),
+                merged.append(Evidence(
+                    title=title,
+                    url=url,
+                    snippet=snippet,
+                    source=str(item.get("source") or "").strip(),
                     source_credibility=rule_score,
                     relevance_score=self._coerce_unit(item.get("relevance_score"), None),
-                )
-                evidence.append(ev)
+                ))
 
-        if not evidence:
-            evidence = self._build_evidence(search_results, claim_text)
+        # 用检索结果补充模型未提及的条目（权威来源不会因模型忽略而丢失）
+        for rank, r in enumerate(search_results):
+            if len(merged) >= 10:
+                break
+            key = _key(r.url)
+            if key and key in seen_urls:
+                continue
+            if key:
+                seen_urls.add(key)
+            body = r.content or r.snippet or ""
+            merged.append(Evidence(
+                title=r.title,
+                url=r.url,
+                snippet=r.snippet,
+                source=r.source,
+                source_credibility=score_source(r.url),
+                relevance_score=self._estimate_relevance(claim_text, r.title, body, rank),
+            ))
 
-        # 模型未给相关度时按位置+词面重合估计，保证列表可按相关度排序
-        for rank, ev in enumerate(evidence):
+        if not merged:
+            merged = self._build_evidence(search_results, claim_text)
+
+        # 模型未给相关度（或给了非正数）的条目按位置+词面重合补齐，保证可排序
+        for rank, ev in enumerate(merged):
             if ev.relevance_score is None or ev.relevance_score <= 0:
                 ev.relevance_score = self._estimate_relevance(
                     claim_text, ev.title, ev.snippet, rank
                 )
-        evidence.sort(key=lambda e: e.relevance_score or 0.0, reverse=True)
-        return evidence
+        merged.sort(key=lambda e: e.relevance_score or 0.0, reverse=True)
+        return merged[:10]
 
     def _build_evidence(self, results: List[SearchResult], claim_text: str) -> List[Evidence]:
         """将搜索结果转换为 Evidence 列表（按相关度降序）"""
@@ -356,8 +399,11 @@ class DetectService:
 
     @staticmethod
     def _remaining(deadline: float) -> int:
-        """剩余预算（秒，向下取整，最小 0）"""
-        return max(0, int(deadline - time.monotonic()))
+        """剩余预算（秒，向上取整，最小 0）
+
+        向上取整而不是向下：剩余 1.9s 时应给 2s，"还剩不到 1 秒就整段放弃"会白扔预算。
+        """
+        return max(0, math.ceil(deadline - time.monotonic()))
 
     @staticmethod
     def _coerce_confidence(value: object) -> Optional[float]:

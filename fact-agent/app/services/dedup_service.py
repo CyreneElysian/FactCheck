@@ -68,8 +68,12 @@ class DedupService:
             self._quarantine_files()
 
     def _quarantine_files(self):
-        """把无法加载的索引/元数据另存为 .bak，便于事后排查，避免被后续写入覆盖"""
-        stamp = time.strftime("%Y%m%d%H%M%S")
+        """把无法加载的索引/元数据另存为 .bak，便于事后排查，避免被后续写入覆盖
+
+        备份名带微秒，避免同一秒内多次重启互相覆盖（单测发现的问题）。
+        注意：索引与元数据是一对，任一不可用都会一起隔离。
+        """
+        stamp = time.strftime("%Y%m%d%H%M%S") + f"{int(time.time() * 1000) % 1000:03d}"
         for path in (self.index_path, self.meta_path):
             try:
                 if path.exists():
@@ -79,11 +83,13 @@ class DedupService:
             except Exception as exc:
                 logger.error("备份可疑文件失败：%s（%s）", path, exc)
 
-    def _save(self):
+    def _save(self) -> bool:
         """
-        持久化索引与元数据（原子写）
+        持久化索引与元数据（原子写），返回是否成功
 
         先写临时文件再 os.replace 覆盖，保证任何时刻磁盘上都是一个完整文件。
+        失败时返回 False —— 调用方必须据此告警，否则会出现"接口报成功、磁盘上什么都没有、
+        重启即丢数据"的静默故障（该问题由离线单测发现）。
         """
         with self._lock:
             try:
@@ -97,12 +103,17 @@ class DedupService:
                 with open(tmp_meta, "w", encoding="utf-8") as f:
                     json.dump(self._meta, f, ensure_ascii=False)
                 os.replace(tmp_meta, self.meta_path)
+                return True
             except Exception as exc:
-                logger.error("去重索引持久化失败：%s", exc)
+                logger.error("去重索引持久化失败（内存索引仍可用，但重启后会丢失）：%s", exc)
+                return False
 
     def add(self, record_id: int, text: str):
         """
         新增一条已产生结论的消息到索引
+
+        Raises:
+            RuntimeError: 索引/元数据写盘失败时抛出，避免调用方误以为已持久化
         """
         text = (text or "").strip()
         if len(text) < self.min_text_length:
@@ -128,8 +139,12 @@ class DedupService:
             except Exception as exc:
                 logger.error("写入向量索引失败：recordId=%s, error=%s", record_id, exc)
                 return
-            self._save()
-        logger.info("已加入去重索引：recordId=%s", record_id)
+            saved = self._save()
+        if saved:
+            logger.info("已加入去重索引：recordId=%s", record_id)
+        else:
+            # 关键：不能静默成功，否则上层（Java /index/add）会以为索引已更新
+            raise RuntimeError(f"索引已写入内存但持久化失败，重启后会丢失：recordId={record_id}")
 
     def search(self, text: str) -> Tuple[bool, Optional[int], float, Optional[str]]:
         """
