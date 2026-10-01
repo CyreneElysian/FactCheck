@@ -1,0 +1,36 @@
+# fact-agent 测试（dev）依赖
+#
+# 结论：跑 tests/ 下的测试**只需要 Python 标准库**，本文件不含任何必装依赖。
+#
+# 为什么是空依赖：
+#   1. 测试框架用的是标准库 `unittest`（不是 pytest）；
+#   2. 不访问网络：真实 LLM / 搜索源 / 网页抓取全部用 tests/_helpers.py 里的假对象替换；
+#   3. 不加载真实 bge 模型：语义去重用确定性假 embedding（纯 numpy 哈希向量）；
+#   4. 不碰生产 data/ 目录：索引持久化测试一律用 tempfile.mkdtemp()。
+#
+# 因此下面这些"看起来是测试依赖"的东西都不需要额外安装：
+#   - pytest / pytest-asyncio / unittest 插件 → 不需要（用标准库 unittest）
+#   - requests-mock / responses / httpretty     → 不需要（假对象注入，不发 HTTP）
+#
+# ⚠️ 测试会 import app/ 包，所以这些**运行时依赖必须已装好**（见 requirements.txt）：
+#   - pydantic          → app/schemas.py（必装）
+#   - requests          → app/services/search.py、llm.py、detect_service.py（必装）
+#   - numpy             → app/services/embedding.py、dedup_service.py（必装）
+#   - faiss-cpu         → app/services/dedup_service.py（必装）
+# 测试**不需要**的运行时依赖：
+#   - fastapi / uvicorn        → 只有 app/main.py 用；测试不导入 FastAPI 应用
+#   - python-dotenv            → 可选（没装也能跑，只是不读 .env）
+#   - sentence-transformers    → 测试用假 embedding，从不加载真实模型
+#
+# 运行方式（在 fact-agent/ 目录下执行）：
+#   .venv\Scripts\python.exe -m unittest discover -s tests -t . -v
+#
+# 说明：本虚拟环境未安装 pytest（且无法联网 pip install），
+# 但上面的用例全部基于 unittest.TestCase，日后装了 pytest 也能被直接收集：
+#   pytest tests/ -v
+
+# ---------------------------------------------------------------------------
+# 可选依赖（仅在你想用 pytest 运行/取更友好的报告时安装，非必需）
+# ---------------------------------------------------------------------------
+# pytest>=7.0        # 可选：pytest 能直接收集 unittest.TestCase，无需改造用例
+# pytest-cov>=4.0    # 可选：覆盖率报告（离线环境通常装不上，忽略即可）
