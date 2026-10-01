@@ -1,0 +1,60 @@
+{"id": 1, "text": "微波炉加热的食物会产生致癌物，欧洲已全面禁止使用微波炉", "label": "FALSE", "category": "健康", "paraphrase": "用微波炉热饭会不会产生致癌物质？听说欧洲都不让用微波炉了"}
+{"id": 2, "text": "喝醋可以预防感冒", "label": "FALSE", "category": "健康", "paraphrase": "平时多吃点醋是不是就不容易感冒了"}
+{"id": 3, "text": "味精加热后会致癌，炒菜不能放味精", "label": "FALSE", "category": "健康", "paraphrase": "炒菜时放味精经过高温会不会产生致癌物"}
+{"id": 4, "text": "隔夜水会产生亚硝酸盐致癌，不能喝", "label": "FALSE", "category": "健康", "paraphrase": "前一天烧的水放到第二天还能喝吗，会不会致癌"}
+{"id": 5, "text": "5G 基站辐射会致癌，应拆除居民区附近的基站", "label": "FALSE", "category": "科技", "paraphrase": "小区旁边的 5G 基站辐射大不大，会不会得癌症"}
+{"id": 6, "text": "接种疫苗会导致儿童自闭症", "label": "FALSE", "category": "健康", "paraphrase": "打疫苗和小孩得自闭症有关系吗"}
+{"id": 7, "text": "酸性体质是万病之源，需要吃碱性食物调理", "label": "FALSE", "category": "健康", "paraphrase": "人体酸性体质说法靠谱吗，要不要多吃碱性食品"}
+{"id": 8, "text": "电脑和手机的辐射会导致不孕不育", "label": "FALSE", "category": "健康", "paraphrase": "天天对着电脑手机会不会影响生育"}
+{"id": 9, "text": "吃酱油会让伤口变黑留疤", "label": "FALSE", "category": "健康", "paraphrase": "身上有伤口的时候吃酱油会不会让疤痕变黑"}
+{"id": 10, "text": "手机充电时接电话会触电身亡", "label": "FALSE", "category": "科技", "paraphrase": "边充电边打电话是不是会被电死"}
+{"id": 11, "text": "市面上有塑料大米，大米是塑料做的", "label": "FALSE", "category": "社会", "paraphrase": "听说有的米是塑料造出来的，是真的吗"}
+{"id": 12, "text": "肉松是棉花做的，不能吃", "label": "FALSE", "category": "社会", "paraphrase": "网上说肉松饼里的肉松其实是棉花，靠谱吗"}
+{"id": 13, "text": "吃碘盐可以防核辐射，赶紧囤盐", "label": "FALSE", "category": "健康", "paraphrase": "核泄漏之后多吃加碘盐能不能防辐射"}
+{"id": 14, "text": "喝可乐会杀死精子导致不育", "label": "FALSE", "category": "健康", "paraphrase": "常喝可乐会不会影响精子质量"}
+{"id": 15, "text": "板蓝根可以预防新冠肺炎", "label": "FALSE", "category": "健康", "paraphrase": "喝板蓝根能不能预防新冠感染"}
+{"id": 16, "text": "空腹不能吃香蕉，会对身体有害", "label": "FALSE", "category": "健康", "paraphrase": "早上空着肚子吃香蕉可以吗"}
+{"id": 17, "text": "糖尿病患者完全不能吃水果", "label": "FALSE", "category": "健康", "paraphrase": "得了糖尿病是不是一点水果都不能碰"}
+{"id": 18, "text": "长痘是因为吃辣，必须完全忌辣", "label": "FALSE", "category": "健康", "paraphrase": "脸上长痘痘是不是吃辣吃出来的"}
+{"id": 19, "text": "洗完头不吹干就睡觉会得面瘫", "label": "FALSE", "category": "健康", "paraphrase": "头发没吹干就睡会不会面瘫"}
+{"id": 20, "text": "隐形眼镜会滑到眼球后面再也取不出来", "label": "FALSE", "category": "健康", "paraphrase": "戴隐形眼镜有没有可能跑到眼睛后面去"}
+{"id": 21, "text": "晚上吃姜等于吃砒霜", "label": "FALSE", "category": "健康", "paraphrase": "晚上做菜放姜是不是对身体有害"}
+{"id": 22, "text": "转发这条消息到五个群可以领取红包奖励", "label": "FALSE", "category": "社会", "paraphrase": "群里说转发到五个群就能领奖，是真的活动吗"}
+{"id": 23, "text": "感冒药可以治好感冒，吃了就能立刻痊愈", "label": "FALSE", "category": "健康", "paraphrase": "吃感冒药是不是能把感冒彻底治好"}
+{"id": 24, "text": "手机信号越差，辐射就越大，对人体伤害越高", "label": "FALSE", "category": "科技", "paraphrase": "手机没信号的时候辐射是不是特别大"}
+{"id": 25, "text": "血压高的人喝醋能软化血管，可以代替降压药", "label": "FALSE", "category": "健康", "paraphrase": "喝醋软化血管的说法可信吗，能停药吗"}
+{"id": 26, "text": "地球围绕太阳公转", "label": "TRUE", "category": "科技", "paraphrase": "地球是绕着太阳转的吗"}
+{"id": 27, "text": "在标准大气压下水的沸点是 100 摄氏度", "label": "TRUE", "category": "科技", "paraphrase": "常压下把水烧开会在一百度沸腾吗"}
+{"id": 28, "text": "真空中的光速约为每秒 30 万公里", "label": "TRUE", "category": "科技", "paraphrase": "光速大概是多快"}
+{"id": 29, "text": "人的正常体温大约在 36 到 37 摄氏度之间", "label": "TRUE", "category": "健康", "paraphrase": "成年人的正常体温范围是多少"}
+{"id": 30, "text": "吸烟会显著增加患肺癌的风险", "label": "TRUE", "category": "健康", "paraphrase": "抽烟和得肺癌有关系吗"}
+{"id": 31, "text": "长期高盐饮食与高血压发病风险升高相关", "label": "TRUE", "category": "健康", "paraphrase": "吃盐太多会不会容易得高血压"}
+{"id": 32, "text": "勤洗手可以降低呼吸道传染病的传播风险", "label": "TRUE", "category": "健康", "paraphrase": "多洗手能减少传染病的传播吗"}
+{"id": 33, "text": "接种疫苗可以显著降低相应传染病的发病率", "label": "TRUE", "category": "健康", "paraphrase": "打疫苗对预防传染病到底有没有用"}
+{"id": 34, "text": "中国是联合国安理会常任理事国", "label": "TRUE", "category": "政策", "paraphrase": "中国是不是安理会常任理事国之一"}
+{"id": 35, "text": "新型冠状病毒可以通过呼吸道飞沫传播", "label": "TRUE", "category": "健康", "paraphrase": "新冠是不是通过飞沫传染的"}
+{"id": 36, "text": "长期睡眠不足会影响认知功能", "label": "TRUE", "category": "健康", "paraphrase": "老是睡不够会不会影响大脑的思考能力"}
+{"id": 37, "text": "适量运动有助于控制体重", "label": "TRUE", "category": "健康", "paraphrase": "规律锻炼对减肥有帮助吗"}
+{"id": 38, "text": "太阳是一颗恒星", "label": "TRUE", "category": "科技", "paraphrase": "太阳属于恒星还是行星"}
+{"id": 39, "text": "血液在人体内是循环流动的", "label": "TRUE", "category": "健康", "paraphrase": "人体的血液是不是一直在循环"}
+{"id": 40, "text": "把水煮沸可以杀灭大多数病原微生物", "label": "TRUE", "category": "健康", "paraphrase": "开水能不能把细菌病毒杀死"}
+{"id": 41, "text": "温室气体排放与全球变暖有关", "label": "TRUE", "category": "科技", "paraphrase": "全球变暖是不是和温室气体排放有关系"}
+{"id": 42, "text": "中国实行九年义务教育制度", "label": "TRUE", "category": "政策", "paraphrase": "国内是不是实行九年义务教育"}
+{"id": 43, "text": "全球划分为多个时区", "label": "TRUE", "category": "科技", "paraphrase": "世界上是不是分很多个时区"}
+{"id": 44, "text": "月球围绕地球公转", "label": "TRUE", "category": "科技", "paraphrase": "月亮是绕着地球转的吗"}
+{"id": 45, "text": "长期过量饮酒会损害肝脏", "label": "TRUE", "category": "健康", "paraphrase": "喝酒太多是不是会伤肝"}
+{"id": 46, "text": "某地居民拍到不明飞行物，官方尚未回应", "label": "UNVERIFIED", "category": "社会", "paraphrase": "有地方拍到 UFO 了，是真的吗"}
+{"id": 47, "text": "网传某位明星已秘密结婚", "label": "UNVERIFIED", "category": "社会", "paraphrase": "听说某明星偷偷结婚了？"}
+{"id": 48, "text": "有研究称太阳系可能存在第九大行星", "label": "UNVERIFIED", "category": "科技", "paraphrase": "太阳系是不是还有一颗没找到的大行星"}
+{"id": 49, "text": "某款新药可以彻底治愈阿尔茨海默病", "label": "UNVERIFIED", "category": "健康", "paraphrase": "有没有药能完全治好老年痴呆"}
+{"id": 50, "text": "某村的一口井水能治百病", "label": "UNVERIFIED", "category": "社会", "paraphrase": "听说有个村子的井水包治百病，可信吗"}
+{"id": 51, "text": "传言下周本地将出现特大暴雨", "label": "UNVERIFIED", "category": "社会", "paraphrase": "朋友圈说下周有特大暴雨，靠谱吗"}
+{"id": 52, "text": "网传某互联网公司即将破产清算", "label": "UNVERIFIED", "category": "财经", "paraphrase": "有消息说某大公司要倒闭了，是真的吗"}
+{"id": 53, "text": "有自媒体称某国已在外星建立秘密基地", "label": "UNVERIFIED", "category": "社会", "paraphrase": "外国是不是已经在别的星球建基地了"}
+{"id": 54, "text": "民间偏方称吃某种野生菌可以延寿十年", "label": "UNVERIFIED", "category": "健康", "paraphrase": "有种野山菌吃了能多活十年，是真的吗"}
+{"id": 55, "text": "某山区传闻发现未知物种", "label": "UNVERIFIED", "category": "科技", "paraphrase": "听说山里有没见过的动物被发现了"}
+{"id": 56, "text": "某款手机电池存在爆炸风险，网传需立即停用", "label": "UNVERIFIED", "category": "科技", "paraphrase": "在网上看到某型号手机电池会爆炸，要不要停用"}
+{"id": 57, "text": "网传某城市将大幅调整落户政策", "label": "UNVERIFIED", "category": "政策", "paraphrase": "听说某市落户政策要大改，是真的吗"}
+{"id": 58, "text": "有帖子称某地一处湖水夜间会自行发光", "label": "UNVERIFIED", "category": "社会", "paraphrase": "有人说有个湖晚上会发光，什么原因"}
+{"id": 59, "text": "网传某种常见蔬菜生吃可以杀死体内寄生虫", "label": "UNVERIFIED", "category": "健康", "paraphrase": "生吃某种蔬菜能不能把肚子里的虫子杀干净"}
+{"id": 60, "text": "有传闻称某历史事件的起因与官方记载不同", "label": "UNVERIFIED", "category": "社会", "paraphrase": "网上说某历史事件的真实起因和书上写的不一样"}

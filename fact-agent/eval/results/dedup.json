@@ -1,0 +1,1181 @@
+{
+  "mode": "dedup",
+  "generated_at": "2026-10-01T18:24:48",
+  "dataset_size": 60,
+  "indexed_count": 59,
+  "skipped_by_min_length": [
+    {
+      "id": 38,
+      "text": "太阳是一颗恒星",
+      "length": 7
+    }
+  ],
+  "query_skipped_by_min_length": [
+    {
+      "id": 28,
+      "paraphrase": "光速大概是多快",
+      "length": 7
+    }
+  ],
+  "min_text_length": 8,
+  "positive_queries": 58,
+  "negative_queries": 15,
+  "hard_negative_queries": 12,
+  "embedding_model": "C:\\Users\\Cyber\\Documents\\Agent Workspace\\fact-check\\fact-agent\\models\\bge_model",
+  "configured_threshold": 0.92,
+  "score_stats": {
+    "positive_mean": 0.8078,
+    "positive_median": 0.8133,
+    "positive_min": 0.6163,
+    "negative_mean": 0.3978,
+    "negative_max": 0.5132,
+    "hard_negative_mean": 0.5822,
+    "hard_negative_max": 0.7617
+  },
+  "sweep": [
+    {
+      "threshold": 0.5,
+      "hit": 58,
+      "miss": 0,
+      "wrong": 0,
+      "fp": 2,
+      "tn": 13,
+      "fp_hard": 10,
+      "tn_hard": 2,
+      "hit_rate": 1.0,
+      "miss_rate": 0.0,
+      "wrong_rate": 0.0,
+      "fp_rate": 0.1333,
+      "fp_hard_rate": 0.8333,
+      "precision": 0.8286,
+      "recall": 1.0,
+      "f1": 0.9063
+    },
+    {
+      "threshold": 0.55,
+      "hit": 58,
+      "miss": 0,
+      "wrong": 0,
+      "fp": 0,
+      "tn": 15,
+      "fp_hard": 6,
+      "tn_hard": 6,
+      "hit_rate": 1.0,
+      "miss_rate": 0.0,
+      "wrong_rate": 0.0,
+      "fp_rate": 0.0,
+      "fp_hard_rate": 0.5,
+      "precision": 0.9062,
+      "recall": 1.0,
+      "f1": 0.9508
+    },
+    {
+      "threshold": 0.6,
+      "hit": 58,
+      "miss": 0,
+      "wrong": 0,
+      "fp": 0,
+      "tn": 15,
+      "fp_hard": 6,
+      "tn_hard": 6,
+      "hit_rate": 1.0,
+      "miss_rate": 0.0,
+      "wrong_rate": 0.0,
+      "fp_rate": 0.0,
+      "fp_hard_rate": 0.5,
+      "precision": 0.9062,
+      "recall": 1.0,
+      "f1": 0.9508
+    },
+    {
+      "threshold": 0.65,
+      "hit": 56,
+      "miss": 2,
+      "wrong": 0,
+      "fp": 0,
+      "tn": 15,
+      "fp_hard": 2,
+      "tn_hard": 10,
+      "hit_rate": 0.9655,
+      "miss_rate": 0.0345,
+      "wrong_rate": 0.0,
+      "fp_rate": 0.0,
+      "fp_hard_rate": 0.1667,
+      "precision": 0.9655,
+      "recall": 0.9655,
+      "f1": 0.9655
+    },
+    {
+      "threshold": 0.7,
+      "hit": 55,
+      "miss": 3,
+      "wrong": 0,
+      "fp": 0,
+      "tn": 15,
+      "fp_hard": 2,
+      "tn_hard": 10,
+      "hit_rate": 0.9483,
+      "miss_rate": 0.0517,
+      "wrong_rate": 0.0,
+      "fp_rate": 0.0,
+      "fp_hard_rate": 0.1667,
+      "precision": 0.9649,
+      "recall": 0.9483,
+      "f1": 0.9565
+    },
+    {
+      "threshold": 0.75,
+      "hit": 47,
+      "miss": 11,
+      "wrong": 0,
+      "fp": 0,
+      "tn": 15,
+      "fp_hard": 1,
+      "tn_hard": 11,
+      "hit_rate": 0.8103,
+      "miss_rate": 0.1897,
+      "wrong_rate": 0.0,
+      "fp_rate": 0.0,
+      "fp_hard_rate": 0.0833,
+      "precision": 0.9792,
+      "recall": 0.8103,
+      "f1": 0.8868
+    },
+    {
+      "threshold": 0.8,
+      "hit": 32,
+      "miss": 26,
+      "wrong": 0,
+      "fp": 0,
+      "tn": 15,
+      "fp_hard": 0,
+      "tn_hard": 12,
+      "hit_rate": 0.5517,
+      "miss_rate": 0.4483,
+      "wrong_rate": 0.0,
+      "fp_rate": 0.0,
+      "fp_hard_rate": 0.0,
+      "precision": 1.0,
+      "recall": 0.5517,
+      "f1": 0.7111
+    },
+    {
+      "threshold": 0.84,
+      "hit": 17,
+      "miss": 41,
+      "wrong": 0,
+      "fp": 0,
+      "tn": 15,
+      "fp_hard": 0,
+      "tn_hard": 12,
+      "hit_rate": 0.2931,
+      "miss_rate": 0.7069,
+      "wrong_rate": 0.0,
+      "fp_rate": 0.0,
+      "fp_hard_rate": 0.0,
+      "precision": 1.0,
+      "recall": 0.2931,
+      "f1": 0.4533
+    },
+    {
+      "threshold": 0.88,
+      "hit": 9,
+      "miss": 49,
+      "wrong": 0,
+      "fp": 0,
+      "tn": 15,
+      "fp_hard": 0,
+      "tn_hard": 12,
+      "hit_rate": 0.1552,
+      "miss_rate": 0.8448,
+      "wrong_rate": 0.0,
+      "fp_rate": 0.0,
+      "fp_hard_rate": 0.0,
+      "precision": 1.0,
+      "recall": 0.1552,
+      "f1": 0.2687
+    },
+    {
+      "threshold": 0.92,
+      "hit": 2,
+      "miss": 56,
+      "wrong": 0,
+      "fp": 0,
+      "tn": 15,
+      "fp_hard": 0,
+      "tn_hard": 12,
+      "hit_rate": 0.0345,
+      "miss_rate": 0.9655,
+      "wrong_rate": 0.0,
+      "fp_rate": 0.0,
+      "fp_hard_rate": 0.0,
+      "precision": 1.0,
+      "recall": 0.0345,
+      "f1": 0.0667
+    },
+    {
+      "threshold": 0.96,
+      "hit": 0,
+      "miss": 58,
+      "wrong": 0,
+      "fp": 0,
+      "tn": 15,
+      "fp_hard": 0,
+      "tn_hard": 12,
+      "hit_rate": 0.0,
+      "miss_rate": 1.0,
+      "wrong_rate": 0.0,
+      "fp_rate": 0.0,
+      "fp_hard_rate": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0
+    }
+  ],
+  "at_configured_threshold": {
+    "misses": [
+      {
+        "id": 1,
+        "text": "微波炉加热的食物会产生致癌物，欧洲已全面禁止使用微波炉",
+        "paraphrase": "用微波炉热饭会不会产生致癌物质？听说欧洲都不让用微波炉了",
+        "matched_id": 1,
+        "score": 0.9
+      },
+      {
+        "id": 2,
+        "text": "喝醋可以预防感冒",
+        "paraphrase": "平时多吃点醋是不是就不容易感冒了",
+        "matched_id": 2,
+        "score": 0.837
+      },
+      {
+        "id": 3,
+        "text": "味精加热后会致癌，炒菜不能放味精",
+        "paraphrase": "炒菜时放味精经过高温会不会产生致癌物",
+        "matched_id": 3,
+        "score": 0.8966
+      },
+      {
+        "id": 4,
+        "text": "隔夜水会产生亚硝酸盐致癌，不能喝",
+        "paraphrase": "前一天烧的水放到第二天还能喝吗，会不会致癌",
+        "matched_id": 4,
+        "score": 0.7626
+      },
+      {
+        "id": 5,
+        "text": "5G 基站辐射会致癌，应拆除居民区附近的基站",
+        "paraphrase": "小区旁边的 5G 基站辐射大不大，会不会得癌症",
+        "matched_id": 5,
+        "score": 0.8931
+      },
+      {
+        "id": 6,
+        "text": "接种疫苗会导致儿童自闭症",
+        "paraphrase": "打疫苗和小孩得自闭症有关系吗",
+        "matched_id": 6,
+        "score": 0.8458
+      },
+      {
+        "id": 7,
+        "text": "酸性体质是万病之源，需要吃碱性食物调理",
+        "paraphrase": "人体酸性体质说法靠谱吗，要不要多吃碱性食品",
+        "matched_id": 7,
+        "score": 0.89
+      },
+      {
+        "id": 8,
+        "text": "电脑和手机的辐射会导致不孕不育",
+        "paraphrase": "天天对着电脑手机会不会影响生育",
+        "matched_id": 8,
+        "score": 0.7579
+      },
+      {
+        "id": 10,
+        "text": "手机充电时接电话会触电身亡",
+        "paraphrase": "边充电边打电话是不是会被电死",
+        "matched_id": 10,
+        "score": 0.7816
+      },
+      {
+        "id": 11,
+        "text": "市面上有塑料大米，大米是塑料做的",
+        "paraphrase": "听说有的米是塑料造出来的，是真的吗",
+        "matched_id": 11,
+        "score": 0.8136
+      },
+      {
+        "id": 12,
+        "text": "肉松是棉花做的，不能吃",
+        "paraphrase": "网上说肉松饼里的肉松其实是棉花，靠谱吗",
+        "matched_id": 12,
+        "score": 0.8064
+      },
+      {
+        "id": 13,
+        "text": "吃碘盐可以防核辐射，赶紧囤盐",
+        "paraphrase": "核泄漏之后多吃加碘盐能不能防辐射",
+        "matched_id": 13,
+        "score": 0.8645
+      },
+      {
+        "id": 14,
+        "text": "喝可乐会杀死精子导致不育",
+        "paraphrase": "常喝可乐会不会影响精子质量",
+        "matched_id": 14,
+        "score": 0.7948
+      },
+      {
+        "id": 15,
+        "text": "板蓝根可以预防新冠肺炎",
+        "paraphrase": "喝板蓝根能不能预防新冠感染",
+        "matched_id": 15,
+        "score": 0.878
+      },
+      {
+        "id": 16,
+        "text": "空腹不能吃香蕉，会对身体有害",
+        "paraphrase": "早上空着肚子吃香蕉可以吗",
+        "matched_id": 16,
+        "score": 0.8048
+      },
+      {
+        "id": 17,
+        "text": "糖尿病患者完全不能吃水果",
+        "paraphrase": "得了糖尿病是不是一点水果都不能碰",
+        "matched_id": 17,
+        "score": 0.8364
+      },
+      {
+        "id": 18,
+        "text": "长痘是因为吃辣，必须完全忌辣",
+        "paraphrase": "脸上长痘痘是不是吃辣吃出来的",
+        "matched_id": 18,
+        "score": 0.8189
+      },
+      {
+        "id": 19,
+        "text": "洗完头不吹干就睡觉会得面瘫",
+        "paraphrase": "头发没吹干就睡会不会面瘫",
+        "matched_id": 19,
+        "score": 0.8994
+      },
+      {
+        "id": 20,
+        "text": "隐形眼镜会滑到眼球后面再也取不出来",
+        "paraphrase": "戴隐形眼镜有没有可能跑到眼睛后面去",
+        "matched_id": 20,
+        "score": 0.813
+      },
+      {
+        "id": 21,
+        "text": "晚上吃姜等于吃砒霜",
+        "paraphrase": "晚上做菜放姜是不是对身体有害",
+        "matched_id": 21,
+        "score": 0.7261
+      },
+      {
+        "id": 22,
+        "text": "转发这条消息到五个群可以领取红包奖励",
+        "paraphrase": "群里说转发到五个群就能领奖，是真的活动吗",
+        "matched_id": 22,
+        "score": 0.7969
+      },
+      {
+        "id": 23,
+        "text": "感冒药可以治好感冒，吃了就能立刻痊愈",
+        "paraphrase": "吃感冒药是不是能把感冒彻底治好",
+        "matched_id": 23,
+        "score": 0.8678
+      },
+      {
+        "id": 24,
+        "text": "手机信号越差，辐射就越大，对人体伤害越高",
+        "paraphrase": "手机没信号的时候辐射是不是特别大",
+        "matched_id": 24,
+        "score": 0.835
+      },
+      {
+        "id": 25,
+        "text": "血压高的人喝醋能软化血管，可以代替降压药",
+        "paraphrase": "喝醋软化血管的说法可信吗，能停药吗",
+        "matched_id": 25,
+        "score": 0.7976
+      },
+      {
+        "id": 26,
+        "text": "地球围绕太阳公转",
+        "paraphrase": "地球是绕着太阳转的吗",
+        "matched_id": 26,
+        "score": 0.8588
+      },
+      {
+        "id": 27,
+        "text": "在标准大气压下水的沸点是 100 摄氏度",
+        "paraphrase": "常压下把水烧开会在一百度沸腾吗",
+        "matched_id": 27,
+        "score": 0.7381
+      },
+      {
+        "id": 29,
+        "text": "人的正常体温大约在 36 到 37 摄氏度之间",
+        "paraphrase": "成年人的正常体温范围是多少",
+        "matched_id": 29,
+        "score": 0.8243
+      },
+      {
+        "id": 30,
+        "text": "吸烟会显著增加患肺癌的风险",
+        "paraphrase": "抽烟和得肺癌有关系吗",
+        "matched_id": 30,
+        "score": 0.7881
+      },
+      {
+        "id": 31,
+        "text": "长期高盐饮食与高血压发病风险升高相关",
+        "paraphrase": "吃盐太多会不会容易得高血压",
+        "matched_id": 31,
+        "score": 0.7955
+      },
+      {
+        "id": 32,
+        "text": "勤洗手可以降低呼吸道传染病的传播风险",
+        "paraphrase": "多洗手能减少传染病的传播吗",
+        "matched_id": 32,
+        "score": 0.8482
+      },
+      {
+        "id": 33,
+        "text": "接种疫苗可以显著降低相应传染病的发病率",
+        "paraphrase": "打疫苗对预防传染病到底有没有用",
+        "matched_id": 33,
+        "score": 0.7601
+      },
+      {
+        "id": 34,
+        "text": "中国是联合国安理会常任理事国",
+        "paraphrase": "中国是不是安理会常任理事国之一",
+        "matched_id": 34,
+        "score": 0.8685
+      },
+      {
+        "id": 35,
+        "text": "新型冠状病毒可以通过呼吸道飞沫传播",
+        "paraphrase": "新冠是不是通过飞沫传染的",
+        "matched_id": 35,
+        "score": 0.7988
+      },
+      {
+        "id": 36,
+        "text": "长期睡眠不足会影响认知功能",
+        "paraphrase": "老是睡不够会不会影响大脑的思考能力",
+        "matched_id": 36,
+        "score": 0.7851
+      },
+      {
+        "id": 37,
+        "text": "适量运动有助于控制体重",
+        "paraphrase": "规律锻炼对减肥有帮助吗",
+        "matched_id": 37,
+        "score": 0.7101
+      },
+      {
+        "id": 39,
+        "text": "血液在人体内是循环流动的",
+        "paraphrase": "人体的血液是不是一直在循环",
+        "matched_id": 39,
+        "score": 0.8989
+      },
+      {
+        "id": 40,
+        "text": "把水煮沸可以杀灭大多数病原微生物",
+        "paraphrase": "开水能不能把细菌病毒杀死",
+        "matched_id": 40,
+        "score": 0.7418
+      },
+      {
+        "id": 42,
+        "text": "中国实行九年义务教育制度",
+        "paraphrase": "国内是不是实行九年义务教育",
+        "matched_id": 42,
+        "score": 0.8665
+      },
+      {
+        "id": 43,
+        "text": "全球划分为多个时区",
+        "paraphrase": "世界上是不是分很多个时区",
+        "matched_id": 43,
+        "score": 0.8242
+      },
+      {
+        "id": 44,
+        "text": "月球围绕地球公转",
+        "paraphrase": "月亮是绕着地球转的吗",
+        "matched_id": 44,
+        "score": 0.817
+      },
+      {
+        "id": 45,
+        "text": "长期过量饮酒会损害肝脏",
+        "paraphrase": "喝酒太多是不是会伤肝",
+        "matched_id": 45,
+        "score": 0.8207
+      },
+      {
+        "id": 46,
+        "text": "某地居民拍到不明飞行物，官方尚未回应",
+        "paraphrase": "有地方拍到 UFO 了，是真的吗",
+        "matched_id": 46,
+        "score": 0.6821
+      },
+      {
+        "id": 47,
+        "text": "网传某位明星已秘密结婚",
+        "paraphrase": "听说某明星偷偷结婚了？",
+        "matched_id": 47,
+        "score": 0.7826
+      },
+      {
+        "id": 48,
+        "text": "有研究称太阳系可能存在第九大行星",
+        "paraphrase": "太阳系是不是还有一颗没找到的大行星",
+        "matched_id": 48,
+        "score": 0.7503
+      },
+      {
+        "id": 49,
+        "text": "某款新药可以彻底治愈阿尔茨海默病",
+        "paraphrase": "有没有药能完全治好老年痴呆",
+        "matched_id": 49,
+        "score": 0.6454
+      },
+      {
+        "id": 50,
+        "text": "某村的一口井水能治百病",
+        "paraphrase": "听说有个村子的井水包治百病，可信吗",
+        "matched_id": 50,
+        "score": 0.8186
+      },
+      {
+        "id": 51,
+        "text": "传言下周本地将出现特大暴雨",
+        "paraphrase": "朋友圈说下周有特大暴雨，靠谱吗",
+        "matched_id": 51,
+        "score": 0.7563
+      },
+      {
+        "id": 52,
+        "text": "网传某互联网公司即将破产清算",
+        "paraphrase": "有消息说某大公司要倒闭了，是真的吗",
+        "matched_id": 52,
+        "score": 0.6163
+      },
+      {
+        "id": 53,
+        "text": "有自媒体称某国已在外星建立秘密基地",
+        "paraphrase": "外国是不是已经在别的星球建基地了",
+        "matched_id": 53,
+        "score": 0.7591
+      },
+      {
+        "id": 54,
+        "text": "民间偏方称吃某种野生菌可以延寿十年",
+        "paraphrase": "有种野山菌吃了能多活十年，是真的吗",
+        "matched_id": 54,
+        "score": 0.7284
+      },
+      {
+        "id": 55,
+        "text": "某山区传闻发现未知物种",
+        "paraphrase": "听说山里有没见过的动物被发现了",
+        "matched_id": 55,
+        "score": 0.7107
+      },
+      {
+        "id": 56,
+        "text": "某款手机电池存在爆炸风险，网传需立即停用",
+        "paraphrase": "在网上看到某型号手机电池会爆炸，要不要停用",
+        "matched_id": 56,
+        "score": 0.9083
+      },
+      {
+        "id": 57,
+        "text": "网传某城市将大幅调整落户政策",
+        "paraphrase": "听说某市落户政策要大改，是真的吗",
+        "matched_id": 57,
+        "score": 0.7493
+      },
+      {
+        "id": 58,
+        "text": "有帖子称某地一处湖水夜间会自行发光",
+        "paraphrase": "有人说有个湖晚上会发光，什么原因",
+        "matched_id": 58,
+        "score": 0.7438
+      },
+      {
+        "id": 59,
+        "text": "网传某种常见蔬菜生吃可以杀死体内寄生虫",
+        "paraphrase": "生吃某种蔬菜能不能把肚子里的虫子杀干净",
+        "matched_id": 59,
+        "score": 0.8388
+      },
+      {
+        "id": 60,
+        "text": "有传闻称某历史事件的起因与官方记载不同",
+        "paraphrase": "网上说某历史事件的真实起因和书上写的不一样",
+        "matched_id": 60,
+        "score": 0.8288
+      }
+    ],
+    "wrong_matches": [],
+    "false_positives": [],
+    "hard_false_positives": []
+  },
+  "positive_details": [
+    {
+      "id": 52,
+      "text": "网传某互联网公司即将破产清算",
+      "paraphrase": "有消息说某大公司要倒闭了，是真的吗",
+      "matched_id": 52,
+      "score": 0.6163
+    },
+    {
+      "id": 49,
+      "text": "某款新药可以彻底治愈阿尔茨海默病",
+      "paraphrase": "有没有药能完全治好老年痴呆",
+      "matched_id": 49,
+      "score": 0.6454
+    },
+    {
+      "id": 46,
+      "text": "某地居民拍到不明飞行物，官方尚未回应",
+      "paraphrase": "有地方拍到 UFO 了，是真的吗",
+      "matched_id": 46,
+      "score": 0.6821
+    },
+    {
+      "id": 37,
+      "text": "适量运动有助于控制体重",
+      "paraphrase": "规律锻炼对减肥有帮助吗",
+      "matched_id": 37,
+      "score": 0.7101
+    },
+    {
+      "id": 55,
+      "text": "某山区传闻发现未知物种",
+      "paraphrase": "听说山里有没见过的动物被发现了",
+      "matched_id": 55,
+      "score": 0.7107
+    },
+    {
+      "id": 21,
+      "text": "晚上吃姜等于吃砒霜",
+      "paraphrase": "晚上做菜放姜是不是对身体有害",
+      "matched_id": 21,
+      "score": 0.7261
+    },
+    {
+      "id": 54,
+      "text": "民间偏方称吃某种野生菌可以延寿十年",
+      "paraphrase": "有种野山菌吃了能多活十年，是真的吗",
+      "matched_id": 54,
+      "score": 0.7284
+    },
+    {
+      "id": 27,
+      "text": "在标准大气压下水的沸点是 100 摄氏度",
+      "paraphrase": "常压下把水烧开会在一百度沸腾吗",
+      "matched_id": 27,
+      "score": 0.7381
+    },
+    {
+      "id": 40,
+      "text": "把水煮沸可以杀灭大多数病原微生物",
+      "paraphrase": "开水能不能把细菌病毒杀死",
+      "matched_id": 40,
+      "score": 0.7418
+    },
+    {
+      "id": 58,
+      "text": "有帖子称某地一处湖水夜间会自行发光",
+      "paraphrase": "有人说有个湖晚上会发光，什么原因",
+      "matched_id": 58,
+      "score": 0.7438
+    },
+    {
+      "id": 57,
+      "text": "网传某城市将大幅调整落户政策",
+      "paraphrase": "听说某市落户政策要大改，是真的吗",
+      "matched_id": 57,
+      "score": 0.7493
+    },
+    {
+      "id": 48,
+      "text": "有研究称太阳系可能存在第九大行星",
+      "paraphrase": "太阳系是不是还有一颗没找到的大行星",
+      "matched_id": 48,
+      "score": 0.7503
+    },
+    {
+      "id": 51,
+      "text": "传言下周本地将出现特大暴雨",
+      "paraphrase": "朋友圈说下周有特大暴雨，靠谱吗",
+      "matched_id": 51,
+      "score": 0.7563
+    },
+    {
+      "id": 8,
+      "text": "电脑和手机的辐射会导致不孕不育",
+      "paraphrase": "天天对着电脑手机会不会影响生育",
+      "matched_id": 8,
+      "score": 0.7579
+    },
+    {
+      "id": 53,
+      "text": "有自媒体称某国已在外星建立秘密基地",
+      "paraphrase": "外国是不是已经在别的星球建基地了",
+      "matched_id": 53,
+      "score": 0.7591
+    },
+    {
+      "id": 33,
+      "text": "接种疫苗可以显著降低相应传染病的发病率",
+      "paraphrase": "打疫苗对预防传染病到底有没有用",
+      "matched_id": 33,
+      "score": 0.7601
+    },
+    {
+      "id": 4,
+      "text": "隔夜水会产生亚硝酸盐致癌，不能喝",
+      "paraphrase": "前一天烧的水放到第二天还能喝吗，会不会致癌",
+      "matched_id": 4,
+      "score": 0.7626
+    },
+    {
+      "id": 10,
+      "text": "手机充电时接电话会触电身亡",
+      "paraphrase": "边充电边打电话是不是会被电死",
+      "matched_id": 10,
+      "score": 0.7816
+    },
+    {
+      "id": 47,
+      "text": "网传某位明星已秘密结婚",
+      "paraphrase": "听说某明星偷偷结婚了？",
+      "matched_id": 47,
+      "score": 0.7826
+    },
+    {
+      "id": 36,
+      "text": "长期睡眠不足会影响认知功能",
+      "paraphrase": "老是睡不够会不会影响大脑的思考能力",
+      "matched_id": 36,
+      "score": 0.7851
+    },
+    {
+      "id": 30,
+      "text": "吸烟会显著增加患肺癌的风险",
+      "paraphrase": "抽烟和得肺癌有关系吗",
+      "matched_id": 30,
+      "score": 0.7881
+    },
+    {
+      "id": 14,
+      "text": "喝可乐会杀死精子导致不育",
+      "paraphrase": "常喝可乐会不会影响精子质量",
+      "matched_id": 14,
+      "score": 0.7948
+    },
+    {
+      "id": 31,
+      "text": "长期高盐饮食与高血压发病风险升高相关",
+      "paraphrase": "吃盐太多会不会容易得高血压",
+      "matched_id": 31,
+      "score": 0.7955
+    },
+    {
+      "id": 22,
+      "text": "转发这条消息到五个群可以领取红包奖励",
+      "paraphrase": "群里说转发到五个群就能领奖，是真的活动吗",
+      "matched_id": 22,
+      "score": 0.7969
+    },
+    {
+      "id": 25,
+      "text": "血压高的人喝醋能软化血管，可以代替降压药",
+      "paraphrase": "喝醋软化血管的说法可信吗，能停药吗",
+      "matched_id": 25,
+      "score": 0.7976
+    },
+    {
+      "id": 35,
+      "text": "新型冠状病毒可以通过呼吸道飞沫传播",
+      "paraphrase": "新冠是不是通过飞沫传染的",
+      "matched_id": 35,
+      "score": 0.7988
+    },
+    {
+      "id": 16,
+      "text": "空腹不能吃香蕉，会对身体有害",
+      "paraphrase": "早上空着肚子吃香蕉可以吗",
+      "matched_id": 16,
+      "score": 0.8048
+    },
+    {
+      "id": 12,
+      "text": "肉松是棉花做的，不能吃",
+      "paraphrase": "网上说肉松饼里的肉松其实是棉花，靠谱吗",
+      "matched_id": 12,
+      "score": 0.8064
+    },
+    {
+      "id": 20,
+      "text": "隐形眼镜会滑到眼球后面再也取不出来",
+      "paraphrase": "戴隐形眼镜有没有可能跑到眼睛后面去",
+      "matched_id": 20,
+      "score": 0.813
+    },
+    {
+      "id": 11,
+      "text": "市面上有塑料大米，大米是塑料做的",
+      "paraphrase": "听说有的米是塑料造出来的，是真的吗",
+      "matched_id": 11,
+      "score": 0.8136
+    },
+    {
+      "id": 44,
+      "text": "月球围绕地球公转",
+      "paraphrase": "月亮是绕着地球转的吗",
+      "matched_id": 44,
+      "score": 0.817
+    },
+    {
+      "id": 50,
+      "text": "某村的一口井水能治百病",
+      "paraphrase": "听说有个村子的井水包治百病，可信吗",
+      "matched_id": 50,
+      "score": 0.8186
+    },
+    {
+      "id": 18,
+      "text": "长痘是因为吃辣，必须完全忌辣",
+      "paraphrase": "脸上长痘痘是不是吃辣吃出来的",
+      "matched_id": 18,
+      "score": 0.8189
+    },
+    {
+      "id": 45,
+      "text": "长期过量饮酒会损害肝脏",
+      "paraphrase": "喝酒太多是不是会伤肝",
+      "matched_id": 45,
+      "score": 0.8207
+    },
+    {
+      "id": 43,
+      "text": "全球划分为多个时区",
+      "paraphrase": "世界上是不是分很多个时区",
+      "matched_id": 43,
+      "score": 0.8242
+    },
+    {
+      "id": 29,
+      "text": "人的正常体温大约在 36 到 37 摄氏度之间",
+      "paraphrase": "成年人的正常体温范围是多少",
+      "matched_id": 29,
+      "score": 0.8243
+    },
+    {
+      "id": 60,
+      "text": "有传闻称某历史事件的起因与官方记载不同",
+      "paraphrase": "网上说某历史事件的真实起因和书上写的不一样",
+      "matched_id": 60,
+      "score": 0.8288
+    },
+    {
+      "id": 24,
+      "text": "手机信号越差，辐射就越大，对人体伤害越高",
+      "paraphrase": "手机没信号的时候辐射是不是特别大",
+      "matched_id": 24,
+      "score": 0.835
+    },
+    {
+      "id": 17,
+      "text": "糖尿病患者完全不能吃水果",
+      "paraphrase": "得了糖尿病是不是一点水果都不能碰",
+      "matched_id": 17,
+      "score": 0.8364
+    },
+    {
+      "id": 2,
+      "text": "喝醋可以预防感冒",
+      "paraphrase": "平时多吃点醋是不是就不容易感冒了",
+      "matched_id": 2,
+      "score": 0.837
+    },
+    {
+      "id": 59,
+      "text": "网传某种常见蔬菜生吃可以杀死体内寄生虫",
+      "paraphrase": "生吃某种蔬菜能不能把肚子里的虫子杀干净",
+      "matched_id": 59,
+      "score": 0.8388
+    },
+    {
+      "id": 6,
+      "text": "接种疫苗会导致儿童自闭症",
+      "paraphrase": "打疫苗和小孩得自闭症有关系吗",
+      "matched_id": 6,
+      "score": 0.8458
+    },
+    {
+      "id": 32,
+      "text": "勤洗手可以降低呼吸道传染病的传播风险",
+      "paraphrase": "多洗手能减少传染病的传播吗",
+      "matched_id": 32,
+      "score": 0.8482
+    },
+    {
+      "id": 26,
+      "text": "地球围绕太阳公转",
+      "paraphrase": "地球是绕着太阳转的吗",
+      "matched_id": 26,
+      "score": 0.8588
+    },
+    {
+      "id": 13,
+      "text": "吃碘盐可以防核辐射，赶紧囤盐",
+      "paraphrase": "核泄漏之后多吃加碘盐能不能防辐射",
+      "matched_id": 13,
+      "score": 0.8645
+    },
+    {
+      "id": 42,
+      "text": "中国实行九年义务教育制度",
+      "paraphrase": "国内是不是实行九年义务教育",
+      "matched_id": 42,
+      "score": 0.8665
+    },
+    {
+      "id": 23,
+      "text": "感冒药可以治好感冒，吃了就能立刻痊愈",
+      "paraphrase": "吃感冒药是不是能把感冒彻底治好",
+      "matched_id": 23,
+      "score": 0.8678
+    },
+    {
+      "id": 34,
+      "text": "中国是联合国安理会常任理事国",
+      "paraphrase": "中国是不是安理会常任理事国之一",
+      "matched_id": 34,
+      "score": 0.8685
+    },
+    {
+      "id": 15,
+      "text": "板蓝根可以预防新冠肺炎",
+      "paraphrase": "喝板蓝根能不能预防新冠感染",
+      "matched_id": 15,
+      "score": 0.878
+    },
+    {
+      "id": 7,
+      "text": "酸性体质是万病之源，需要吃碱性食物调理",
+      "paraphrase": "人体酸性体质说法靠谱吗，要不要多吃碱性食品",
+      "matched_id": 7,
+      "score": 0.89
+    },
+    {
+      "id": 5,
+      "text": "5G 基站辐射会致癌，应拆除居民区附近的基站",
+      "paraphrase": "小区旁边的 5G 基站辐射大不大，会不会得癌症",
+      "matched_id": 5,
+      "score": 0.8931
+    },
+    {
+      "id": 3,
+      "text": "味精加热后会致癌，炒菜不能放味精",
+      "paraphrase": "炒菜时放味精经过高温会不会产生致癌物",
+      "matched_id": 3,
+      "score": 0.8966
+    },
+    {
+      "id": 39,
+      "text": "血液在人体内是循环流动的",
+      "paraphrase": "人体的血液是不是一直在循环",
+      "matched_id": 39,
+      "score": 0.8989
+    },
+    {
+      "id": 19,
+      "text": "洗完头不吹干就睡觉会得面瘫",
+      "paraphrase": "头发没吹干就睡会不会面瘫",
+      "matched_id": 19,
+      "score": 0.8994
+    },
+    {
+      "id": 1,
+      "text": "微波炉加热的食物会产生致癌物，欧洲已全面禁止使用微波炉",
+      "paraphrase": "用微波炉热饭会不会产生致癌物质？听说欧洲都不让用微波炉了",
+      "matched_id": 1,
+      "score": 0.9
+    },
+    {
+      "id": 56,
+      "text": "某款手机电池存在爆炸风险，网传需立即停用",
+      "paraphrase": "在网上看到某型号手机电池会爆炸，要不要停用",
+      "matched_id": 56,
+      "score": 0.9083
+    },
+    {
+      "id": 41,
+      "text": "温室气体排放与全球变暖有关",
+      "paraphrase": "全球变暖是不是和温室气体排放有关系",
+      "matched_id": 41,
+      "score": 0.9269
+    },
+    {
+      "id": 9,
+      "text": "吃酱油会让伤口变黑留疤",
+      "paraphrase": "身上有伤口的时候吃酱油会不会让疤痕变黑",
+      "matched_id": 9,
+      "score": 0.947
+    }
+  ],
+  "negative_details": [
+    {
+      "query": "怎样去除衣服上的油渍",
+      "matched_id": 9,
+      "score": 0.5132
+    },
+    {
+      "query": "明天股市会涨还是跌",
+      "matched_id": 57,
+      "score": 0.5048
+    },
+    {
+      "query": "这个月的电费为什么这么高",
+      "matched_id": 24,
+      "score": 0.4915
+    },
+    {
+      "query": "这台笔记本的散热表现怎么样",
+      "matched_id": 56,
+      "score": 0.4864
+    },
+    {
+      "query": "有没有适合新手的理财产品",
+      "matched_id": 32,
+      "score": 0.4252
+    },
+    {
+      "query": "北京到上海坐高铁要多久",
+      "matched_id": 57,
+      "score": 0.3906
+    },
+    {
+      "query": "周末去哪个公园比较合适",
+      "matched_id": 51,
+      "score": 0.3889
+    },
+    {
+      "query": "帮我写一封请假邮件",
+      "matched_id": 22,
+      "score": 0.3837
+    },
+    {
+      "query": "公司年会的节目怎么安排",
+      "matched_id": 22,
+      "score": 0.3619
+    },
+    {
+      "query": "推荐几本适合入门的算法书",
+      "matched_id": 52,
+      "score": 0.3495
+    },
+    {
+      "query": "如何安装 Node.js 开发环境",
+      "matched_id": 41,
+      "score": 0.3475
+    },
+    {
+      "query": "怎么把照片的背景换成白色",
+      "matched_id": 58,
+      "score": 0.3449
+    },
+    {
+      "query": "想学吉他应该先练什么",
+      "matched_id": 37,
+      "score": 0.3423
+    },
+    {
+      "query": "请问附近哪家火锅店好吃",
+      "matched_id": 18,
+      "score": 0.3405
+    },
+    {
+      "query": "Python 里怎么读写 CSV 文件",
+      "matched_id": 26,
+      "score": 0.2956
+    }
+  ],
+  "hard_negative_details": [
+    {
+      "query": "喝醋能软化血管吗",
+      "matched_id": 25,
+      "score": 0.7617
+    },
+    {
+      "query": "微波炉加热食物会损失营养吗",
+      "matched_id": 1,
+      "score": 0.7414
+    },
+    {
+      "query": "隔夜菜到底能不能吃",
+      "matched_id": 4,
+      "score": 0.6466
+    },
+    {
+      "query": "香蕉的钾含量高不高",
+      "matched_id": 16,
+      "score": 0.6414
+    },
+    {
+      "query": "隐形眼镜每天最多戴几个小时",
+      "matched_id": 20,
+      "score": 0.6233
+    },
+    {
+      "query": "疫苗有哪些常见不良反应",
+      "matched_id": 33,
+      "score": 0.6124
+    },
+    {
+      "query": "国际空间站由几个舱段组成",
+      "matched_id": 43,
+      "score": 0.5488
+    },
+    {
+      "query": "痘痘肌日常怎么护理",
+      "matched_id": 18,
+      "score": 0.5312
+    },
+    {
+      "query": "塑料回收标志怎么看",
+      "matched_id": 11,
+      "score": 0.5233
+    },
+    {
+      "query": "5G 网络的下载速度有多快",
+      "matched_id": 28,
+      "score": 0.5014
+    },
+    {
+      "query": "一罐可乐的含糖量是多少",
+      "matched_id": 14,
+      "score": 0.4826
+    },
+    {
+      "query": "怎么查询自己的社保缴费记录",
+      "matched_id": 22,
+      "score": 0.372
+    }
+  ]
+}

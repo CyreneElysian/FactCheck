@@ -1,0 +1,173 @@
+{
+  "mode": "live",
+  "generated_at": "2026-10-01T18:27:51",
+  "search_tool": "TavilySearchTool",
+  "llm_model": "deepseek-v4-flash",
+  "sample_size": 10,
+  "accuracy": 0.8,
+  "error_count": 0,
+  "abstain_count": 1,
+  "mean_latency_s": 18.4,
+  "max_latency_s": 32.3,
+  "mean_evidence": 5.5,
+  "budget_s": 45,
+  "by_label": {
+    "FALSE": {
+      "count": 4,
+      "correct": 4,
+      "accuracy": 1.0
+    },
+    "TRUE": {
+      "count": 3,
+      "correct": 3,
+      "accuracy": 1.0
+    },
+    "UNVERIFIED": {
+      "count": 3,
+      "correct": 1,
+      "accuracy": 0.3333
+    }
+  },
+  "rows": [
+    {
+      "id": 1,
+      "label": "FALSE",
+      "category": "健康",
+      "text": "微波炉加热的食物会产生致癌物，欧洲已全面禁止使用微波炉",
+      "can_judge": true,
+      "verdict": "FALSE",
+      "confidence": 0.95,
+      "error": false,
+      "evidence_count": 6,
+      "elapsed_s": 14.9,
+      "correct": true,
+      "human_reason": null
+    },
+    {
+      "id": 26,
+      "label": "TRUE",
+      "category": "科技",
+      "text": "地球围绕太阳公转",
+      "can_judge": true,
+      "verdict": "TRUE",
+      "confidence": 0.99,
+      "error": false,
+      "evidence_count": 5,
+      "elapsed_s": 22.8,
+      "correct": true,
+      "human_reason": null
+    },
+    {
+      "id": 46,
+      "label": "UNVERIFIED",
+      "category": "社会",
+      "text": "某地居民拍到不明飞行物，官方尚未回应",
+      "can_judge": true,
+      "verdict": "TRUE",
+      "confidence": 0.6,
+      "error": false,
+      "evidence_count": 2,
+      "elapsed_s": 32.3,
+      "correct": false,
+      "human_reason": null
+    },
+    {
+      "id": 2,
+      "label": "FALSE",
+      "category": "健康",
+      "text": "喝醋可以预防感冒",
+      "can_judge": true,
+      "verdict": "FALSE",
+      "confidence": 0.95,
+      "error": false,
+      "evidence_count": 7,
+      "elapsed_s": 13.4,
+      "correct": true,
+      "human_reason": null
+    },
+    {
+      "id": 27,
+      "label": "TRUE",
+      "category": "科技",
+      "text": "在标准大气压下水的沸点是 100 摄氏度",
+      "can_judge": true,
+      "verdict": "TRUE",
+      "confidence": 0.93,
+      "error": false,
+      "evidence_count": 7,
+      "elapsed_s": 13.7,
+      "correct": true,
+      "human_reason": null
+    },
+    {
+      "id": 47,
+      "label": "UNVERIFIED",
+      "category": "社会",
+      "text": "网传某位明星已秘密结婚",
+      "can_judge": false,
+      "verdict": null,
+      "confidence": null,
+      "error": false,
+      "evidence_count": 7,
+      "elapsed_s": 27.6,
+      "correct": true,
+      "human_reason": "待核查消息『网传某位明星已秘密结婚』未指明具体明星，缺乏可核查的主体与事实细节，无法据现有材料判定真假。相关证据显示此类传闻有的是被当事人辟谣的假消息（伊一、檀健次与毛晓彤），有的则确有其事（成龙与林凤娇1982年秘密结婚、周杰伦与昆凌2015年婚礼），结论完全取决于所指对象。需人工向提问者确认具体明星与传闻来源后再行核查。"
+    },
+    {
+      "id": 3,
+      "label": "FALSE",
+      "category": "健康",
+      "text": "味精加热后会致癌，炒菜不能放味精",
+      "can_judge": true,
+      "verdict": "FALSE",
+      "confidence": 0.96,
+      "error": false,
+      "evidence_count": 6,
+      "elapsed_s": 13.8,
+      "correct": true,
+      "human_reason": null
+    },
+    {
+      "id": 28,
+      "label": "TRUE",
+      "category": "科技",
+      "text": "真空中的光速约为每秒 30 万公里",
+      "can_judge": true,
+      "verdict": "TRUE",
+      "confidence": 0.98,
+      "error": false,
+      "evidence_count": 4,
+      "elapsed_s": 11.8,
+      "correct": true,
+      "human_reason": null
+    },
+    {
+      "id": 48,
+      "label": "UNVERIFIED",
+      "category": "科技",
+      "text": "有研究称太阳系可能存在第九大行星",
+      "can_judge": true,
+      "verdict": "TRUE",
+      "confidence": 0.95,
+      "error": false,
+      "evidence_count": 5,
+      "elapsed_s": 18.2,
+      "correct": false,
+      "human_reason": null
+    },
+    {
+      "id": 4,
+      "label": "FALSE",
+      "category": "健康",
+      "text": "隔夜水会产生亚硝酸盐致癌，不能喝",
+      "can_judge": true,
+      "verdict": "FALSE",
+      "confidence": 0.95,
+      "error": false,
+      "evidence_count": 6,
+      "elapsed_s": 15.1,
+      "correct": true,
+      "human_reason": null
+    }
+  ]
+}
