@@ -194,19 +194,29 @@ cp application-local.yml.example application-local.yml
 cd fact-agent
 python -m venv .venv
 # Windows: .venv\Scripts\activate    Linux/macOS: source .venv/bin/activate
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 
 cp .env.example .env
 # 编辑 .env：至少填写 LLM_API_KEY；要联网核查请把 SEARCH_TOOL 从 dummy 改为 tavily/bocha/serpapi 并填 SEARCH_API_KEY
 
-uvicorn app.main:app --host 0.0.0.0 --port 8001
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8001
 ```
+
+> 命令一律用 `python -m <模块>`（`python -m pip` / `python -m uvicorn` / `python -m app.main`）而不是
+> `uvicorn.exe` / `pip.exe` 这类启动器：**Windows 的 venv 不支持移动目录**，
+> 一旦项目文件夹被改名或移动，`Scripts\*.exe` 里内嵌的旧解释器绝对路径就会全部失效，报
+> `Fatal error in launcher: Unable to create process using "...\<旧路径>\.venv\Scripts\python.exe"`。
+> 用 `python -m` 不经过这些转发器，因此换目录后依然可用（前提是在 venv 里执行 `python`）。
+> 彻底修复则需要重建 venv：删掉 `.venv` 后在**当前**目录重新 `python -m venv .venv` 并重装依赖。
+>
+> 另外：`python -m app.main` 也等价于上面的 uvicorn 命令（监听地址与端口取自 `.env` 的 `AGENT_HOST`/`AGENT_PORT`）。
 
 > 首次调用 `/dedup` 或 `/index/add` 会下载并加载 embedding 模型，耗时较长。
 >
 > ⚠️ **不要加 `--workers`**：语义去重索引是进程内内存态，多 worker 会各持一份并互相覆盖。
 >
 > 启动日志会自检搜索源与 LLM 配置：若为 `dummy` 会明确告警"不联网"，缺 Key 会报错，便于第一时间发现"看起来能跑、实际没联网"。
+> 判断是否真的起来了：日志里必须出现 **`Uvicorn running on http://...`**。
 
 ### 4. 启动 Java 后端
 
@@ -363,7 +373,7 @@ py -3.10 fact-agent/eval/evaluate.py --mode live --subset 10
 
 > ⚠️ **默认 `SEARCH_TOOL=dummy`，即不联网**，此时检测退化为纯 LLM 自身知识判断。要体现"联网核查"能力，必须配置真实搜索源。
 >
-> ⚠️ **必须以单 worker 运行**（`uvicorn app.main:app --port 8001`，不要加 `--workers`）：语义去重索引是进程内内存态，多 worker 会各持一份并互相覆盖。
+> ⚠️ **必须以单 worker 运行**（`python -m uvicorn app.main:app --port 8001`，不要加 `--workers`）：语义去重索引是进程内内存态，多 worker 会各持一份并互相覆盖。
 
 **AI 侧的几个关键设计**
 

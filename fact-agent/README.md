@@ -21,12 +21,12 @@ cd fact-agent
 python -m venv .venv
 # Windows: .venv\Scripts\activate    Linux/macOS: source .venv/bin/activate
 
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 
 cp .env.example .env
 # 编辑 .env：填入 LLM_API_KEY；要联网核查请设置 SEARCH_TOOL=tavily|bocha|serpapi 与 SEARCH_API_KEY
 
-uvicorn app.main:app --host 0.0.0.0 --port 8001
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8001
 
 # 等价方式：直接以模块方式启动（监听地址与端口取自 .env 的 AGENT_HOST / AGENT_PORT）
 python -m app.main
@@ -37,6 +37,15 @@ python -m app.main
 > 说明只是执行了模块级初始化而没有启动服务（本文件已补上 `__main__` 入口，正常不会再出现）。
 >
 > 自检一行即可确认配置是否生效：`/health` 返回的 `search_offline`（是否不联网）与 `llm_configured`。
+
+> 🩺 **启动器报 `Fatal error in launcher: Unable to create process` 怎么办？**
+> 这几乎总是因为**项目文件夹被改名或移动过**：Windows 的 venv 不可迁移，
+> `Scripts\*.exe`（`uvicorn.exe`/`pip.exe` 等）里内嵌着创建时的解释器绝对路径，
+> 目录一变就全部失效（`Scripts\activate.bat` 里的 `VIRTUAL_ENV` 同样是旧路径）。
+>
+> - 立刻可用：所有命令改用 `python -m <模块>` 形式（`python -m pip`、`python -m uvicorn`、`python -m app.main`），
+>   它们不经过这些转发器；`Scripts\python.exe` 本身仍是好的（它靠旁边的 `pyvenv.cfg` 定位）。
+> - 彻底修复：删掉 `.venv`，在**当前**目录重新 `python -m venv .venv`，再 `python -m pip install -r requirements.txt`。
 
 > ⚠️ **必须以单 worker 运行，不要加 `--workers`**：语义去重索引是进程内内存态，
 > 多 worker 会各持一份索引并互相覆盖。需要横向扩展时应改为外部向量库（Qdrant/Milvus）。
