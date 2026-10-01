@@ -10,6 +10,16 @@
     </parent>
     <artifactId>fact-check-server</artifactId>
 
+    <properties>
+        <!--
+          离线仓库适配：spring-boot 2.7.3 通过 junit-bom 5.8.2 管理 junit-platform-launcher 1.8.2，
+          而本机 maven 本地仓库只缓存了 junit-platform 1.9.x / junit-jupiter 5.9.3。
+          覆盖该属性即可让 junit-bom 解析为 5.9.3（平台 1.9.3），测试才能离线跑起来。
+          仅影响测试依赖，不影响生产代码与打包产物。
+        -->
+        <junit-jupiter.version>5.9.3</junit-jupiter.version>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>com.factcheck</groupId>
@@ -29,6 +39,16 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!--
+          显式声明 junit-platform-launcher：surefire 3.x 在没有 launcher 时会按项目里的
+          junit-platform 版本（1.9.3）去仓库抓取；显式声明后版本由 junit-bom 统一管理。
+          详见上面 properties 中的 junit-jupiter.version 说明。
+        -->
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-launcher</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -101,6 +121,16 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <!--
+              surefire 版本必须显式指定：spring-boot 2.7.3 默认的 2.22.2 需要
+              surefire-junit-platform:2.22.2，本地离线仓库中没有该构件（只有 3.1.2），
+              不指定版本会导致离线环境无法执行任何 JUnit 5 测试。
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.1.2</version>
             </plugin>
         </plugins>
     </build>

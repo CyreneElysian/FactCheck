@@ -1,0 +1,90 @@
+package com.factcheck.handler;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.factcheck.constant.MessageConstant;
+import com.factcheck.exception.BaseException;
+import com.factcheck.result.Result;
+import java.sql.SQLIntegrityConstraintViolationException;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+/**
+ * {@link GlobalExceptionHandler} 单元测试。
+ *
+ * <p>锁定统一返回体契约：业务异常 BaseException("xx") 必须原样回传文案 xx、
+ * code 为失败（0）；未知运行时异常必须返回 MessageConstant.UNKNOWN_ERROR，
+ * 且不能把内部堆栈/异常类名泄漏给前端。</p>
+ *
+ * <p>完全离线：直接 new 出 handler 调用方法，不启动 Spring（@RestControllerAdvice 只是注解）。</p>
+ */
+class GlobalExceptionHandlerTest {
+
+    private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
+
+    /**
+     * 业务异常：code=0（失败），msg 等于异常消息本身。
+     */
+    @Test
+    @DisplayName("BaseException(\"xx\") → Result(code=0, msg=\"xx\")")
+    void shouldConvertBaseExceptionToFailedResult() {
+        Result<?> result = handler.exceptionHandler(new BaseException("xx"));
+
+        assertThat(result.getCode()).isEqualTo(0);
+        assertThat(result.getMsg()).isEqualTo("xx");
+        assertThat(result.getData()).isNull();
+    }
+
+    /**
+     * 业务异常文案是前端直接展示的提示，必须逐字透传（不允许被包装）。
+     */
+    @Test
+    @DisplayName("BaseException 的文案逐字透传（含中英文混合）")
+    void shouldKeepBaseExceptionMessageVerbatim() {
+        String msg = MessageConstant.UPLOAD_TYPE_NOT_SUPPORTED;
+
+        Result<?> result = handler.exceptionHandler(new BaseException(msg));
+
+        assertThat(result.getCode()).isEqualTo(0);
+        assertThat(result.getMsg()).isEqualTo(msg);
+    }
+
+    /**
+     * 普通系统异常必须被吞掉细节，统一返回“未知错误”，避免泄漏内部实现。
+     */
+    @Test
+    @DisplayName("普通 Exception → Result(code=0, msg=未知错误)，不泄漏异常信息")
+    void shouldConvertUnexpectedExceptionToUnknownError() {
+        Result<?> result = handler.exceptionHandler(new RuntimeException("数据库连接串泄露风险"));
+
+        assertThat(result.getCode()).isEqualTo(0);
+        assertThat(result.getMsg()).isEqualTo(MessageConstant.UNKNOWN_ERROR);
+        assertThat(result.getMsg()).doesNotContain("数据库");
+    }
+
+    /**
+     * 唯一键冲突（Duplicate entry）应转换为“已存在”，而不是“未知错误”。
+     */
+    @Test
+    @DisplayName("SQLIntegrityConstraintViolationException(Duplicate entry) → 已存在")
+    void shouldConvertDuplicateEntryToAlreadyExists() {
+        Result<?> result = handler.exceptionHandler(
+                new SQLIntegrityConstraintViolationException("Duplicate entry 'alice' for key 'username'"));
+
+        assertThat(result.getCode()).isEqualTo(0);
+        assertThat(result.getMsg()).isEqualTo(MessageConstant.ALREADY_EXISTS);
+    }
+
+    /**
+     * 非唯一键冲突的 SQL 约束异常回退为“未知错误”。
+     */
+    @Test
+    @DisplayName("其他 SQL 约束异常 → 未知错误")
+    void shouldConvertOtherSqlConstraintExceptionToUnknownError() {
+        Result<?> result = handler.exceptionHandler(
+                new SQLIntegrityConstraintViolationException("Column 'username' cannot be null"));
+
+        assertThat(result.getCode()).isEqualTo(0);
+        assertThat(result.getMsg()).isEqualTo(MessageConstant.UNKNOWN_ERROR);
+    }
+}
