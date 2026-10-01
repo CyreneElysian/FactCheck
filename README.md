@@ -242,11 +242,38 @@ cd nginx-1.20.2
 ### 8. 演示数据（可选）
 
 ```bash
-py -3.10 -m pip install pymysql bcrypt redis
+py -3.10 -m pip install -r fact-check/scripts/requirements.txt
+
+# 先预览将要执行的 SQL（不连数据库、不需要任何依赖）
+py -3.10 fact-check/scripts/generate_test_data.py --dry-run
+
+# 实际写入（幂等，可反复执行）
 py -3.10 fact-check/scripts/generate_test_data.py
 ```
 
-生成演示用户、权威信息、检测记录、证据、站内信、收藏/评分/申诉与 Redis 热度数据，可重复执行。
+生成演示用户、权威信息、检测记录（含 1 条图片记录）、证据、站内信、收藏/评分/申诉、
+检测请求日志、操作日志、结论修订、内容安全审核日志与 Redis 热度数据，并把有结论的记录
+通过 `/index/add` 同步进 Agent 的向量索引（否则库里已有的记录永远命不中语义去重）。
+Agent 未启动时加 `--skip-index` 跳过该步。
+
+### 9. 运行测试
+
+全部测试**离线可跑**（不需要 MySQL / Redis / 网络）：
+
+```bash
+# Java：62 个用例（JUnit 5 + Mockito，无 Spring 上下文）
+cd fact-check && mvn test
+
+# Python：63 个用例（标准库 unittest，零第三方依赖）
+cd fact-agent && python -m unittest discover -s tests -t . -v
+
+# AI 能力评测（离线去重评测不需要任何 Key）
+py -3.10 fact-agent/eval/evaluate.py --mode dedup
+# 联网判定评测需要 LLM_API_KEY 与搜索源配置
+py -3.10 fact-agent/eval/evaluate.py --mode live --subset 10
+```
+
+评测结果见 [`docs/评测报告.md`](docs/评测报告.md)（含阈值敏感性图表与真实联网判定结果）。
 
 ---
 
