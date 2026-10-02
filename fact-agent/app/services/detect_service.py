@@ -12,12 +12,15 @@
 用户文本与抓取到的网页正文均为不可信输入，统一做标签转义后放入 <untrusted_*> 标签，
 并在系统提示中声明其只是数据；模型输出经强制校验，不合规一律转人工。
 """
+import ipaddress
 import json
 import logging
 import math
 import re
+import socket
 import time
 from typing import List, Optional
+from urllib.parse import urljoin, urlparse
 
 import requests
 
@@ -38,6 +41,92 @@ _TAG_PATTERN = re.compile(r"</?\s*untrusted_[a-z_]+\s*>", re.IGNORECASE)
 
 # 相关性估计中词面重合所占权重（其余为位置权重）
 _OVERLAP_WEIGHT = 0.45
+
+# ----------------------------------------------------------------------
+# 抓取网页的安全约束（SSRF 防护）
+#
+# 被抓取的 URL 来自搜索引擎结果，属于**不可信输入**：
+# 若不加限制，攻击者只要让某条结果指向 http://169.254.169.254/（云元数据）、
+# http://127.0.0.1:8080/（内网服务）或任意内网地址，就能借服务端发起内网请求。
+# ----------------------------------------------------------------------
+
+# 只允许 http/https
+_ALLOWED_SCHEMES = ("http", "https")
+
+# 最多跟随的重定向次数（每一跳都要重新校验）
+_MAX_REDIRECTS = 3
+
+# 明确禁止的内网主机名
+_BLOCKED_HOSTNAMES = {
+    "localhost", "localhost.localdomain", "ip6-localhost", "ip6-loopback",
+    "metadata", "metadata.google.internal",
+}
+
+# 禁止的内网域名后缀
+_BLOCKED_HOST_SUFFIXES = (".localhost", ".local", ".internal", ".lan", ".home")
+
+
+def _ip_is_blocked(ip: "ipaddress._BaseAddress") -> bool:
+    """
+    非"公网可路由"地址一律禁止
+
+    用 not is_global 而不是逐个 is_private / is_loopback 判断，是因为后者会漏掉
+    **既不是私网、也不可路由**的段落，例如 CGNAT `100.64.0.0/10`（实测 is_private 为 False）、
+    TEST-NET `192.0.2.0/24` 等。is_global 为 False 同时覆盖了私网、回环、链路本地、
+    保留、组播、未指定地址，语义也更贴近"能不能从公网访问"。
+    """
+    return not ip.is_global
+
+
+def _host_is_blocked(host: str) -> bool:
+    """
+    判断主机名是否不可访问
+
+    - 字面量 IP：直接按网段判断；
+    - 域名：解析后**逐个地址**判断（防止域名指向 127.0.0.1 或内网段）；
+    - 解析失败：视为不可访问（fail-closed）。
+    """
+    name = (host or "").strip().strip("[]").lower()
+    if not name:
+        return True
+    if name in _BLOCKED_HOSTNAMES or name.endswith(_BLOCKED_HOST_SUFFIXES):
+        return True
+
+    try:
+        return _ip_is_blocked(ipaddress.ip_address(name))
+    except ValueError:
+        pass
+
+    try:
+        infos = socket.getaddrinfo(name, None)
+    except OSError as exc:
+        logger.warning("抓取前解析主机失败，按不可访问处理：host=%s, error=%s", name, exc)
+        return True
+    if not infos:
+        return True
+    for info in infos:
+        try:
+            if _ip_is_blocked(ipaddress.ip_address(info[4][0])):
+                return True
+        except ValueError:
+            continue
+    return False
+
+
+def _assert_url_allowed(url: str) -> None:
+    """
+    校验待抓取 URL 是否允许访问，不允许时抛出 ValueError
+
+    公开给测试使用（不发起任何请求）。
+    """
+    parsed = urlparse(url)
+    if parsed.scheme.lower() not in _ALLOWED_SCHEMES:
+        raise ValueError(f"不支持的抓取协议：{parsed.scheme or '(空)'}")
+    if not parsed.hostname:
+        raise ValueError("URL 缺少主机名")
+    if _host_is_blocked(parsed.hostname):
+        raise ValueError(f"禁止抓取内网/回环/保留地址：{parsed.hostname}")
+
 
 
 class DetectService:
@@ -191,13 +280,34 @@ class DetectService:
 
     @staticmethod
     def _fetch_page_text(url: str, timeout: int = 10) -> str:
-        """抓取网页并提取纯文本"""
+        """抓取网页并提取纯文本
+
+        安全约束（SSRF 防护）：
+        - 只允许 http/https；
+        - 拒绝内网/回环/链路本地/保留地址（含域名解析到这些地址的情况）；
+        - **不自动跟随重定向**，每一跳都重新校验，避免"公网地址 302 到内网"绕过；
+        - 主机解析失败按不可访问处理（fail-closed）。
+        """
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                           "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"
         }
-        resp = requests.get(url, headers=headers, timeout=timeout)
-        resp.raise_for_status()
+
+        current = url
+        resp = None
+        for _ in range(_MAX_REDIRECTS + 1):
+            _assert_url_allowed(current)
+            resp = requests.get(current, headers=headers, timeout=timeout, allow_redirects=False)
+            location = resp.headers.get("Location") if resp.headers else None
+            if resp.status_code in (301, 302, 303, 307, 308) and location:
+                current = urljoin(current, location)
+                logger.info("抓取遇到重定向，校验后继续：%s -> %s", url, current)
+                continue
+            resp.raise_for_status()
+            break
+        else:
+            raise ValueError(f"重定向次数过多（超过 {_MAX_REDIRECTS} 次）：{url}")
+
         html = resp.text
         # 去掉 script/style/noscript 等标签及其内容
         html = re.sub(r"(?is)<(script|style|noscript|header|footer|nav)\b[^>]*>.*?</(script|style|noscript|header|footer|nav)>", " ", html)
