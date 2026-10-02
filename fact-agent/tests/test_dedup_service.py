@@ -7,11 +7,15 @@ app/services/dedup_service.py（DedupService）行为锁定测试
   （那里有用真实数据构建的 FAISS 索引）。
 """
 import json
+import os
 import shutil
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+
+import faiss
+import numpy as np
 
 from app.services.dedup_service import DedupService
 
@@ -117,14 +121,18 @@ class TestDedupAtomicWrite(DedupServiceTestCase):
     """写盘失败时不能破坏已有索引（原子写的真正价值）"""
 
     def test_index_write_failure_keeps_previous_index_intact(self):
-        """锁定行为：写索引中途崩溃时只留下 .tmp 半成品，原 claims.index 字节完全不变"""
+        """锁定行为：写索引中途崩溃时只留下 .tmp 半成品，原 claims.index 字节完全不变
+
+        P5-68 之后写入顺序改为"先元数据、后索引"，因此这里的元数据**会**被更新：
+        元数据是事实来源，先落盘才能保证崩溃后可自愈（见下面那条断言与
+        TestDedupCrashConsistency.test_missing_vectors_are_recovered_on_load）。
+        """
         service = self.build_service()
         service.add(1, TEXT_A)
 
         index_path = self.data_dir / "claims.index"
         meta_path = self.data_dir / "claims_meta.json"
         good_bytes = index_path.read_bytes()
-        good_meta = meta_path.read_text(encoding="utf-8")
 
         def half_write(index, path):
             # 先写一半再抛错，模拟"写索引过程中崩溃"
@@ -137,12 +145,22 @@ class TestDedupAtomicWrite(DedupServiceTestCase):
 
         self.assertEqual(good_bytes, index_path.read_bytes(),
                          "写盘失败时原索引必须原样保留（os.replace 未执行）")
-        self.assertEqual(good_meta, meta_path.read_text(encoding="utf-8"),
-                         "索引写失败会使整个 _save 中止，元数据不应被单独更新")
+        self.assertEqual({1: TEXT_A, 2: TEXT_B}, service._meta)
+        meta_on_disk = json.loads(meta_path.read_text(encoding="utf-8"))
+        self.assertEqual({"1": TEXT_A, "2": TEXT_B}, meta_on_disk,
+                         "元数据先落盘：索引失败时它已更新，重启后可据此补齐向量（自愈）")
         self.assertEqual([], [p.name for p in self.data_dir.glob("*.bak")],
                          "写盘失败不应触发隔离备份")
         self.assertTrue(any(n.endswith(".tmp") for n in self.files()),
                         "失败路径会留下 .tmp 半成品——可接受，重点是主文件没被破坏")
+
+        # 关键：重启后能自愈（元数据比索引多一条 → 按元数据补齐向量）
+        reloaded = self.build_service()
+        self.assertEqual(2, len(reloaded._meta))
+        matched, record_id, _, matched_text = reloaded.search(TEXT_B)
+        self.assertTrue(matched, "崩溃残留的状态应能在重启时自愈")
+        self.assertEqual(2, record_id)
+        self.assertEqual(TEXT_B, matched_text)
 
     def test_save_failure_is_reported_not_silent(self):
         """锁定行为（修复后）：_save() 失败返回 False，add() 抛异常而不是静默报成功
@@ -257,6 +275,106 @@ class TestDedupThresholdConfig(DedupServiceTestCase):
                               min_text_length=8, top_k=1)
         matched, _, _, _ = strict.search(TEXT_A)
         self.assertFalse(matched, "阈值高于最大相似度时不应命中")
+
+
+class TestDedupCrashConsistency(DedupServiceTestCase):
+    """
+    P5-68：写入中途崩溃后"索引向量"与"元数据"不一致时的行为
+
+    原则：**元数据是事实来源，索引是由它派生的向量数据**。
+    因此写入顺序必须是"先元数据、后索引"，加载时要能自愈。
+    """
+
+    def test_meta_is_written_before_index(self):
+        """锁定写入顺序：先 claims_meta.json，再 claims.index"""
+        service = self.build_service()
+        replaced = []
+        real_replace = os.replace
+
+        def spy(src, dst):
+            replaced.append(Path(dst).name)
+            return real_replace(src, dst)
+
+        with patch("app.services.dedup_service.os.replace", side_effect=spy):
+            service.add(1, TEXT_A)
+
+        self.assertEqual(["claims_meta.json", "claims.index"], replaced,
+                         "元数据（事实来源）必须先落盘，避免产生无主向量")
+
+    def test_orphan_vectors_are_removed_on_load(self):
+        """索引里有向量但元数据里没有（旧版写入顺序的崩溃残留）→ 加载时删除"""
+        service = self.build_service()
+        service.add(1, TEXT_A)
+
+        # 手工塞一条没有元数据的向量，模拟崩溃残留
+        vec = np.expand_dims(self.embedding.embed(TEXT_B), axis=0)
+        service._index.add_with_ids(vec, np.array([999], dtype="int64"))
+        faiss.write_index(service._index, str(service.index_path))
+
+        reloaded = self.build_service()
+        ids = {int(i) for i in faiss.vector_to_array(reloaded._index.id_map)}
+        self.assertEqual({1}, ids, "无主向量应被清理")
+
+        matched, record_id, score, matched_text = reloaded.search(TEXT_B)
+        self.assertFalse(matched, "无主向量清理后不应再命中")
+        self.assertIsNone(matched_text)
+
+    def test_missing_vectors_are_recovered_on_load(self):
+        """元数据里有条目但索引里没有向量（先写元数据后崩溃）→ 加载时按元数据补齐"""
+        service = self.build_service()
+        service.add(1, TEXT_A)
+
+        # 模拟：元数据写了 2 条，索引只成功写入 1 条
+        meta = json.loads((self.data_dir / "claims_meta.json").read_text(encoding="utf-8"))
+        meta["2"] = TEXT_B
+        (self.data_dir / "claims_meta.json").write_text(
+            json.dumps(meta, ensure_ascii=False), encoding="utf-8")
+
+        reloaded = self.build_service()
+        self.assertEqual(2, len(reloaded._meta))
+        matched, record_id, score, matched_text = reloaded.search(TEXT_B)
+        self.assertTrue(matched, "缺失的向量应在加载时被补齐，而不是静默丢数据")
+        self.assertEqual(2, record_id)
+        self.assertEqual(TEXT_B, matched_text)
+
+    def test_meta_without_index_file_is_rebuilt(self):
+        """只有元数据、索引文件缺失（首次写盘时索引写失败）→ 按元数据重建，不丢数据"""
+        service = self.build_service()
+        service.add(1, TEXT_A)
+        (self.data_dir / "claims.index").unlink()
+
+        reloaded = self.build_service()
+        self.assertEqual(1, len(reloaded._meta), "元数据不能被当成空索引丢掉")
+        matched, record_id, score, matched_text = reloaded.search(TEXT_A)
+        self.assertTrue(matched, "索引文件缺失时应按元数据重建向量")
+        self.assertEqual(TEXT_A, matched_text)
+
+    def test_index_without_meta_is_quarantined(self):
+        """只有索引、没有元数据 → 检索到也无法展示文本，按不可用隔离而不是静默继续"""
+        service = self.build_service()
+        service.add(1, TEXT_A)
+        (self.data_dir / "claims_meta.json").unlink()
+
+        reloaded = self.build_service()
+        self.assertEqual({}, reloaded._meta)
+        self.assertIsNone(reloaded._index)
+        self.assertTrue(any(p.name.startswith("claims.index") and p.name.endswith(".bak")
+                            for p in self.data_dir.iterdir()),
+                        "可疑索引应被另存为 .bak，避免被后续写入覆盖")
+
+    def test_search_never_returns_match_without_text(self):
+        """检索时若遇到无元数据的向量，必须跳过（或顺位取下一个），不能返回 matched=True 但无文本"""
+        service = self.build_service()
+        service.add(1, TEXT_A)
+
+        # 绕过加载期修复，直接在内存里注入无主向量
+        vec = np.expand_dims(self.embedding.embed(TEXT_A), axis=0)
+        service._index.add_with_ids(vec, np.array([999], dtype="int64"))
+
+        matched, record_id, score, matched_text = service.search(TEXT_A)
+        self.assertNotEqual(999, record_id)
+        if matched:
+            self.assertIsNotNone(matched_text, "命中必须带文本")
 
 
 if __name__ == "__main__":

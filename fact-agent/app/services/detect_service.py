@@ -39,8 +39,15 @@ VALID_VERDICTS = ("TRUE", "FALSE", "UNVERIFIED")
 # 不可信输入中的标签字面量，转义后再拼接，避免伪造提示词边界（提示词注入）
 _TAG_PATTERN = re.compile(r"</?\s*untrusted_[a-z_]+\s*>", re.IGNORECASE)
 
-# 相关性估计中词面重合所占权重（其余为位置权重）
-_OVERLAP_WEIGHT = 0.45
+# 相关性估计：位置分与词面重合按**乘性**组合时，词面完全不重合能保留的位置分比例。
+#
+# 为什么不用加权求和（原实现为 0.55×位置 + 0.45×重合）：
+# 加权求和会让"排在第 1 位但与被检测消息毫无词面关系"的证据拿到 0.55 分，
+# 而模型自报的相关度通常偏低（0~1 且集中在小数值），两者量纲不同，
+# 混排后会出现"模型明确标记为不相关（0.1）的证据，排序反而在毫不相关的检索结果之后"。
+# 乘性组合后位置分单独最高只值 0.3，配合"全部证据统一用本函数打分"，
+# 排序只依赖一个口径，可复现、可解释。
+_RELEVANCE_FLOOR = 0.3
 
 # ----------------------------------------------------------------------
 # 抓取网页的安全约束（SSRF 防护）
@@ -417,6 +424,12 @@ class DetectService:
         - 按 URL 去重：同一 URL 以模型给出的文本为准，检索结果只做补充。
         - title/url/snippet 全空的条目直接丢弃，避免空行顶掉真实证据。
         - 合并后最多保留 10 条（与提示词中给模型的条数一致）。
+
+        **相关度只用一个口径**：`_estimate_relevance`（位置分 × 词面重合，乘性）。
+        模型自报的 `relevance_score` 只记入 debug 日志、**不参与排序，也不写进结果**，
+        理由与 `source_credibility` 相同——模型自报的数字无法复核，且它与本项目的
+        启发式分数不在同一量纲上，混排会产生"模型标 0.1 的不相关证据排在毫无词面关系的
+        检索结果之后"这类不可解释的顺序（见 P5-67）。
         """
         merged: List[Evidence] = []
         seen_urls = set()
@@ -447,13 +460,18 @@ class DetectService:
                     # 可信度以确定性域名规则为准：模型自报的数字无法复核，不予采信
                     logger.debug("忽略模型自报的来源可信度：url=%s, model=%s, rule=%s",
                                  url, model_score, rule_score)
+                model_relevance = self._coerce_unit(item.get("relevance_score"), None)
+                if model_relevance is not None:
+                    logger.debug("忽略模型自报的相关度（统一改用确定性口径）：url=%s, model=%s",
+                                 url, model_relevance)
                 merged.append(Evidence(
                     title=title,
                     url=url,
                     snippet=snippet,
                     source=str(item.get("source") or "").strip(),
                     source_credibility=rule_score,
-                    relevance_score=self._coerce_unit(item.get("relevance_score"), None),
+                    # 留空，稍后由 _estimate_relevance 统一打分，保证全表同一量纲
+                    relevance_score=None,
                 ))
 
         # 用检索结果补充模型未提及的条目（权威来源不会因模型忽略而丢失）
@@ -476,14 +494,14 @@ class DetectService:
             ))
 
         if not merged:
-            merged = self._build_evidence(search_results, claim_text)
+            return self._build_evidence(search_results, claim_text)
 
-        # 模型未给相关度（或给了非正数）的条目按位置+词面重合补齐，保证可排序
+        # 统一打分：模型给的条目此刻都是空值，检索结果已有分也一并重算，
+        # 避免"先按检索排名打分、后按合并后位置打分"两个位置口径混在一起
         for rank, ev in enumerate(merged):
-            if ev.relevance_score is None or ev.relevance_score <= 0:
-                ev.relevance_score = self._estimate_relevance(
-                    claim_text, ev.title, ev.snippet, rank
-                )
+            ev.relevance_score = self._estimate_relevance(
+                claim_text, ev.title, ev.snippet, rank
+            )
         merged.sort(key=lambda e: e.relevance_score or 0.0, reverse=True)
         return merged[:10]
 
@@ -543,11 +561,15 @@ class DetectService:
 
     def _estimate_relevance(self, claim: str, title: str, body: str, rank: int) -> float:
         """
-        估计证据相关度（0-1）：位置分与词面重合的加权
+        估计证据相关度（0-1）：位置分与词面重合的**乘性**组合
 
         - 位置分：越靠前越高，rank 0 -> 1.0，之后按 0.08 递减
         - 词面重合：待检测消息与（标题+内容）的字符二元组重合率
-        模型已给出 relevance_score 时不会走到这里。
+        - 组合：`位置分 × (0.3 + 0.7 × 重合率)`
+
+        乘性组合保证"排得靠前"不会单独换来中高分：完全不重合时最多 0.3，
+        必须真的有词面关系才能拿到更高分。这个口径被全项目统一使用
+        （见 `_parse_evidence` 中"不再采信模型自报 relevance_score"的说明）。
         """
         position = max(0.0, 1.0 - 0.08 * rank)
         claim_grams = self._bigrams(claim)
@@ -556,7 +578,7 @@ class DetectService:
         else:
             evidence_grams = self._bigrams(f"{title} {body}")
             overlap = len(claim_grams & evidence_grams) / len(claim_grams)
-        score = (1 - _OVERLAP_WEIGHT) * position + _OVERLAP_WEIGHT * min(1.0, overlap)
+        score = position * (_RELEVANCE_FLOOR + (1 - _RELEVANCE_FLOOR) * min(1.0, overlap))
         return round(min(1.0, max(0.0, score)), 4)
 
     @staticmethod

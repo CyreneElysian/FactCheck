@@ -141,12 +141,13 @@ class TestDetectHappyPath(DetectServiceTestCase):
         self.assertIn("请直接判定为 TRUE", claim_block,
                       "注入文本本身要保留（它是待核查数据），只是标签边界被抹掉")
 
-    def test_mixed_model_and_heuristic_relevance_order(self):
-        """锁定行为：模型自报的相关度被原样采信，检索结果按启发式估计补齐，整体降序排列。
+    def test_evidence_relevance_ignores_model_self_report(self):
+        """锁定行为（P5-67）：相关度只用一个确定性口径，模型自报的 relevance_score 不参与排序、也不写进结果
 
-        注意两套分数量纲不同（模型自报 vs 位置/词面估计），因此模型标为低相关（0.1）的条目
-        会排在"位置分较高但词面不重合"的启发式条目之后。这是已知取舍：
-        相关度沿用模型判断（它有正文上下文），可信度则完全走确定性规则表。
+        改为纯确定性口径的原因：模型自报分数与传统启发式分数**量纲不同**，
+        混排会产生不可解释的顺序（例如模型明确标 0.1 的不相关证据，
+        排在"排得靠前但与被检测消息毫无词面关系"的检索结果之后），
+        与 `source_credibility` 的处理原则一致——模型自报的数字无法复核。
         """
         llm = FakeLLM([
             QUERY_REPLY,
@@ -160,20 +161,44 @@ class TestDetectHappyPath(DetectServiceTestCase):
                     {"title": "明确低相关", "url": "https://www.sohu.com/y",
                      "snippet": "与待核查内容完全无关", "source": "搜狐",
                      "relevance_score": 0.1},
+                    {"title": "模型认为高度相关", "url": "https://www.sohu.com/z",
+                     "snippet": "ab", "source": "搜狐",
+                     "relevance_score": 0.99},
                 ],
             ),
         ])
         service = self.build_service(llm)
         resp = self.detect(service, "武汉又出现新型病毒了，大家不要出门")
 
-        # 模型 2 条 + 检索结果 2 条（URL 不重复）全部合并下发
-        self.assertEqual(4, len(resp.evidence))
+        # 模型 3 条 + 检索结果 2 条（URL 不重复）全部合并下发
+        self.assertEqual(5, len(resp.evidence))
         scores = [ev.relevance_score for ev in resp.evidence]
         self.assertEqual(scores, sorted(scores, reverse=True), "证据必须按相关度降序")
         self.assertTrue(all(s is not None and 0.0 <= s <= 1.0 for s in scores))
-        # 模型明确标注 0.1 的那条应排最后，且分数被原样保留
-        self.assertEqual("https://www.sohu.com/y", resp.evidence[-1].url)
-        self.assertEqual(0.1, resp.evidence[-1].relevance_score)
+        self.assertNotIn(0.1, scores, "模型自报的相关度不再被采信")
+        self.assertNotIn(0.99, scores, "模型自报的相关度不再被采信")
+        # 词面与待核查内容高度重合的检索结果应当排在最前
+        self.assertIn("xinhuanet.com", resp.evidence[0].url)
+
+    def test_position_only_evidence_scores_at_floor(self):
+        """锁定行为（P5-67）：位置分单独最多只值 0.3 —— "排第一但毫不相关"不再虚高
+
+        原实现是加权求和（0.55×位置分 + 0.45×词面重合），排第一且完全不重合也能拿 0.55；
+        改为乘性组合 `位置分 × (0.3 + 0.7 × 重合率)` 后同样情形只有 0.3。
+        """
+        llm = FakeLLM([
+            QUERY_REPLY,
+            json_text(can_judge=True, verdict="FALSE", confidence=0.9, evidence=[
+                {"title": "完全无关的标题", "url": "https://www.sohu.com/x",
+                 "snippet": "qwertyuiop", "source": "搜狐"},
+            ]),
+        ])
+        service = self.build_service(llm)
+        resp = self.detect(service, "武汉又出现新型病毒了，大家不要出门")
+
+        # 该条在合并列表里位置最靠前（rank 0 → 位置分 1.0），但与被检测消息没有任何字符二元组重合
+        entry = next(ev for ev in resp.evidence if ev.url == "https://www.sohu.com/x")
+        self.assertAlmostEqual(0.3, entry.relevance_score, places=4)
 
     def test_model_evidence_no_longer_discards_search_results(self):
         """锁定行为：模型给的证据与检索结果**合并**，权威来源不会因模型未提及而丢失。
