@@ -81,6 +81,16 @@ public class AdminAppealServiceImpl implements AdminAppealService {
             throw new BaseException(MessageConstant.ADMIN_NOT_LOGIN);
         }
 
+        // 先规范化文本字段：去掉首尾空白后再走校验，
+        // 这样纯空白（"   "）会被必填校验拦下，也不会把空白写进结论修订与站内信。
+        // 原先用 StringUtils.hasLength（不 trim），"   " 可以绕过必填校验。
+        if (handleDTO.getNewReasoningChain() != null) {
+            handleDTO.setNewReasoningChain(handleDTO.getNewReasoningChain().trim());
+        }
+        if (handleDTO.getHandleResult() != null) {
+            handleDTO.setHandleResult(handleDTO.getHandleResult().trim());
+        }
+
         Appeal appeal = appealMapper.getById(appealId);
         if (appeal == null) {
             throw new AppealNotFoundException(MessageConstant.APPEAL_NOT_FOUND);
@@ -105,7 +115,7 @@ public class AdminAppealServiceImpl implements AdminAppealService {
                 && handleDTO.getNewVerdict() != 2 && handleDTO.getNewVerdict() != 3)) {
             throw new BaseException("采纳申诉时必须给出新结论（1真/2假/3无法判定）");
         }
-        if (!StringUtils.hasLength(handleDTO.getNewReasoningChain())) {
+        if (!StringUtils.hasText(handleDTO.getNewReasoningChain())) {
             throw new BaseException("采纳申诉时必须给出新的推理依据");
         }
 
@@ -178,7 +188,7 @@ public class AdminAppealServiceImpl implements AdminAppealService {
      * 驳回申诉
      */
     private void handleReject(Appeal appeal, AdminAppealHandleDTO handleDTO, Long adminId) {
-        if (!StringUtils.hasLength(handleDTO.getHandleResult())) {
+        if (!StringUtils.hasText(handleDTO.getHandleResult())) {
             throw new BaseException("驳回申诉时必须填写驳回原因");
         }
 

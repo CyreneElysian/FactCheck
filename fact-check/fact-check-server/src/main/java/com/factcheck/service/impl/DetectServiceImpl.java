@@ -328,7 +328,12 @@ public class DetectServiceImpl implements DetectService {
             // 记为"检测失败"允许重试，而不是把人工队列灌满
             boolean agentFailed = result.isError();
             Integer verdict = mapVerdict(result.getVerdict());
-            boolean canJudge = !agentFailed && result.isCanJudge() && verdict != null;
+            // 模型声称能判定、却给了一个我们映射不了的结论（如 "MAYBE"）：
+            // 这属于 Agent 契约问题，而不是"AI 确实判断不了"，
+            // 因此同样记为"检测失败"（可重试），不占用人工队列
+            boolean verdictUnmappable = !agentFailed && result.isCanJudge() && verdict == null;
+            boolean failed = agentFailed || verdictUnmappable;
+            boolean canJudge = !failed && result.isCanJudge() && verdict != null;
 
             FactCheckRecord.FactCheckRecordBuilder updateBuilder = FactCheckRecord.builder()
                     .id(recordId)
@@ -341,9 +346,13 @@ public class DetectServiceImpl implements DetectService {
                         .confidence(result.getConfidence() != null ? BigDecimal.valueOf(result.getConfidence()) : null)
                         .reasoningChain(result.getReasoningChain())
                         .completeTime(LocalDateTime.now());
-            } else if (agentFailed) {
-                updateBuilder.status(3)
-                        .aiSummary(result.getHumanReason() != null ? result.getHumanReason() : "检测服务异常，请稍后重试");
+            } else if (failed) {
+                String reason = verdictUnmappable
+                        ? "Agent 返回的结论无法识别（verdict=" + result.getVerdict() + "），已标记为检测失败，可重试"
+                        : (result.getHumanReason() != null ? result.getHumanReason() : "检测服务异常，请稍后重试");
+                log.warn("检测失败归口：recordId={}, agentFailed={}, verdictUnmappable={}, verdict={}",
+                        recordId, agentFailed, verdictUnmappable, result.getVerdict());
+                updateBuilder.status(3).aiSummary(reason);
             } else {
                 updateBuilder.status(1)
                         .aiSummary(result.getHumanReason() != null ? result.getHumanReason() : "AI 无法判断，转人工诊断");
@@ -364,7 +373,7 @@ public class DetectServiceImpl implements DetectService {
                         .isRead(0)
                         .createTime(LocalDateTime.now())
                         .build());
-            } else if (agentFailed) {
+            } else if (failed) {
                 messageMapper.insert(Message.builder()
                         .userId(record.getUserId())
                         .type(6)

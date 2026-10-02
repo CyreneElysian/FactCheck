@@ -16,6 +16,7 @@ public class MessageConstant {
     public static final String UPLOAD_FILE_EMPTY = "上传文件不能为空";
     public static final String UPLOAD_TYPE_NOT_SUPPORTED = "仅支持 jpg/jpeg/png/webp 格式的图片";
     public static final String UPLOAD_SIZE_EXCEEDED = "图片大小不能超过 5MB";
+    public static final String UPLOAD_CONTENT_INVALID = "文件内容不是有效的图片（仅支持真实的 jpg/png/webp）";
     public static final String OCR_FAILED = "图片识别失败";
     public static final String OCR_NOT_CONFIGURED = "图片识别服务未配置，暂不支持图片检测";
     public static final String CONTENT_ILLEGAL = "内容涉嫌违规，请修改后重试";

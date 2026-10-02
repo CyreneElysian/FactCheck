@@ -235,21 +235,29 @@ class DetectServiceImplAsyncDetectTest {
     }
 
     /**
-     * canJudge=true 但 verdict 字符串无法映射（脏数据）→ 不能当"已完成"处理，
-     * 应退回 status=1（转人工），且不写 verdict。
+     * canJudge=true 但 verdict 字符串无法映射（脏数据）→ 不能当"已完成"处理。
+     *
+     * 归口到 status=3（检测失败，可重试）而不是 status=1（转人工）：
+     * 这属于 Agent 契约问题而不是"AI 确实判断不了"，人工队列应只放后者。
      */
     @Test
-    @DisplayName("canJudge=true 但 verdict 无法映射 → 退回 status=1，不写结论")
-    void shouldFallBackToPendingWhenVerdictIsNotMappable() {
+    @DisplayName("canJudge=true 但 verdict 无法映射 → status=3（检测失败），不写结论、不进人工队列")
+    void shouldMarkFailedWhenVerdictIsNotMappable() {
         when(factCheckRecordMapper.getById(RECORD_ID)).thenReturn(existingRecord());
         when(agentClient.detect(CONTENT)).thenReturn(agentResult(false, true, "MAYBE"));
 
         detectServiceImpl.asyncDetect(RECORD_ID, CONTENT);
 
         FactCheckRecord updated = captureUpdatedRecord();
-        assertThat(updated.getStatus()).isEqualTo(1);
+        assertThat(updated.getStatus()).isEqualTo(3);
         assertThat(updated.getVerdict()).isNull();
         assertThat(updated.getVerdictSource()).isNull();
+        assertThat(updated.getAiSummary()).contains("MAYBE");
+
+        // 走"检测失败"通知（type=6），而不是"已进入人工诊断队列"（type=2）
+        assertThat(captureInsertedMessage().getType()).isEqualTo(6);
+        // 脏结论不能进入语义去重索引
+        verify(agentClient, never()).indexAdd(anyLong(), anyString());
     }
 
     /**

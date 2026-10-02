@@ -16,6 +16,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.Locale;
+
 /**
  * {@link UploadValidator} 单元测试。
  *
@@ -35,6 +40,21 @@ class UploadValidatorTest {
 
     @Mock
     private MultipartFile file;
+
+    /** JPEG 文件头（含填充，凑够 12 字节，便于对照 WebP 的头部长度） */
+    private static final byte[] JPEG_MAGIC = {
+            (byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0, 0x10, 'J', 'F', 'I', 'F', 0, 1};
+
+    /** PNG 文件头：89 50 4E 47 0D 0A 1A 0A + 填充 */
+    private static final byte[] PNG_MAGIC = {
+            (byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0x0D};
+
+    /** WebP 文件头：RIFF + 4 字节长度 + WEBP */
+    private static final byte[] WEBP_MAGIC = {
+            'R', 'I', 'F', 'F', 0x20, 0, 0, 0, 'W', 'E', 'B', 'P'};
+
+    /** 可执行文件（Windows PE）的文件头：MZ…，用于验证"改名成 .jpg 也拦得住" */
+    private static final byte[] EXE_MAGIC = {'M', 'Z', (byte) 0x90, 0, 0x03, 0, 0, 0, 4, 0, 0, 0};
 
     /**
      * 构造一个“非空、指定文件名、指定大小”的上传文件桩。
@@ -57,6 +77,43 @@ class UploadValidatorTest {
     }
 
     /**
+     * 按扩展名给出一份“内容与扩展名相符”的合法文件头
+     */
+    private static byte[] magicFor(String filename) {
+        String lower = filename.toLowerCase(Locale.ROOT);
+        if (lower.endsWith(".png")) {
+            return PNG_MAGIC;
+        }
+        if (lower.endsWith(".webp")) {
+            return WEBP_MAGIC;
+        }
+        return JPEG_MAGIC;
+    }
+
+    /**
+     * 桩化文件内容（文件头）
+     *
+     * <p>MultipartFile.getInputStream() 声明了 IOException，
+     * 这里包一层 UncheckedIOException，免得每个用例都在签名上再加 throws。</p>
+     */
+    private void stubContent(byte[] content) {
+        try {
+            when(file.getInputStream()).thenReturn(new ByteArrayInputStream(content));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    /**
+     * 构造一个“合法文件”：文件名合法 + 大小合法 + 文件头与扩展名相符。
+     * 只有走到“内容校验”这一步的用例才应该用它（否则会触发 UnnecessaryStubbing）。
+     */
+    private void stubImage(String originalFilename, long size) {
+        stubFile(originalFilename, size);
+        stubContent(magicFor(originalFilename));
+    }
+
+    /**
      * 合法扩展名必须通过，并返回“小写 + 带点”的规范化扩展名。
      * 其中大写/混合大小写（.JPG/.JpEg）也必须通过并被规范化，
      * 否则对象名会变成 xxx.JPG 这类不受控形式。
@@ -75,7 +132,7 @@ class UploadValidatorTest {
             "my.photo.v2.jpg, .jpg"
     })
     void shouldAcceptAllowedExtensionsAndReturnNormalizedExtension(String filename, String expectedExtension) {
-        stubFile(filename, 1024L);
+        stubImage(filename, 1024L);
 
         String extension = UploadValidator.validateImage(file);
 
@@ -157,7 +214,7 @@ class UploadValidatorTest {
     @Test
     @DisplayName("刚好 5MB 通过（边界值闭区间）")
     void shouldAcceptFileExactlyFiveMegabytes() {
-        stubFile("exact.png", MAX_SIZE);
+        stubImage("exact.png", MAX_SIZE);
 
         String extension = UploadValidator.validateImage(file);
 
@@ -176,5 +233,91 @@ class UploadValidatorTest {
         BaseException ex = assertThrows(BaseException.class, () -> UploadValidator.validateImage(file));
 
         assertThat(ex.getMessage()).isEqualTo(MessageConstant.UPLOAD_SIZE_EXCEEDED);
+    }
+
+    // ------------------------------------------------------------------
+    // 文件内容（magic bytes）校验
+    // ------------------------------------------------------------------
+
+    /**
+     * 把可执行文件改名成 .jpg 是最典型的绕过手段：
+     * 扩展名白名单拦不住，必须靠文件头拦。
+     */
+    @Test
+    @DisplayName("可执行文件改名成 .jpg 被拒（扩展名白名单可被改名绕过，内容校验兜住）")
+    void shouldRejectExecutableRenamedAsJpg() {
+        stubFile("evil.jpg", 1024L);
+        stubContent(EXE_MAGIC);
+
+        BaseException ex = assertThrows(BaseException.class, () -> UploadValidator.validateImage(file));
+
+        assertThat(ex.getMessage()).isEqualTo(MessageConstant.UPLOAD_CONTENT_INVALID);
+    }
+
+    /**
+     * 内容与扩展名不是同一类图片（PNG 名字、JPEG 内容）也要拒，
+     * 避免"用扩展名决定后续处理方式"的逻辑被内容欺骗。
+     */
+    @Test
+    @DisplayName("内容与扩展名不同类（.png 里装 JPEG）被拒")
+    void shouldRejectContentNotMatchingExtension() {
+        stubFile("photo.png", 1024L);
+        stubContent(JPEG_MAGIC);
+
+        BaseException ex = assertThrows(BaseException.class, () -> UploadValidator.validateImage(file));
+
+        assertThat(ex.getMessage()).isEqualTo(MessageConstant.UPLOAD_CONTENT_INVALID);
+    }
+
+    /**
+     * 文件头被截断（不足 3 字节）时无法识别类型，按不合法处理。
+     */
+    @Test
+    @DisplayName("文件头被截断（内容过短）被拒")
+    void shouldRejectTruncatedHeader() {
+        stubFile("photo.jpg", 1024L);
+        stubContent(new byte[]{1, 2, 3});
+
+        BaseException ex = assertThrows(BaseException.class, () -> UploadValidator.validateImage(file));
+
+        assertThat(ex.getMessage()).isEqualTo(MessageConstant.UPLOAD_CONTENT_INVALID);
+    }
+
+    /**
+     * RIFF 头正确、但偏移 8 处不是 WEBP（例如 WAVE 音频）时应被拒。
+     */
+    @Test
+    @DisplayName("RIFF 但不是 WEBP（如 WAVE）被拒")
+    void shouldRejectRiffThatIsNotWebp() {
+        stubFile("sound.webp", 1024L);
+        stubContent(new byte[]{'R', 'I', 'F', 'F', 0x20, 0, 0, 0, 'W', 'A', 'V', 'E'});
+
+        BaseException ex = assertThrows(BaseException.class, () -> UploadValidator.validateImage(file));
+
+        assertThat(ex.getMessage()).isEqualTo(MessageConstant.UPLOAD_CONTENT_INVALID);
+    }
+
+    /**
+     * 读不出内容时必须 fail-closed（按不合法处理），而不是放行。
+     * 这里不桩化 getInputStream()，Mockito 会返回 null。
+     */
+    @Test
+    @DisplayName("内容流不可读时 fail-closed（不放行）")
+    void shouldFailClosedWhenContentUnavailable() {
+        stubFile("photo.jpg", 1024L);
+
+        BaseException ex = assertThrows(BaseException.class, () -> UploadValidator.validateImage(file));
+
+        assertThat(ex.getMessage()).isEqualTo(MessageConstant.UPLOAD_CONTENT_INVALID);
+    }
+
+    /**
+     * jpg 与 jpeg 属于同一族，两种扩展名配同一份 JPEG 文件头都应通过。
+     */
+    @Test
+    @DisplayName("jpg 与 jpeg 视为同一族，均可通过内容校验")
+    void shouldTreatJpgAndJpegAsSameFamily() {
+        stubImage("a.jpg", 1024L);
+        assertThat(UploadValidator.validateImage(file)).isEqualTo(".jpg");
     }
 }
