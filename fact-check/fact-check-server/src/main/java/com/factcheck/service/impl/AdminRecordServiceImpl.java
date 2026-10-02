@@ -22,6 +22,7 @@ import com.factcheck.mapper.FactCheckRecordMapper;
 import com.factcheck.mapper.MessageMapper;
 import com.factcheck.mapper.OperationLogMapper;
 import com.factcheck.result.PageResult;
+import com.factcheck.util.ValidationUtils;
 import com.factcheck.service.AdminRecordService;
 import com.factcheck.service.AgentClient;
 import com.factcheck.vo.AuthorityInfoVO;
@@ -177,9 +178,8 @@ public class AdminRecordServiceImpl implements AdminRecordService {
         if (adminId == null) {
             throw new BaseException(MessageConstant.ADMIN_NOT_LOGIN);
         }
-        if (!StringUtils.hasLength(adminConclusionDTO.getReason())) {
-            throw new BaseException("请填写修改原因");
-        }
+        // 参数校验（P2-17）：修改原因入库到 VARCHAR(500) 列，超长要在写库前拦下
+        ValidationUtils.requireText(adminConclusionDTO.getReason(), "修改原因", 500);
         validateVerdictAndReasoning(adminConclusionDTO.getVerdict(), adminConclusionDTO.getReasoningChain());
 
         FactCheckRecord record = factCheckRecordMapper.getById(recordId);
@@ -293,12 +293,9 @@ public class AdminRecordServiceImpl implements AdminRecordService {
      * 校验结论和推理依据
      */
     private void validateVerdictAndReasoning(Integer verdict, String reasoningChain) {
-        if (verdict == null || (verdict != 1 && verdict != 2 && verdict != 3)) {
-            throw new BaseException("结论只能为：1真、2假、3无法判定");
-        }
-        if (!StringUtils.hasLength(reasoningChain)) {
-            throw new BaseException("请填写推理依据");
-        }
+        ValidationUtils.requireOneOf(verdict, "结论", 1, 2, 3);
+        // 推理依据会随结论一起下发并写入结论修订快照，限制在 2000 字以内（P2-17）
+        ValidationUtils.requireText(reasoningChain, "推理依据", 2000);
     }
 
     /**

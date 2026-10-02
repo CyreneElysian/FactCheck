@@ -10,6 +10,7 @@ import com.factcheck.mapper.AuthorityInfoMapper;
 import com.factcheck.mapper.OperationLogMapper;
 import com.factcheck.result.PageResult;
 import com.factcheck.service.AdminAuthorityService;
+import com.factcheck.util.ValidationUtils;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +43,8 @@ public class AdminAuthorityServiceImpl implements AdminAuthorityService {
         if (adminId == null) {
             throw new BaseException(MessageConstant.ADMIN_NOT_LOGIN);
         }
+        // 参数校验（P2-17）：防止 page=0 触发"不分页"与超大 pageSize 全表加载
+        ValidationUtils.requirePaging(page, pageSize);
         int pageNum = page == null ? 1 : page;
         int size = pageSize == null ? 10 : pageSize;
         PageHelper.startPage(pageNum, size);

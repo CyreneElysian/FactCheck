@@ -32,7 +32,8 @@ public class AdminStatsController {
      * 分页查询操作日志
      */
     @GetMapping("/logs")
-    public Result<PageResult> logs(@RequestParam Integer page, @RequestParam Integer pageSize) {
+    public Result<PageResult> logs(@RequestParam(defaultValue = "1") Integer page,
+                                   @RequestParam(defaultValue = "10") Integer pageSize) {
         log.info("分页查询操作日志：{},{}", page, pageSize);
         return Result.success(adminStatsService.pageLogs(page, pageSize));
     }

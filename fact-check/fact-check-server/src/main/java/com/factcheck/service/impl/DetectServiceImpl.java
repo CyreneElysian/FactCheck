@@ -13,6 +13,7 @@ import com.factcheck.entity.DetectLog;
 import com.factcheck.entity.Evidence;
 import com.factcheck.entity.FactCheckRecord;
 import com.factcheck.entity.Message;
+import com.factcheck.exception.BaseException;
 import com.factcheck.exception.RateLimitException;
 import com.factcheck.exception.RecordNotFoundException;
 import com.factcheck.handler.DetectWebSocketHandler;
@@ -28,6 +29,7 @@ import com.factcheck.result.PageResult;
 import com.factcheck.service.AgentClient;
 import com.factcheck.service.ContentSafetyService;
 import com.factcheck.service.DetectService;
+import com.factcheck.util.ValidationUtils;
 import com.factcheck.vo.AuthorityInfoVO;
 import com.factcheck.vo.ConclusionRevisionVO;
 import com.factcheck.vo.DetectRecordVO;
@@ -106,24 +108,38 @@ public class DetectServiceImpl implements DetectService {
         // 防刷限流
         checkRateLimit(userId);
 
-        String content = normalizeContent(detectSubmitDTO.getContent());
-        if (content.isEmpty()) {
-            throw new IllegalArgumentException("检测内容不能为空");
-        }
+        // 参数校验（P2-17）：
+        // 原先空内容抛的是 IllegalArgumentException，它会被全局异常处理器的兜底分支吞成"未知错误"，
+        // 用户根本看不到"检测内容不能为空"；改用 BaseException 才能把文案透传给前端。
+        // 同时补上长度与取值范围校验，避免超长分类 / 图片地址在写库时才报数据完整性错误。
+        String content = normalizeContent(ValidationUtils.requireText(
+                detectSubmitDTO.getContent(), "检测内容", ValidationUtils.MAX_CLAIM_LENGTH));
 
-        // 内容安全审核
+        // 内容安全审核（文字）：命中"违法交易/招揽"类规则时抛业务异常，直接拒绝提交
         contentSafetyService.checkText(content);
 
         String contentHash = sha256Hex(content);
-        String category = detectSubmitDTO.getCategory() == null || detectSubmitDTO.getCategory().isEmpty()
-                ? DEFAULT_CATEGORY : detectSubmitDTO.getCategory();
+        String rawCategory = ValidationUtils.optionalText(detectSubmitDTO.getCategory(), "分类", 50);
+        String category = rawCategory == null ? DEFAULT_CATEGORY : rawCategory;
         Integer sourceType = detectSubmitDTO.getSourceType() == null ? 1 : detectSubmitDTO.getSourceType();
+        ValidationUtils.requireOneOf(sourceType, "来源类型", 1, 2);
+        // 图片地址列宽为 VARCHAR(255)；图片类提交必须带地址，否则后续图片链路无从展示
+        String imageUrl = ValidationUtils.optionalHttpUrl(detectSubmitDTO.getImageUrl(), "图片地址", 255);
+        if (sourceType == 2 && imageUrl == null) {
+            throw new BaseException("图片检测必须提供图片地址");
+        }
+
+        // 图片类提交额外审核图片地址（协议/主机名/可选域名白名单；
+        // 本地规则无法识别图片内容本身，这一点见技术方案第 10 章的能力边界说明）
+        if (sourceType == 2) {
+            contentSafetyService.checkImage(imageUrl);
+        }
 
         // 1. 精确去重
         if (agentProperties.isExactEnabled()) {
             FactCheckRecord exist = factCheckRecordMapper.getByContentHash(contentHash);
             if (exist != null) {
-                return handleExactHit(exist, userId, category, sourceType, detectSubmitDTO.getImageUrl(), content, contentHash);
+                return handleExactHit(exist, userId, category, sourceType, imageUrl, content, contentHash);
             }
         }
 
@@ -154,7 +170,7 @@ public class DetectServiceImpl implements DetectService {
                 .contentHash(contentHash)
                 .category(category)
                 .sourceType(sourceType)
-                .imageUrl(detectSubmitDTO.getImageUrl())
+                .imageUrl(imageUrl)
                 .status(0)
                 .version(1)
                 .hitCount(1)

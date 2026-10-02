@@ -13,6 +13,7 @@ import com.factcheck.mapper.OperationLogMapper;
 import com.factcheck.mapper.UserMapper;
 import com.factcheck.result.PageResult;
 import com.factcheck.service.AdminAccountService;
+import com.factcheck.util.ValidationUtils;
 import com.factcheck.vo.UserProfileVO;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
@@ -88,6 +89,8 @@ public class AdminAccountServiceImpl implements AdminAccountService {
         if (adminId == null) {
             throw new BaseException(MessageConstant.ADMIN_NOT_LOGIN);
         }
+        // 参数校验（P2-17）：page=0 会被 PageHelper 当成"不分页"直接返回全表，pageSize 过大同样会全表加载
+        ValidationUtils.requirePaging(page, pageSize);
         int pageNum = page == null ? 1 : page;
         int size = pageSize == null ? 10 : pageSize;
         PageHelper.startPage(pageNum, size);

@@ -24,7 +24,8 @@ public class AdminAuthorityController {
      * 分页查询权威信息
      */
     @GetMapping("/list")
-    public Result<PageResult> list(@RequestParam Integer page, @RequestParam Integer pageSize) {
+    public Result<PageResult> list(@RequestParam(defaultValue = "1") Integer page,
+                                   @RequestParam(defaultValue = "10") Integer pageSize) {
         log.info("分页查询权威信息：{},{}", page, pageSize);
         return Result.success(adminAuthorityService.page(page, pageSize));
     }

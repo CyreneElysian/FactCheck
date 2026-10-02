@@ -33,7 +33,8 @@ public class AdminAccountController {
      * 分页查询用户列表
      */
     @GetMapping("/users")
-    public Result<PageResult> users(@RequestParam Integer page, @RequestParam Integer pageSize) {
+    public Result<PageResult> users(@RequestParam(defaultValue = "1") Integer page,
+                                    @RequestParam(defaultValue = "10") Integer pageSize) {
         log.info("分页查询用户列表：{}", page, pageSize);
         return Result.success(adminAccountService.pageUsers(page, pageSize));
     }

@@ -42,7 +42,8 @@ public class FavoriteController {
      * 分页查询我的收藏
      */
     @GetMapping("/my")
-    public Result<PageResult> my(@RequestParam Integer page, @RequestParam Integer pageSize) {
+    public Result<PageResult> my(@RequestParam(defaultValue = "1") Integer page,
+                                 @RequestParam(defaultValue = "10") Integer pageSize) {
         log.info("分页查询我的收藏：{},{}", page, pageSize);
         return Result.success(favoriteService.pageMy(page, pageSize));
     }

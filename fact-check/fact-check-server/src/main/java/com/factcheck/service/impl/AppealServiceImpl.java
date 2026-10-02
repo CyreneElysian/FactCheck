@@ -15,6 +15,7 @@ import com.factcheck.mapper.AppealMapper;
 import com.factcheck.mapper.FactCheckRecordMapper;
 import com.factcheck.result.PageResult;
 import com.factcheck.service.AppealService;
+import com.factcheck.util.ValidationUtils;
 import com.factcheck.vo.AppealVO;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
@@ -56,13 +57,10 @@ public class AppealServiceImpl implements AppealService {
         if (appealSubmitDTO.getRecordId() == null) {
             throw new BaseException("请指定要申诉的检测记录");
         }
-        if (appealSubmitDTO.getReasonType() == null || appealSubmitDTO.getReasonType() < 1
-                || appealSubmitDTO.getReasonType() > 4) {
-            throw new BaseException("申诉类型不正确");
-        }
-        if (!StringUtils.hasLength(appealSubmitDTO.getContent())) {
-            throw new BaseException("请填写申诉说明");
-        }
+        // 参数校验（P2-17）：reasonType 取值范围 + 申诉说明长度（t_appeal.content 为 VARCHAR(500)）；
+        // 顺带把纯空白字符串一并拦下（原先用 hasLength 判断，纯空白会被放行）
+        ValidationUtils.requireOneOf(appealSubmitDTO.getReasonType(), "申诉类型", 1, 2, 3, 4);
+        String appealContent = ValidationUtils.requireText(appealSubmitDTO.getContent(), "申诉说明", 500);
 
         FactCheckRecord record = factCheckRecordMapper.getById(appealSubmitDTO.getRecordId());
         if (record == null || !userId.equals(record.getUserId())) {
@@ -81,7 +79,7 @@ public class AppealServiceImpl implements AppealService {
                 .recordId(record.getId())
                 .userId(userId)
                 .reasonType(appealSubmitDTO.getReasonType())
-                .content(appealSubmitDTO.getContent())
+                .content(appealContent)
                 .status(0)
                 .createTime(LocalDateTime.now())
                 .build());

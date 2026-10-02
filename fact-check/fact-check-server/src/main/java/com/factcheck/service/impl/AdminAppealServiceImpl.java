@@ -19,6 +19,7 @@ import com.factcheck.mapper.MessageMapper;
 import com.factcheck.mapper.OperationLogMapper;
 import com.factcheck.result.PageResult;
 import com.factcheck.service.AdminAppealService;
+import com.factcheck.util.ValidationUtils;
 import com.factcheck.vo.AppealVO;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
@@ -115,9 +116,10 @@ public class AdminAppealServiceImpl implements AdminAppealService {
                 && handleDTO.getNewVerdict() != 2 && handleDTO.getNewVerdict() != 3)) {
             throw new BaseException("采纳申诉时必须给出新结论（1真/2假/3无法判定）");
         }
-        if (!StringUtils.hasText(handleDTO.getNewReasoningChain())) {
-            throw new BaseException("采纳申诉时必须给出新的推理依据");
-        }
+        // 文本字段校验（P2-17）：非空 + 长度。
+        // 推理依据入库到 TEXT 列，但仍限制在 2000 字以内，避免把超长文本写进结论修订与站内信；
+        // 驳回原因列为 VARCHAR(500)，超长会在写库时才报数据完整性错误。
+        ValidationUtils.requireText(handleDTO.getNewReasoningChain(), "新的推理依据", 2000);
 
         FactCheckRecord record = factCheckRecordMapper.getById(appeal.getRecordId());
         if (record == null) {
@@ -188,9 +190,8 @@ public class AdminAppealServiceImpl implements AdminAppealService {
      * 驳回申诉
      */
     private void handleReject(Appeal appeal, AdminAppealHandleDTO handleDTO, Long adminId) {
-        if (!StringUtils.hasText(handleDTO.getHandleResult())) {
-            throw new BaseException("驳回申诉时必须填写驳回原因");
-        }
+        // 驳回原因列宽 VARCHAR(500)，超长必须在这里拦下（P2-17）
+        ValidationUtils.requireText(handleDTO.getHandleResult(), "驳回原因", 500);
 
         appealMapper.update(Appeal.builder()
                 .id(appeal.getId())

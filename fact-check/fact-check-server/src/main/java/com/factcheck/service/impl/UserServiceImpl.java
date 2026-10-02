@@ -16,6 +16,7 @@ import com.factcheck.exception.AccountLockedException;
 import com.factcheck.exception.AccountNotFoundException;
 import com.factcheck.exception.LoginFailedException;
 import com.factcheck.exception.PasswordErrorException;
+import com.factcheck.util.ValidationUtils;
 import com.factcheck.exception.UserNotLoginException;
 import com.factcheck.mapper.UserMapper;
 import com.factcheck.properties.WeChatProperties;
@@ -52,17 +53,24 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public User register(UserRegisterDTO userRegisterDTO) {
-        log.info("用户注册：username={}", userRegisterDTO.getUsername());
-        User exist = userMapper.getByUsername(userRegisterDTO.getUsername());
+        log.info("用户注册：username={}", userRegisterDTO == null ? null : userRegisterDTO.getUsername());
+
+        // 参数校验（P2-17）：原先**完全没有校验**——密码为 null 会直接在
+        // passwordEncoder.encode(null) 抛 NPE（前端只能看到"未知错误"），
+        // 超长用户名/昵称则要等到写库时才报数据完整性错误。
+        String username = ValidationUtils.requireText(userRegisterDTO.getUsername(), "用户名", 50);
+        String password = ValidationUtils.requireText(userRegisterDTO.getPassword(), "密码", 64);
+        String nickname = ValidationUtils.optionalText(userRegisterDTO.getNickname(), "昵称", 50);
+
+        User exist = userMapper.getByUsername(username);
         if (exist != null) {
             throw new AccountExistsException(MessageConstant.ACCOUNT_EXISTS);
         }
 
         User user = User.builder()
-                .username(userRegisterDTO.getUsername())
-                .password(passwordEncoder.encode(userRegisterDTO.getPassword()))
-                .nickname(StringUtils.hasLength(userRegisterDTO.getNickname())
-                        ? userRegisterDTO.getNickname() : userRegisterDTO.getUsername())
+                .username(username)
+                .password(passwordEncoder.encode(password))
+                .nickname(nickname != null ? nickname : username)
                 .role(0)
                 .status(StatusConstant.ENABLE)
                 .createTime(LocalDateTime.now())
@@ -78,15 +86,20 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public User login(UserLoginDTO userLoginDTO) {
-        log.info("用户登录：username={}", userLoginDTO.getUsername());
-        User user = userMapper.getByUsername(userLoginDTO.getUsername());
+        log.info("用户登录：username={}", userLoginDTO == null ? null : userLoginDTO.getUsername());
+
+        // 参数校验（P2-17）：缺参时给明确提示，而不是把 null 带进 mapper 再变成"未知错误"
+        String username = ValidationUtils.requireText(userLoginDTO.getUsername(), "用户名", 50);
+        String password = ValidationUtils.requireText(userLoginDTO.getPassword(), "密码", 64);
+
+        User user = userMapper.getByUsername(username);
         if (user == null) {
             throw new AccountNotFoundException(MessageConstant.ACCOUNT_NOT_FOUND);
         }
         if (!StatusConstant.ENABLE.equals(user.getStatus())) {
             throw new AccountLockedException(MessageConstant.ACCOUNT_LOCKED);
         }
-        if (!passwordEncoder.matches(userLoginDTO.getPassword(), user.getPassword())) {
+        if (!passwordEncoder.matches(password, user.getPassword())) {
             throw new PasswordErrorException(MessageConstant.PASSWORD_ERROR);
         }
 

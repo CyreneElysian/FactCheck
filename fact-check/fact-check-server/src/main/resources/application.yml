@@ -63,6 +63,14 @@ fact-check:
     endpoint: ${FACTCHECK_OCR_ENDPOINT:https://ocrapi-advanced.taobao.com/ocrservice/advanced}
     # 留空表示未配置：OcrServiceImpl 会直接抛出"OCR 识别失败"，避免用占位符发起无效请求
     app-code: ${FACTCHECK_OCR_APP_CODE:}
+  content-safety:
+    # 内容安全审核：命中"违法交易/招揽"类规则直接拒绝；命中敏感话题只留痕放行（详见技术方案第 10 章）
+    enabled: ${FACTCHECK_CONTENT_SAFETY_ENABLED:true}
+    # 审核实现：local = 本地确定性规则（离线可用）。接云端审核时实现 ContentSafetyChecker
+    # 并把 provider 改成对应实现名即可，业务代码无需改动
+    provider: ${FACTCHECK_CONTENT_SAFETY_PROVIDER:local}
+    # 图片地址允许的域名白名单，为空表示仅校验协议与主机名（把 OSS 域名填进来可进一步收紧）
+    image-host-whitelist: []
   alioss:
     endpoint: ${fact-check.alioss.endpoint}
     access-key-id: ${fact-check.alioss.access-key-id}
