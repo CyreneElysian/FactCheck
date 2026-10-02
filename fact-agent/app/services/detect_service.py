@@ -156,6 +156,17 @@ class DetectService:
         """
         deadline = time.monotonic() + max(5, settings.DETECT_TOTAL_BUDGET)
         text = (text or "").strip()
+        if not text:
+            # 空内容没有任何可核查的信息：直接返回"无法判断"，不消耗任何 LLM 调用
+            # （原先会白跑两次——生成搜索词 + 判定——结果是既花钱又必然判不了）
+            # 用 error=False 而不是 True：这不是服务故障，不该让 Java 记成"可重试的检测失败"。
+            # 图片检测在 OCR 无文字时也会走到这里，此时转人工正是期望行为。
+            logger.info("待检测文本为空，直接返回无法判断（未调用 LLM）")
+            return DetectResponse(
+                can_judge=False,
+                human_reason="待检测内容为空，无法核查",
+                error=False,
+            )
         if len(text) > settings.DETECT_MAX_TEXT_LENGTH:
             logger.warning("待检测文本过长（%d 字），已截断至 %d 字",
                            len(text), settings.DETECT_MAX_TEXT_LENGTH)

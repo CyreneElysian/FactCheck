@@ -222,16 +222,24 @@ class TestDetectHappyPath(DetectServiceTestCase):
         self.assertIn("https://www.xinhuanet.com/a", urls, "检索到的权威来源不能被丢弃")
         self.assertIn("https://wjw.wuhan.gov.cn/b", urls)
 
-    def test_empty_claim_still_runs_full_pipeline(self):
-        """锁定行为（记录现状）：空白文本不报错，仍会走完搜索+LLM 全流程"""
-        llm = FakeLLM([QUERY_REPLY, json_text(can_judge=True, verdict="TRUE",
-                                              confidence=0.8, evidence=[])])
-        service = self.build_service(llm)
-        resp = self.detect(service, "   ")
+    def test_empty_claim_short_circuits_without_llm_calls(self):
+        """锁定行为（P5-70）：空白文本直接返回"无法判断"，**不消耗任何 LLM 调用**
 
-        self.assertFalse(resp.error)
-        self.assertEqual(2, llm.call_count, "空白文本也会消耗两次 LLM 调用")
-        self.assertIn("<untrusted_claim>\n\n</untrusted_claim>", llm.last_user_prompt)
+        原先空文本会走完"生成搜索词 → 搜索 → 抓正文 → 判定"全流程（两次 LLM 调用），
+        既浪费额度，结果也注定是判不了。用 error=False 表示这不是服务故障
+        （Java 侧据此转人工 status=1，而不是记成可重试的 status=3）。
+        """
+        llm = FakeLLM([QUERY_REPLY, json_text(can_judge=True, verdict="TRUE", confidence=0.8)])
+        service = self.build_service(llm)
+
+        for blank in ("", "   ", "\t\n  "):
+            with self.subTest(blank=repr(blank)):
+                resp = self.detect(service, blank)
+                self.assertFalse(resp.error, "空内容不是服务故障，不应标记 error=True")
+                self.assertFalse(resp.can_judge)
+                self.assertIn("为空", resp.human_reason)
+                self.assertEqual(0, len(resp.evidence))
+        self.assertEqual(0, llm.call_count, "空白文本不应触发任何 LLM 调用")
 
     def test_evidence_relevance_heuristic_and_sorting(self):
         """锁定行为：模型未给 relevance_score 时按启发式补齐，证据按相关度降序且全在 0-1

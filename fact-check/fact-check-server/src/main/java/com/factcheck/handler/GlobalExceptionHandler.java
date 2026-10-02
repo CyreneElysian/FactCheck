@@ -4,6 +4,8 @@ import com.factcheck.constant.MessageConstant;
 import com.factcheck.exception.BaseException;
 import com.factcheck.result.Result;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -17,6 +19,16 @@ import java.sql.SQLIntegrityConstraintViolationException;
 public class GlobalExceptionHandler {
 
     /**
+     * MySQL 的唯一键冲突错误码（ER_DUP_ENTRY）
+     */
+    private static final int MYSQL_DUPLICATE_ENTRY = 1062;
+
+    /**
+     * 标准 SQL 唯一性约束冲突的 SQLState（PostgreSQL / H2 等使用）
+     */
+    private static final String SQLSTATE_UNIQUE_VIOLATION = "23505";
+
+    /**
      * 业务异常处理
      */
     @ExceptionHandler
@@ -26,15 +38,52 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * SQL 完整性约束异常处理（唯一键冲突等）
+     * 唯一键冲突（主路径）
+     *
+     * <p>MyBatis-Spring 会把驱动的完整性约束异常翻译成 Spring 的
+     * {@link DuplicateKeyException}，所以这才是实际会命中的分支。
+     * 早期版本只声明了 {@code SQLIntegrityConstraintViolationException}，
+     * 结果唯一键冲突常常直接掉进兜底、返回"未知错误"（用户名重复时前端提示不出来）。</p>
+     */
+    @ExceptionHandler
+    public Result exceptionHandler(DuplicateKeyException ex) {
+        log.warn("唯一键冲突：{}", ex.getMostSpecificCause().getMessage());
+        return Result.error(MessageConstant.ALREADY_EXISTS);
+    }
+
+    /**
+     * 其他数据完整性约束异常（非空约束、外键约束等，统一回"未知错误"但保留可排查的日志）
+     */
+    @ExceptionHandler
+    public Result exceptionHandler(DataIntegrityViolationException ex) {
+        log.error("数据完整性约束异常：{}", ex.getMostSpecificCause().getMessage());
+        return Result.error(MessageConstant.DATA_INTEGRITY_VIOLATION);
+    }
+
+    /**
+     * SQL 完整性约束异常兜底（异常翻译被关闭时才会走到这里）
+     *
+     * <p>判断依据改为**错误码 / SQLState**，不再匹配英文报文字符串：
+     * 早期实现判断 {@code message.contains("Duplicate entry")}，
+     * 依赖 MySQL 的报文格式与语言环境，一旦数据库返回本地化文案或换成别的数据库，
+     * 就会退化成"未知错误"。</p>
      */
     @ExceptionHandler
     public Result exceptionHandler(SQLIntegrityConstraintViolationException ex) {
-        log.error("SQL 完整性约束异常：{}", ex.getMessage());
-        if (ex.getMessage() != null && ex.getMessage().contains("Duplicate entry")) {
+        log.error("SQL 完整性约束异常：errorCode={}, sqlState={}, message={}",
+                ex.getErrorCode(), ex.getSQLState(), ex.getMessage());
+        if (isDuplicateKey(ex.getErrorCode(), ex.getSQLState())) {
             return Result.error(MessageConstant.ALREADY_EXISTS);
         }
         return Result.error(MessageConstant.UNKNOWN_ERROR);
+    }
+
+    /**
+     * 是否为唯一键冲突：按错误码 / SQLState 判断，与报文的语言无关
+     */
+    static boolean isDuplicateKey(int errorCode, String sqlState) {
+        return errorCode == MYSQL_DUPLICATE_ENTRY
+                || SQLSTATE_UNIQUE_VIOLATION.equals(sqlState);
     }
 
     /**

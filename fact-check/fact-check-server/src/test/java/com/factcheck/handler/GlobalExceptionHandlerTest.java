@@ -8,6 +8,8 @@ import com.factcheck.result.Result;
 import java.sql.SQLIntegrityConstraintViolationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DuplicateKeyException;
 
 /**
  * {@link GlobalExceptionHandler} 单元测试。
@@ -63,20 +65,83 @@ class GlobalExceptionHandlerTest {
     }
 
     /**
-     * 唯一键冲突（Duplicate entry）应转换为“已存在”，而不是“未知错误”。
+     * 唯一键冲突的主路径：MyBatis-Spring 会把它翻译成 Spring 的 DuplicateKeyException。
+     *
+     * <p>早期版本只声明了 SQLIntegrityConstraintViolationException，因此用户名重复时
+     * 往往直接掉进兜底、返回"未知错误"，前端提示不出来。</p>
      */
     @Test
-    @DisplayName("SQLIntegrityConstraintViolationException(Duplicate entry) → 已存在")
-    void shouldConvertDuplicateEntryToAlreadyExists() {
-        Result<?> result = handler.exceptionHandler(
-                new SQLIntegrityConstraintViolationException("Duplicate entry 'alice' for key 'username'"));
+    @DisplayName("Spring DuplicateKeyException（MyBatis 实际抛出的类型）→ 已存在")
+    void shouldConvertSpringDuplicateKeyExceptionToAlreadyExists() {
+        Result<?> result = handler.exceptionHandler(new DuplicateKeyException(
+                "### Error updating database. Cause: java.sql.SQLIntegrityConstraintViolationException: "
+                        + "Duplicate entry 'alice' for key 'username'"));
 
         assertThat(result.getCode()).isEqualTo(0);
         assertThat(result.getMsg()).isEqualTo(MessageConstant.ALREADY_EXISTS);
     }
 
     /**
-     * 非唯一键冲突的 SQL 约束异常回退为“未知错误”。
+     * 非唯一键的数据完整性异常（非空、外键等）给一个可理解的文案，
+     * 而不是混在"未知错误"里让人无从排查。
+     */
+    @Test
+    @DisplayName("DataIntegrityViolationException（非唯一键）→ 数据完整性校验失败")
+    void shouldConvertOtherDataIntegrityViolation() {
+        Result<?> result = handler.exceptionHandler(
+                new DataIntegrityViolationException("Column 'username' cannot be null"));
+
+        assertThat(result.getCode()).isEqualTo(0);
+        assertThat(result.getMsg()).isEqualTo(MessageConstant.DATA_INTEGRITY_VIOLATION);
+    }
+
+    /**
+     * 唯一键冲突（Duplicate entry）应转换为"已存在"，而不是"未知错误"。
+     *
+     * <p>判断依据是错误码 / SQLState，不再依赖英文报文。</p>
+     */
+    @Test
+    @DisplayName("SQLIntegrityConstraintViolationException(errorCode=1062) → 已存在")
+    void shouldConvertDuplicateEntryToAlreadyExists() {
+        Result<?> result = handler.exceptionHandler(new SQLIntegrityConstraintViolationException(
+                "Duplicate entry 'alice' for key 'username'", "23000", 1062));
+
+        assertThat(result.getCode()).isEqualTo(0);
+        assertThat(result.getMsg()).isEqualTo(MessageConstant.ALREADY_EXISTS);
+    }
+
+    /**
+     * 关键回归：数据库返回**本地化文案**时（报文里没有 "Duplicate entry" 这个词），
+     * 也必须按错误码识别为唯一键冲突。
+     *
+     * <p>这正是旧实现（`message.contains("Duplicate entry")`）会失效的场景。</p>
+     */
+    @Test
+    @DisplayName("本地化报文的唯一键冲突（errorCode=1062，报文不含英文）→ 仍识别为已存在")
+    void shouldDetectDuplicateKeyFromErrorCodeRegardlessOfLocale() {
+        Result<?> result = handler.exceptionHandler(new SQLIntegrityConstraintViolationException(
+                "重复条目 'alice' 于键 'username'", "23000", 1062));
+
+        assertThat(result.getCode()).isEqualTo(0);
+        assertThat(result.getMsg()).isEqualTo(MessageConstant.ALREADY_EXISTS);
+        assertThat(GlobalExceptionHandler.isDuplicateKey(1062, "23000")).isTrue();
+    }
+
+    /**
+     * 其他数据库（PostgreSQL / H2）用 SQLState 23505 表示唯一性冲突，同样要识别。
+     */
+    @Test
+    @DisplayName("SQLState=23505（标准唯一性冲突）→ 已存在")
+    void shouldDetectDuplicateKeyFromSqlState() {
+        Result<?> result = handler.exceptionHandler(new SQLIntegrityConstraintViolationException(
+                "duplicate key value violates unique constraint \"uk_username\"", "23505", 0));
+
+        assertThat(result.getCode()).isEqualTo(0);
+        assertThat(result.getMsg()).isEqualTo(MessageConstant.ALREADY_EXISTS);
+    }
+
+    /**
+     * 非唯一键冲突的 SQL 约束异常回退为"未知错误"。
      */
     @Test
     @DisplayName("其他 SQL 约束异常 → 未知错误")
@@ -86,5 +151,6 @@ class GlobalExceptionHandlerTest {
 
         assertThat(result.getCode()).isEqualTo(0);
         assertThat(result.getMsg()).isEqualTo(MessageConstant.UNKNOWN_ERROR);
+        assertThat(GlobalExceptionHandler.isDuplicateKey(0, null)).isFalse();
     }
 }
