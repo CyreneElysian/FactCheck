@@ -31,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -165,8 +166,8 @@ class AdminAppealServiceImplHandleTest {
      * newReasoningChain 为 null 或空串时必须拒绝采纳。
      * 注意：此时 newVerdict 必须是合法值，否则会先命中“新结论”分支。
      *
-     * <p>这里只覆盖 null 与 ""：生产代码用的是 Spring 的 StringUtils.hasLength（不 trim），
-     * 所以"纯空白字符串"目前会被放行——这是已知缺口，见测试报告，此处不锁定该行为。</p>
+     * <p>纯空白字符串（"   "）的覆盖见本文件末尾的
+     * {@code shouldRejectAcceptWhenNewReasoningChainIsWhitespaceOnly}（第 6 批修复 P5-61）。</p>
      */
     @DisplayName("采纳：newReasoningChain 为 null 或空串 → 抛 BaseException（消息含“推理依据”）")
     @ParameterizedTest(name = "[{index}] newReasoningChain=[{0}]")
@@ -405,7 +406,6 @@ class AdminAppealServiceImplHandleTest {
 
     /**
      * 驳回必须填写驳回原因；缺失（null / 空串）时抛 BaseException（消息含“驳回原因”）。
-     * 同样只覆盖 null 与 ""：hasLength 不 trim，纯空白目前会被放行（见报告）。
      */
     @Test
     @DisplayName("驳回：handleResult 缺失（null / 空串）→ BaseException（消息含“驳回原因”）")
@@ -420,5 +420,78 @@ class AdminAppealServiceImplHandleTest {
         assertThat(ex.getMessage()).contains("驳回原因");
         verify(appealMapper, never()).update(any(Appeal.class));
         verifyNoInteractions(messageMapper, operationLogMapper);
+    }
+
+    // ------------------------------------------------------------------
+    // 空白字符串与首尾空白（第 6 批修复 P5-61）
+    // ------------------------------------------------------------------
+
+    /**
+     * 纯空白字符串也必须被拒。
+     *
+     * <p>修复前用的是 Spring 的 {@code StringUtils.hasLength}（不 trim），
+     * 因此 {@code "   "} 会被当成"有内容"放行，把空白推理依据写进结论修订快照，
+     * 把空白驳回原因拼进站内信。现在入口先 trim、校验改用 {@code hasText}。</p>
+     */
+    @DisplayName("采纳：newReasoningChain 为纯空白 → 被拒且无任何写库副作用")
+    @ParameterizedTest(name = "[{index}] newReasoningChain=[{0}]")
+    @ValueSource(strings = {"   ", "\t", "\n  "})
+    void shouldRejectAcceptWhenNewReasoningChainIsWhitespaceOnly(String newReasoningChain) {
+        when(appealMapper.getById(APPEAL_ID)).thenReturn(pendingAppeal());
+
+        BaseException ex = assertThrows(BaseException.class,
+                () -> adminAppealService.handle(APPEAL_ID, acceptDto(1, newReasoningChain)));
+
+        assertThat(ex.getMessage()).contains("推理依据");
+        verifyNoInteractions(conclusionRevisionMapper, factCheckRecordMapper, messageMapper, operationLogMapper);
+    }
+
+    /**
+     * 首尾空白应在落库前被去掉，避免把 {@code "  依据  "} 原样写进结论修订与检测记录。
+     */
+    @Test
+    @DisplayName("采纳：推理依据首尾空白被 trim 后落库")
+    void shouldTrimReasoningChainBeforePersisting() {
+        stubPendingAppealWithFinishedRecord();
+
+        adminAppealService.handle(APPEAL_ID, acceptDto(3, "   已核实官方通报   "));
+
+        ArgumentCaptor<ConclusionRevision> captor = ArgumentCaptor.forClass(ConclusionRevision.class);
+        verify(conclusionRevisionMapper).insert(captor.capture());
+        assertThat(captor.getValue().getNewReasoningChain()).isEqualTo("已核实官方通报");
+    }
+
+    /**
+     * 驳回原因同理：纯空白必须被拒，首尾空白应被 trim。
+     */
+    @DisplayName("驳回：handleResult 为纯空白 → 被拒且无写库副作用")
+    @ParameterizedTest(name = "[{index}] handleResult=[{0}]")
+    @ValueSource(strings = {"   ", "\t"})
+    void shouldRejectRejectWhenHandleResultIsWhitespaceOnly(String handleResult) {
+        when(appealMapper.getById(APPEAL_ID)).thenReturn(pendingAppeal());
+        AdminAppealHandleDTO dto = new AdminAppealHandleDTO();
+        dto.setAccept(false);
+        dto.setHandleResult(handleResult);
+
+        BaseException ex = assertThrows(BaseException.class, () -> adminAppealService.handle(APPEAL_ID, dto));
+
+        assertThat(ex.getMessage()).contains("驳回原因");
+        verify(appealMapper, never()).update(any(Appeal.class));
+        verifyNoInteractions(messageMapper, operationLogMapper);
+    }
+
+    @Test
+    @DisplayName("驳回：驳回原因首尾空白被 trim 后落库")
+    void shouldTrimHandleResultBeforePersisting() {
+        when(appealMapper.getById(APPEAL_ID)).thenReturn(pendingAppeal());
+        AdminAppealHandleDTO dto = new AdminAppealHandleDTO();
+        dto.setAccept(false);
+        dto.setHandleResult("   申诉理由不成立   ");
+
+        adminAppealService.handle(APPEAL_ID, dto);
+
+        ArgumentCaptor<Appeal> captor = ArgumentCaptor.forClass(Appeal.class);
+        verify(appealMapper).update(captor.capture());
+        assertThat(captor.getValue().getHandleResult()).isEqualTo("申诉理由不成立");
     }
 }
