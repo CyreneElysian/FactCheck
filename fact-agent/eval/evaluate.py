@@ -586,7 +586,14 @@ def write_report(dedup=None, live=None):
         "",
         "# 两者都跑并刷新本报告",
         "py -3.10 fact-agent/eval/evaluate.py --mode all --subset 10",
+        "",
+        "# 不跑评测，仅用 eval/results/ 里已保存的结果重新合成本报告",
+        "py -3.10 fact-agent/eval/evaluate.py --mode report",
         "```",
+        "",
+        "> 报告由 `eval/results/dedup.json` 与 `eval/results/live.json` **两份缓存合成**：",
+        "> 单独跑 `--mode dedup` 只会刷新去重部分，已保存的联网判定结果仍会保留在报告里",
+        "> （早期版本会把它整段抹掉，是个已修的坑）。",
         "",
         "## 四、结论与调参建议",
         "",
@@ -671,9 +678,22 @@ def save_raw(name, data):
     print(f"已写入原始数据：{path}")
 
 
+def load_raw(name):
+    """读取上次保存的原始结果（报告由缓存合成时使用）"""
+    path = RESULTS_DIR / f"{name}.json"
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        print(f"读取缓存失败（忽略）：{path} -> {exc}")
+        return None
+
+
 def main():
     parser = argparse.ArgumentParser(description="FactCheck AI 能力评测")
-    parser.add_argument("--mode", choices=["dedup", "live", "all"], default="dedup")
+    parser.add_argument("--mode", choices=["dedup", "live", "all", "report"], default="dedup",
+                        help="report = 不跑评测，只用 eval/results 里已保存的结果重新合成报告")
     parser.add_argument("--subset", type=int, default=10, help="联网评测的样本数（分层抽样）")
     args = parser.parse_args()
 
@@ -684,14 +704,28 @@ def main():
     if args.mode in ("dedup", "all"):
         dedup_result = run_dedup(items)
         save_raw("dedup", dedup_result)
-        (DOCS_DIR / "评测-阈值敏感性.svg").write_text(render_svg(dedup_result), encoding="utf-8")
-        print(f"已写入图表：{DOCS_DIR / '评测-阈值敏感性.svg'}")
     if args.mode in ("live", "all"):
         live_result = run_live(items, args.subset)
         save_raw("live", live_result)
 
-    if dedup_result or live_result:
-        write_report(dedup_result, live_result)
+    # 报告始终由"磁盘上的两份结果"合成，而不是只看本次跑了什么：
+    # 否则单独跑 `--mode dedup` 会把上一次的联网判定结果从报告里整段抹掉（这是个真实踩过的坑）。
+    dedup_for_report = dedup_result or load_raw("dedup")
+    live_for_report = live_result or load_raw("live")
+
+    if dedup_for_report and not dedup_result:
+        print("（去重部分沿用 eval/results/dedup.json 的缓存；要重新评测请运行 --mode dedup）")
+    if live_for_report and not live_result:
+        print("（联网判定部分沿用 eval/results/live.json 的缓存；要重新评测请运行 --mode live）")
+
+    if dedup_for_report:
+        (DOCS_DIR / "评测-阈值敏感性.svg").write_text(render_svg(dedup_for_report), encoding="utf-8")
+        print(f"已写入图表：{DOCS_DIR / '评测-阈值敏感性.svg'}")
+
+    if dedup_for_report or live_for_report:
+        write_report(dedup_for_report, live_for_report)
+    else:
+        print("没有任何可用的评测结果；请先运行 --mode dedup 或 --mode live")
 
 
 if __name__ == "__main__":
