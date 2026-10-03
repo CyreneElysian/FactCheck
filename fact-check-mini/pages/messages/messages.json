@@ -1,1 +1,6 @@
-{ "navigationBarTitleText": "站内信" }
+{
+  "navigationBarTitleText": "站内信",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark",
+  "usingComponents": { "empty": "/components/empty/empty" }
+}

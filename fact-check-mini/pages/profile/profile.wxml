@@ -1,7 +1,29 @@
 <view class="container">
+  <!-- 资料 -->
   <view class="card">
-    <view class="title">个人中心</view>
+    <view class="title">个人资料</view>
+    <view class="avatar-row" bindtap="onChooseAvatar">
+      <image wx:if="{{avatarPreview}}" class="avatar-preview" src="{{avatarPreview}}" mode="aspectFill" />
+      <view wx:else class="avatar-preview avatar-placeholder">＋</view>
+      <view class="muted">点击更换头像</view>
+    </view>
     <input class="input" placeholder="昵称" value="{{form.nickname}}" bindinput="onNickname" />
-    <button class="btn-primary" bindtap="onSave">保存资料</button>
+    <button class="btn-primary" disabled="{{saving}}" bindtap="onSave">保存资料</button>
+  </view>
+
+  <!-- 修改密码 -->
+  <view class="card">
+    <view class="title">修改密码</view>
+    <input class="input" password placeholder="原密码" value="{{pwd.oldPassword}}" data-field="oldPassword" bindinput="onPwdInput" />
+    <input class="input" password placeholder="新密码（6-20 位）" value="{{pwd.newPassword}}" data-field="newPassword" bindinput="onPwdInput" />
+    <input class="input" password placeholder="确认新密码" value="{{pwd.confirm}}" data-field="confirm" bindinput="onPwdInput" />
+    <button class="btn-primary" disabled="{{pwdBusy}}" bindtap="onChangePassword">修改密码</button>
+  </view>
+
+  <!-- 注销账号 -->
+  <view class="card">
+    <view class="title">账号安全</view>
+    <view class="muted" style="margin-bottom: 16rpx">注销后账号无法登录，操作不可恢复。</view>
+    <button class="btn-danger" disabled="{{cancelBusy}}" bindtap="onCancelAccount">注销账号</button>
   </view>
 </view>

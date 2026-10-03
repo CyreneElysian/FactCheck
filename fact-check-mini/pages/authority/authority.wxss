@@ -1,0 +1,36 @@
+/* 权威信息列表（P3-33） */
+
+.search-card {
+  display: flex;
+  align-items: center;
+}
+
+.search-input {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.search-btn {
+  margin: 0 0 0 16rpx;
+  font-size: 26rpx;
+  height: 64rpx;
+  line-height: 64rpx;
+  padding: 0 24rpx;
+}
+
+/* 列表里正文最多显示 3 行，避免长文把列表撑得很难滑 */
+.content-clamp {
+  margin: 12rpx 0;
+  color: #5a5f66;
+  font-size: 26rpx;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.list-tip {
+  text-align: center;
+  padding: 20rpx 0;
+}

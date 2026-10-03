@@ -1,0 +1,18 @@
+/* 权威信息详情（P3-33） */
+
+.cover {
+  width: 100%;
+  margin-top: 16rpx;
+  border-radius: 8rpx;
+}
+
+.body {
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.7;
+  color: #303133;
+}
+
+.link {
+  color: #409eff;
+}

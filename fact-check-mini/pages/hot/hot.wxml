@@ -1,13 +1,28 @@
 <view class="container">
-  <view class="card" wx:for="{{list}}" wx:key="recordId">
+  <!-- 热度榜：整卡可点进详情，右上角可原生分享（P3-31 / P3-33） -->
+  <view
+    class="card"
+    wx:for="{{list}}"
+    wx:key="recordId"
+    data-id="{{item.recordId}}"
+    bindtap="goDetail"
+  >
     <view class="row">
-      <text class="{{item.verdict === 1 ? 'verdict-true' : item.verdict === 2 ? 'verdict-false' : 'verdict-unknown'}}">
-        {{item.verdict === 1 ? '真' : item.verdict === 2 ? '假' : '无法判定'}}
-      </text>
+      <text class="{{item.verdictClass}}">{{item.verdictText}}</text>
       <text class="muted">热度 {{item.hotScore}}</text>
     </view>
     <view style="margin: 12rpx 0">{{item.content}}</view>
-    <view class="muted">分类：{{item.category}}　检测 {{item.hitCount}} 次</view>
+    <view class="row">
+      <text class="muted">分类：{{item.category}}　检测 {{item.hitCount}} 次</text>
+      <button
+        class="btn-plain share-btn"
+        size="mini"
+        open-type="share"
+        data-id="{{item.recordId}}"
+        data-content="{{item.content}}"
+        catchtap="noop"
+      >分享</button>
+    </view>
   </view>
-  <empty wx:if="{{!list.length}}" text="暂无热门消息"></empty>
+  <empty wx:if="{{!loading && !list.length}}" text="暂无热门消息"></empty>
 </view>

@@ -36,5 +36,20 @@ public class DetectRecordVO implements Serializable {
     private java.time.LocalDateTime createTime;
     private java.time.LocalDateTime completeTime;
     private java.util.List evidenceList;
+
+    /**
+     * 当前用户是否已收藏该记录（仅详情接口填充，列表接口为 null）
+     *
+     * <p>P3-30 / P3-37：前端原先没有这个字段可依据，只能"按钮永远显示收藏"，
+     * 既无法回显已收藏态，也无法正确切换为"取消收藏"。</p>
+     */
+    private Boolean favorited;
+
+    /**
+     * 当前用户对该记录的评分（1 有帮助 / 0 无帮助；未评过为 null）
+     *
+     * <p>P3-37：前端原先评分为 null 初值，不回显历史评分，无法表现"可修改"。</p>
+     */
+    private Integer myRating;
 }
 

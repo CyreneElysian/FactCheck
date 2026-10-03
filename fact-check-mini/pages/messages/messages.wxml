@@ -1,11 +1,35 @@
 <view class="container">
   <view class="card" wx:for="{{records}}" wx:key="id">
     <view class="row">
-      <text>{{item.title}}</text>
-      <text class="muted">{{item.isRead === 1 ? '已读' : '未读'}}</text>
+      <view class="row">
+        <text class="msg-type">{{item.typeText}}</text>
+        <text wx:if="{{item.unread}}" class="badge-dot">未读</text>
+      </view>
+      <text class="muted">{{item.createTime}}</text>
     </view>
-    <view style="margin: 12rpx 0">{{item.content}}</view>
-    <button wx:if="{{item.isRead === 0}}" class="btn-plain" bindtap="onRead" data-id="{{item.id}}">标记已读</button>
+    <view class="msg-title">{{item.title}}</view>
+    <view class="muted" style="margin: 8rpx 0 12rpx">{{item.content}}</view>
+    <view class="row">
+      <button
+        wx:if="{{item.relatedId}}"
+        class="btn-plain small-btn"
+        size="mini"
+        data-id="{{item.relatedId}}"
+        bindtap="goRecord"
+      >查看关联记录</button>
+      <button
+        wx:if="{{item.unread}}"
+        class="btn-plain small-btn"
+        size="mini"
+        bindtap="onRead"
+        data-id="{{item.id}}"
+      >标记已读</button>
+    </view>
   </view>
-  <button class="btn-primary" bindtap="onReadAll">全部已读</button>
+
+  <view wx:if="{{loading}}" class="muted list-tip">加载中…</view>
+  <view wx:elif="{{finished && records.length}}" class="muted list-tip">没有更多了</view>
+  <empty wx:if="{{!loading && !records.length}}" text="暂无站内信"></empty>
+
+  <button wx:if="{{records.length}}" class="btn-primary" style="margin-top: 20rpx" bindtap="onReadAll">全部已读</button>
 </view>

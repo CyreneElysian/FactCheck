@@ -29,3 +29,24 @@
 }
 .menu-item:last-child { border-bottom: none; }
 .arrow { color: #c0c0c0; font-size: 36rpx; }
+
+/* 头像（有图时显示图片，无图时显示首字母） */
+.avatar-img { display: block; }
+
+/* 菜单左侧：文字 + 未读红点 */
+.menu-left {
+  justify-content: flex-start;
+}
+
+.badge-dot {
+  margin-left: 12rpx;
+  min-width: 32rpx;
+  height: 32rpx;
+  line-height: 32rpx;
+  padding: 0 8rpx;
+  border-radius: 16rpx;
+  background: #f56c6c;
+  color: #ffffff;
+  font-size: 20rpx;
+  text-align: center;
+}

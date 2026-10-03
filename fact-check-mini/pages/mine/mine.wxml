@@ -1,6 +1,7 @@
 <view class="container">
-  <view class="mine-header">
-    <view class="avatar">{{initial}}</view>
+  <view class="mine-header" bindtap="onMenu" data-path="/pages/profile/profile" data-tab="{{false}}">
+    <image wx:if="{{avatar}}" class="avatar avatar-img" src="{{avatar}}" mode="aspectFill" />
+    <view wx:else class="avatar">{{initial}}</view>
     <view>
       <view class="nickname">{{userInfo.nickname || userInfo.username || '用户'}}</view>
       <view class="muted">{{userInfo.username}}</view>
@@ -9,7 +10,11 @@
 
   <view class="card">
     <view class="menu-item" wx:for="{{menus}}" wx:key="path" bindtap="onMenu" data-path="{{item.path}}" data-tab="{{item.tab}}">
-      <text>{{item.text}}</text>
+      <view class="row menu-left">
+        <text>{{item.text}}</text>
+        <!-- 未读红点（P3-32） -->
+        <text wx:if="{{item.badge && unread > 0}}" class="badge-dot">{{unread > 99 ? '99+' : unread}}</text>
+      </view>
       <text class="arrow">›</text>
     </view>
   </view>

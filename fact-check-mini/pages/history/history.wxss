@@ -1,0 +1,6 @@
+/* 历史记录列表（P3-33） */
+
+.list-tip {
+  text-align: center;
+  padding: 20rpx 0;
+}

@@ -1,4 +1,6 @@
 {
   "navigationBarTitleText": "热门 Top10",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark",
   "usingComponents": { "empty": "/components/empty/empty" }
 }

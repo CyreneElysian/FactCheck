@@ -7,6 +7,7 @@
     "pages/mine/mine",
     "pages/detail/detail",
     "pages/authority/authority",
+    "pages/authority-detail/authority-detail",
     "pages/messages/messages",
     "pages/favorites/favorites",
     "pages/appeals/appeals",

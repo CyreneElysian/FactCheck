@@ -13,6 +13,7 @@ import com.factcheck.entity.DetectLog;
 import com.factcheck.entity.Evidence;
 import com.factcheck.entity.FactCheckRecord;
 import com.factcheck.entity.Message;
+import com.factcheck.entity.RecordRating;
 import com.factcheck.exception.BaseException;
 import com.factcheck.exception.RateLimitException;
 import com.factcheck.exception.RecordNotFoundException;
@@ -22,6 +23,8 @@ import com.factcheck.mapper.AuthorityInfoMapper;
 import com.factcheck.mapper.ConclusionRevisionMapper;
 import com.factcheck.mapper.DetectLogMapper;
 import com.factcheck.mapper.EvidenceMapper;
+import com.factcheck.mapper.RecordRatingMapper;
+import com.factcheck.mapper.UserFavoriteMapper;
 import com.factcheck.mapper.FactCheckRecordMapper;
 import com.factcheck.mapper.MessageMapper;
 import com.factcheck.properties.AgentProperties;
@@ -75,6 +78,10 @@ public class DetectServiceImpl implements DetectService {
     private ConclusionRevisionMapper conclusionRevisionMapper;
     @Autowired
     private EvidenceMapper evidenceMapper;
+    @Autowired
+    private UserFavoriteMapper userFavoriteMapper;
+    @Autowired
+    private RecordRatingMapper recordRatingMapper;
     @Autowired
     private DetectLogMapper detectLogMapper;
     @Autowired
@@ -507,7 +514,16 @@ public class DetectServiceImpl implements DetectService {
         // （前端等待异步检测结果时本来就会轮询该接口，不去重的话热度榜可被刷新刷上去）
         hotRankService.addScoreOnce(recordId, HotScoreConstant.VIEW_SCORE,
                 "user:" + (userId == null ? "anonymous" : userId), hotProperties.getViewDedupMinutes());
-        return toVO(record, true);
+
+        DetectRecordVO vo = toVO(record, true);
+        // 收藏态与我的评分（P3-30 / P3-37）：前端要据此回显"已收藏/取消收藏"与"我评过什么"，
+        // 只放在详情接口（列表接口不需要，避免 N+1 查询）
+        if (userId != null) {
+            vo.setFavorited(userFavoriteMapper.countByUserAndRecord(userId, recordId) > 0);
+            RecordRating rating = recordRatingMapper.getByUserAndRecord(userId, recordId);
+            vo.setMyRating(rating == null ? null : rating.getRating());
+        }
+        return vo;
     }
 
     /**

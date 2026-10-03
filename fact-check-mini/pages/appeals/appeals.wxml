@@ -1,8 +1,23 @@
 <view class="container">
   <view class="card" wx:for="{{records}}" wx:key="id">
-    <view>{{item.recordContent}}</view>
-    <view class="muted">类型：{{item.reasonType}}　状态：{{item.status === 0 ? '待处理' : item.status === 1 ? '已采纳' : '已驳回'}}</view>
+    <view class="row">
+      <text class="tag {{item.statusClass}}">{{item.statusText}}</text>
+      <text class="muted">{{item.createTime}}</text>
+    </view>
+    <view class="muted" style="margin-top: 12rpx">类型：{{item.reasonText}}</view>
+    <view style="margin: 8rpx 0">{{item.recordContent}}</view>
+    <view wx:if="{{item.content}}" class="muted">我的说明：{{item.content}}</view>
     <view wx:if="{{item.handleResult}}" class="muted">处理结果：{{item.handleResult}}</view>
+    <button
+      wx:if="{{item.recordId}}"
+      class="btn-plain small-btn"
+      size="mini"
+      data-id="{{item.recordId}}"
+      bindtap="goRecord"
+    >查看记录</button>
   </view>
-  <empty wx:if="{{!records.length}}" text="暂无申诉"></empty>
+
+  <view wx:if="{{loading}}" class="muted list-tip">加载中…</view>
+  <view wx:elif="{{finished && records.length}}" class="muted list-tip">没有更多了</view>
+  <empty wx:if="{{!loading && !records.length}}" text="暂无申诉"></empty>
 </view>

@@ -1,8 +1,19 @@
 <view class="container">
   <view class="card" wx:for="{{records}}" wx:key="recordId">
-    <view>{{item.content}}</view>
-    <view class="muted">收藏于 {{item.createTime}}</view>
-    <button class="btn-plain" style="margin-top: 12rpx" bindtap="onRemove" data-id="{{item.recordId}}">取消收藏</button>
+    <view data-id="{{item.recordId}}" bindtap="goDetail">
+      <view class="row">
+        <text class="{{item.verdictClass}}">{{item.verdictText}}</text>
+        <text class="muted">{{item.createTime}}</text>
+      </view>
+      <view style="margin: 12rpx 0">{{item.content}}</view>
+    </view>
+    <view class="row">
+      <text class="muted">详情 ›</text>
+      <button class="btn-plain small-btn" size="mini" bindtap="onRemove" data-id="{{item.recordId}}">取消收藏</button>
+    </view>
   </view>
-  <empty wx:if="{{!records.length}}" text="暂无收藏"></empty>
+
+  <view wx:if="{{loading}}" class="muted list-tip">加载中…</view>
+  <view wx:elif="{{finished && records.length}}" class="muted list-tip">没有更多了</view>
+  <empty wx:if="{{!loading && !records.length}}" text="暂无收藏"></empty>
 </view>

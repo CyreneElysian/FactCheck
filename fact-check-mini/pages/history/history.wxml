@@ -1,13 +1,17 @@
 <view class="container">
-  <view class="card" wx:for="{{records}}" wx:key="id">
+  <view class="card" wx:for="{{records}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
     <view class="row">
       <text class="muted">#{{item.id}}</text>
-      <text class="{{item.verdict === 1 ? 'verdict-true' : item.verdict === 2 ? 'verdict-false' : 'verdict-unknown'}}">
-        {{item.verdict === 1 ? '真' : item.verdict === 2 ? '假' : item.status === 1 ? '待人工' : '检测中'}}
-      </text>
+      <text class="{{item.verdictClass}}">{{item.verdictText}}</text>
     </view>
     <view style="margin: 12rpx 0">{{item.content}}</view>
-    <button class="btn-plain" bindtap="goDetail" data-id="{{item.id}}">详情</button>
+    <view class="row">
+      <text class="muted">{{item.category || '未分类'}}　{{item.createTime || ''}}</text>
+      <text class="muted">详情 ›</text>
+    </view>
   </view>
-  <empty wx:if="{{!records.length}}" text="暂无历史记录"></empty>
+
+  <view wx:if="{{loading}}" class="muted list-tip">加载中…</view>
+  <view wx:elif="{{finished && records.length}}" class="muted list-tip">没有更多了（共 {{total}} 条）</view>
+  <empty wx:if="{{!loading && !records.length}}" text="暂无历史记录"></empty>
 </view>

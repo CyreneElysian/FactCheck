@@ -1,0 +1,22 @@
+/* 我的申诉（P3-33） */
+
+.tag {
+  font-size: 22rpx;
+  padding: 4rpx 14rpx;
+  border-radius: 20rpx;
+}
+.status-pending { background: #fdf6ec; color: #e6a23c; }
+.status-ok { background: #f0f9eb; color: #67c23a; }
+.status-no { background: #fef0f0; color: #f56c6c; }
+
+.small-btn {
+  margin: 12rpx 0 0;
+  font-size: 24rpx;
+  height: 52rpx;
+  line-height: 52rpx;
+  padding: 0 20rpx;
+}
+.list-tip {
+  text-align: center;
+  padding: 20rpx 0;
+}

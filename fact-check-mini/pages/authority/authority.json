@@ -1,4 +1,6 @@
 {
   "navigationBarTitleText": "权威信息",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark",
   "usingComponents": { "empty": "/components/empty/empty" }
 }

@@ -1,14 +1,141 @@
+<!-- 检测详情：结论 / 内容 / 推理链 / 证据列表 / 收藏·评分·申诉·分享（P3-30、P3-31） -->
 <view class="container">
-  <view class="card">
-    <view class="title">检测详情 #{{id}}</view>
-    <view wx:if="{{record.authorityInfo}}" class="authority-hit">已命中权威信息：{{record.authorityInfo.title}}</view>
-    <view class="muted">内容</view>
-    <view style="margin: 8rpx 0 16rpx">{{record.content}}</view>
-    <view wx:if="{{record.category}}" class="muted">分类：{{record.category}}</view>
-    <view class="{{record.verdict === 1 ? 'verdict-true' : record.verdict === 2 ? 'verdict-false' : 'verdict-unknown'}}" style="margin-top: 12rpx">
-      结论：{{verdictText}}
-    </view>
-    <view wx:if="{{record.reasoningChain}}" class="muted" style="margin-top: 12rpx">推理链：{{record.reasoningChain}}</view>
-    <view wx:if="{{record.aiSummary}}" class="muted" style="margin-top: 12rpx">AI 说明：{{record.aiSummary}}</view>
+
+  <!-- 加载中 -->
+  <view wx:if="{{loading}}" class="card">
+    <view class="muted">加载中…</view>
   </view>
+
+  <block wx:else>
+    <!-- 结论卡片 -->
+    <view class="card">
+      <view class="row">
+        <view class="muted">检测记录 #{{id}}</view>
+        <view class="tag {{record.status === 3 ? 'tag-danger' : record.status === 2 ? 'tag-success' : 'tag-warning'}}">{{statusText}}</view>
+      </view>
+
+      <view class="verdict {{verdictClass}}">{{verdictText}}</view>
+
+      <view class="row meta-row">
+        <view class="muted" wx:if="{{confidenceText}}">置信度 {{confidenceText}}</view>
+        <view class="muted" wx:if="{{verdictSourceText}}">{{verdictSourceText}}</view>
+        <view class="muted" wx:if="{{record.version}}">版本 v{{record.version}}</view>
+      </view>
+
+      <view class="muted" wx:if="{{record.status === 1}}">该消息已进入人工诊断队列，请稍后在“我的申诉/历史”中查看更新。</view>
+      <view class="muted" wx:if="{{record.status === 3}}">检测失败（服务暂时不可用），可稍后重新提交相同内容。</view>
+      <view class="muted" wx:if="{{record.status === 0}}">检测中，结果出来后本页会自动刷新…</view>
+    </view>
+
+    <!-- 内容卡片 -->
+    <view class="card">
+      <view class="title">检测内容</view>
+      <view class="content-text">{{record.content}}</view>
+      <view wx:if="{{record.category}}" class="muted" style="margin-top: 12rpx">分类：{{record.category}}</view>
+      <image
+        wx:if="{{record.imageUrl}}"
+        class="content-image"
+        src="{{record.imageUrl}}"
+        mode="widthFix"
+        show-menu-by-longpress="{{true}}"
+      />
+      <view wx:if="{{record.authorityInfo}}" class="authority-hit" bindtap="goAuthority">
+        已命中权威信息：{{record.authorityInfo.title}} ›
+      </view>
+      <view class="muted" style="margin-top: 12rpx" wx:if="{{record.createTime}}">提交时间：{{record.createTime}}</view>
+    </view>
+
+    <!-- 推理链 -->
+    <view class="card" wx:if="{{record.reasoningChain}}">
+      <view class="title">推理依据</view>
+      <view class="reasoning">{{record.reasoningChain}}</view>
+    </view>
+
+    <view class="card" wx:if="{{record.aiSummary}}">
+      <view class="title">AI 说明</view>
+      <view class="muted">{{record.aiSummary}}</view>
+    </view>
+
+    <!-- 证据列表 -->
+    <view class="card">
+      <view class="title">证据（{{evidenceList.length}}）</view>
+      <view wx:if="{{evidenceList.length === 0}}" class="muted">暂无证据（未联网核查或未检索到相关来源）</view>
+      <view
+        wx:for="{{evidenceList}}"
+        wx:key="id"
+        class="evidence"
+        data-url="{{item.url}}"
+        bindtap="onOpenEvidence"
+      >
+        <view class="evidence-title">{{item.title}}</view>
+        <view class="row evidence-meta">
+          <view class="muted">
+            {{item.source || '未知来源'}}
+            <text wx:if="{{item.isAuthoritative}}" class="badge">权威</text>
+          </view>
+          <view class="muted">可信度 {{item.credibilityText}} · 相关度 {{item.relevanceText}}</view>
+        </view>
+        <view wx:if="{{item.snippet}}" class="muted evidence-snippet">{{item.snippet}}</view>
+        <view wx:if="{{item.url}}" class="muted evidence-link">点击复制链接 ↗</view>
+      </view>
+    </view>
+
+    <!-- 操作区：仅已完成（status=2）可评分/申诉 -->
+    <view class="card">
+      <view class="title">这条结论对你有帮助吗？</view>
+      <view class="row">
+        <button
+          class="btn-plain flex-btn {{myRating === 1 ? 'btn-active' : ''}}"
+          size="mini"
+          disabled="{{record.status !== 2 || ratingBusy}}"
+          data-rating="1"
+          bindtap="onRate"
+        >有帮助</button>
+        <button
+          class="btn-plain flex-btn {{myRating === 0 ? 'btn-active' : ''}}"
+          size="mini"
+          disabled="{{record.status !== 2 || ratingBusy}}"
+          data-rating="0"
+          bindtap="onRate"
+        >无帮助</button>
+      </view>
+      <view class="muted" style="margin-top: 12rpx" wx:if="{{myRating !== null}}">你已评分，可随时修改</view>
+
+      <view class="row action-row">
+        <button class="btn-plain flex-btn" size="mini" disabled="{{favoriteBusy}}" bindtap="onToggleFavorite">
+          {{favorited ? '取消收藏' : '收藏'}}
+        </button>
+        <button class="btn-plain flex-btn" size="mini" bindtap="onToggleAppeal">
+          {{showAppeal ? '收起申诉' : '申诉/纠错'}}
+        </button>
+        <!-- 原生分享：必须用 open-type="share" 触发 onShareAppMessage -->
+        <button class="btn-primary flex-btn" size="mini" open-type="share">分享给好友</button>
+      </view>
+      <view class="muted" style="margin-top: 12rpx">也可以点右上角“…”分享到朋友圈</view>
+
+      <!-- 申诉表单 -->
+      <view wx:if="{{showAppeal}}" class="appeal-form">
+        <view class="muted">申诉类型</view>
+        <picker mode="selector" range="{{reasonOptions}}" range-key="label" value="{{reasonIndex}}" bindchange="onReasonChange">
+          <view class="input picker-value">{{reasonOptions[reasonIndex].label}} ▾</view>
+        </picker>
+        <view class="muted">申诉说明（不超过 500 字）</view>
+        <textarea
+          class="input textarea"
+          value="{{appealContent}}"
+          maxlength="500"
+          placeholder="请说明你认为结论/证据存在的问题"
+          bindinput="onAppealInput"
+        />
+        <button class="btn-primary" size="mini" disabled="{{appealBusy}}" bindtap="onSubmitAppeal">提交申诉</button>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="row" bindtap="goAppeals">
+        <view>我的申诉记录</view>
+        <view class="muted">›</view>
+      </view>
+    </view>
+  </block>
 </view>

@@ -1,8 +1,27 @@
 <view class="container">
-  <view class="card" wx:for="{{records}}" wx:key="id">
-    <view class="title">{{item.title}}</view>
-    <view class="muted">{{item.source}}　{{item.publishTime}}</view>
-    <view style="margin-top: 12rpx">{{item.content}}</view>
+  <view class="card search-card">
+    <input
+      class="input search-input"
+      placeholder="搜索权威信息标题"
+      value="{{keyword}}"
+      confirm-type="search"
+      bindinput="onKeyword"
+      bindconfirm="onSearch"
+    />
+    <button class="btn-primary search-btn" size="mini" bindtap="onSearch">搜索</button>
   </view>
-  <empty wx:if="{{!records.length}}" text="暂无权威信息"></empty>
+
+  <view class="card" wx:for="{{records}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
+    <view class="title">{{item.title}}</view>
+    <view class="muted">{{item.source || '未知来源'}}{{item.publishTime ? '　' + item.publishTime : ''}}</view>
+    <view class="content-clamp">{{item.content}}</view>
+    <view class="row">
+      <text class="muted">{{item.category || '未分类'}}</text>
+      <text class="muted">详情 ›</text>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="muted list-tip">加载中…</view>
+  <view wx:elif="{{finished && records.length}}" class="muted list-tip">没有更多了</view>
+  <empty wx:if="{{!loading && !records.length}}" text="暂无权威信息"></empty>
 </view>

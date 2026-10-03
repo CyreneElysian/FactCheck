@@ -130,5 +130,17 @@ Page({
   /** 移除已识别的图片，回到纯文字检测 */
   onRemoveImage() {
     this.setData({ imageUrl: '', previewPath: '' })
+  },
+
+  /** 原生分享（P3-31）：首页分享给好友 */
+  onShareAppMessage() {
+    return {
+      title: '事实检测：AI + 人工的事实核查，帮你判断消息真假',
+      path: '/pages/index/index'
+    }
+  },
+
+  onShareTimeline() {
+    return { title: '事实检测：AI + 人工的事实核查，帮你判断消息真假' }
   }
 })

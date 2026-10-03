@@ -1,0 +1,30 @@
+/* 站内信（P3-33） */
+
+.msg-type {
+  font-size: 24rpx;
+  color: #409eff;
+}
+.msg-title {
+  margin-top: 12rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+.small-btn {
+  margin: 0 12rpx 0 0;
+  font-size: 24rpx;
+  height: 52rpx;
+  line-height: 52rpx;
+  padding: 0 20rpx;
+}
+.badge-dot {
+  margin-left: 12rpx;
+  padding: 2rpx 10rpx;
+  border-radius: 16rpx;
+  background: #f56c6c;
+  color: #ffffff;
+  font-size: 20rpx;
+}
+.list-tip {
+  text-align: center;
+  padding: 20rpx 0;
+}
