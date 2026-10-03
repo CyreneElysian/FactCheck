@@ -99,7 +99,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getDetectRecord, getRecordRevisions } from '@/api/detect'
@@ -204,11 +204,23 @@ const drawShareCard = () => {
   ctx.textAlign = 'left'
   wrapText(ctx, record.value.content || '', 50, 200, canvas.width - 100, 30, 5)
 
+  // 记录链接（P3-38 的降级方案）
+  //
+  // 产品文档要求分享卡片含二维码；离线环境装不了 qrcode 依赖（见改进清单 P3-38），
+  // 这里先把可访问链接打印在卡片上——对方手动输入也能打开，聊胜于无。
+  ctx.fillStyle = '#409eff'
+  ctx.font = '14px sans-serif'
+  ctx.textAlign = 'center'
+  ctx.fillText(shareUrl, canvas.width / 2, 330)
+
   ctx.fillStyle = '#909399'
   ctx.font = '14px sans-serif'
   ctx.textAlign = 'center'
   ctx.fillText('来自 事实检测平台', canvas.width / 2, 360)
 }
+
+/** 分享卡片上的记录链接 */
+const shareUrl = computed(() => `${window.location.origin}/history/${id}`)
 
 const wrapText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number,
                   maxWidth: number, lineHeight: number, maxLines: number) => {

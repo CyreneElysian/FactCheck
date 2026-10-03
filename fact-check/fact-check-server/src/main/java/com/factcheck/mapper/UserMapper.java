@@ -64,4 +64,13 @@ public interface UserMapper {
     @Select("select id, username, password, nickname, avatar, role, status, wechat_openid, " +
             "wechat_unionid, last_login_time, create_time, update_time from t_user order by create_time desc")
     List<User> pageAll();
+
+    /**
+     * 查询可转派的管理员（P3-35：转派下拉框数据源）
+     *
+     * <p>只取 role=1 且状态正常的账号；不返回密码等敏感字段（由 VO 再收窄一层）。</p>
+     */
+    @Select("select id, username, nickname, role, status from t_user " +
+            "where role = 1 and status = 1 order by id")
+    List<User> listAdmins();
 }

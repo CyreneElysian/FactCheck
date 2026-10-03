@@ -6,8 +6,10 @@ import com.factcheck.constant.MessageConstant;
 import com.factcheck.context.BaseContext;
 import com.factcheck.dto.AdminConclusionDTO;
 import com.factcheck.dto.AdminRecordPageQueryDTO;
+import com.factcheck.dto.EvidenceCreateDTO;
 import com.factcheck.entity.AuthorityInfo;
 import com.factcheck.entity.ConclusionRevision;
+import com.factcheck.entity.Evidence;
 import com.factcheck.entity.FactCheckRecord;
 import com.factcheck.entity.Message;
 import com.factcheck.entity.OperationLog;
@@ -368,5 +370,81 @@ public class AdminRecordServiceImpl implements AdminRecordService {
                 .completeTime(record.getCompleteTime())
                 .evidenceList(evidenceList)
                 .build();
+    }
+
+    /**
+     * 管理员补充证据（P3-35）
+     */
+    @Override
+    public void addEvidence(Long recordId, EvidenceCreateDTO evidenceCreateDTO) {
+        Long adminId = BaseContext.getCurrentId();
+        log.info("管理员补充证据：adminId={}, recordId={}", adminId, recordId);
+        if (adminId == null) {
+            throw new BaseException(MessageConstant.ADMIN_NOT_LOGIN);
+        }
+        if (evidenceCreateDTO == null) {
+            throw new BaseException("证据内容不能为空");
+        }
+        FactCheckRecord record = factCheckRecordMapper.getById(recordId);
+        if (record == null) {
+            throw new RecordNotFoundException(MessageConstant.RECORD_NOT_FOUND);
+        }
+        // 参数校验（P2-17 的统一入口）：标题必填且不超过 200（t_evidence.title 列宽）
+        String title = ValidationUtils.requireText(evidenceCreateDTO.getTitle(), "证据标题", 200);
+        // 链接选填，但填了就必须是 http(s)，避免写入 javascript:/file: 之类的地址
+        // （t_evidence.url 列宽 500）
+        String url = ValidationUtils.optionalHttpUrl(evidenceCreateDTO.getUrl(), "证据链接", 500);
+        String snippet = ValidationUtils.optionalText(evidenceCreateDTO.getSnippet(), "证据摘要", 500);
+
+        evidenceMapper.insert(Evidence.builder()
+                .recordId(recordId)
+                .title(title)
+                .url(url)
+                .snippet(snippet)
+                .source("管理员补充")
+                // 人工补充的证据不臆造可信度/相关度分值：留空，前端显示"-"
+                .sourceCredibility(null)
+                .relevanceScore(null)
+                .sourceType(2)
+                .createTime(LocalDateTime.now())
+                .build());
+
+        operationLogMapper.insert(OperationLog.builder()
+                .adminId(adminId)
+                .operation("补充证据")
+                .method("AdminRecordServiceImpl.addEvidence")
+                .params("recordId=" + recordId + ", title=" + title)
+                .createTime(LocalDateTime.now())
+                .build());
+    }
+
+    /**
+     * 删除证据（P3-35）
+     */
+    @Override
+    public void removeEvidence(Long recordId, Long evidenceId) {
+        Long adminId = BaseContext.getCurrentId();
+        log.info("管理员删除证据：adminId={}, recordId={}, evidenceId={}", adminId, recordId, evidenceId);
+        if (adminId == null) {
+            throw new BaseException(MessageConstant.ADMIN_NOT_LOGIN);
+        }
+        if (evidenceId == null) {
+            throw new BaseException("证据 ID 不能为空");
+        }
+        Evidence evidence = evidenceMapper.getById(evidenceId);
+        // 归属校验：必须确认这条证据属于路径上的记录，否则等于"用某记录的入口删任意证据"
+        if (evidence == null || !recordId.equals(evidence.getRecordId())) {
+            throw new BaseException("证据不存在或不属于该记录");
+        }
+        evidenceMapper.deleteById(evidenceId);
+
+        operationLogMapper.insert(OperationLog.builder()
+                .adminId(adminId)
+                .operation("删除证据")
+                .method("AdminRecordServiceImpl.removeEvidence")
+                .params("recordId=" + recordId + ", evidenceId=" + evidenceId
+                        + ", title=" + evidence.getTitle())
+                .createTime(LocalDateTime.now())
+                .build());
     }
 }

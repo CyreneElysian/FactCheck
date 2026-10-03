@@ -1,10 +1,26 @@
 <template>
   <el-card>
     <template #header>申诉处理</template>
+    <!-- P3-36：补状态筛选（文档要求可按处理状态查看） -->
+    <el-form inline>
+      <el-form-item label="状态">
+        <el-select v-model="query.status" clearable placeholder="全部" style="width: 150px" @change="onSearch">
+          <el-option label="待处理" :value="0" />
+          <el-option label="已采纳" :value="1" />
+          <el-option label="已驳回" :value="2" />
+        </el-select>
+      </el-form-item>
+      <el-form-item>
+        <el-button @click="onReset">重置</el-button>
+      </el-form-item>
+    </el-form>
+
     <el-table :data="records" v-loading="loading">
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column prop="recordId" label="记录ID" width="100" />
-      <el-table-column prop="reasonType" label="类型" width="100" />
+      <el-table-column label="类型" width="110">
+        <template #default="{ row }">{{ reasonText(row.reasonType) }}</template>
+      </el-table-column>
       <el-table-column prop="content" label="申诉说明" show-overflow-tooltip />
       <el-table-column label="状态" width="100">
         <template #default="{ row }">
@@ -13,12 +29,25 @@
           </el-tag>
         </template>
       </el-table-column>
+      <el-table-column prop="createTime" label="提交时间" width="180" />
       <el-table-column label="操作" width="100">
         <template #default="{ row }">
           <el-button v-if="row.status === 0" type="primary" link @click="openHandle(row)">处理</el-button>
         </template>
       </el-table-column>
     </el-table>
+
+    <!-- P3-36：原先声明了 total 却没有分页组件，超过一页的申诉根本看不到 -->
+    <el-pagination
+      style="margin-top: 12px"
+      layout="total, sizes, prev, pager, next"
+      :total="total"
+      :page-sizes="[10, 20, 50]"
+      :page-size="query.pageSize"
+      :current-page="query.page"
+      @current-change="onPageChange"
+      @size-change="onSizeChange"
+    />
 
     <el-dialog v-model="handleVisible" title="处理申诉" width="560px">
       <el-form label-width="90px">
@@ -77,7 +106,7 @@ import { handleAppeal, pageAdminAppeals } from '@/api/admin'
 const loading = ref(false)
 const records = ref<any[]>([])
 const total = ref(0)
-const query = reactive({ page: 1, pageSize: 10 })
+const query = reactive({ status: undefined as number | undefined, page: 1, pageSize: 10 })
 const handleVisible = ref(false)
 const handleId = ref<number | null>(null)
 const handleForm = reactive({
@@ -86,6 +115,10 @@ const handleForm = reactive({
   newVerdict: null as number | null,
   newReasoningChain: ''
 })
+
+/** 申诉类型文案（与 t_appeal.reason_type 注释一致） */
+const reasonText = (value: number) =>
+  value === 1 ? '结论错误' : value === 2 ? '证据不足' : value === 3 ? '来源不可信' : '其他'
 
 const load = async () => {
   loading.value = true
@@ -96,6 +129,25 @@ const load = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const onPageChange = (page: number) => {
+  query.page = page
+  load()
+}
+const onSizeChange = (size: number) => {
+  query.pageSize = size
+  query.page = 1
+  load()
+}
+const onSearch = () => {
+  query.page = 1
+  load()
+}
+const onReset = () => {
+  query.status = undefined
+  query.page = 1
+  load()
 }
 
 const openHandle = (row: any) => {

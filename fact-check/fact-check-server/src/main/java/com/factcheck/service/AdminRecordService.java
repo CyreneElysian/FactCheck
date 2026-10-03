@@ -34,4 +34,19 @@ public interface AdminRecordService {
      * 查询指定记录的结论修订历史
      */
     java.util.List<com.factcheck.vo.ConclusionRevisionVO> revisionHistory(Long recordId);
+
+    /**
+     * 管理员补充证据（P3-35）
+     *
+     * <p>以 {@code source_type=2}（管理员补充）写入，与 AI 检索结果区分；
+     * 会校验标题必填、链接必须是 http(s)，并写操作日志。</p>
+     */
+    void addEvidence(Long recordId, com.factcheck.dto.EvidenceCreateDTO evidenceCreateDTO);
+
+    /**
+     * 删除证据（P3-35）
+     *
+     * <p>删除前校验该证据确实属于路径上的 recordId，避免"用 A 记录的权限删掉 B 记录的证据"。</p>
+     */
+    void removeEvidence(Long recordId, Long evidenceId);
 }

@@ -14,6 +14,7 @@ import com.factcheck.mapper.UserMapper;
 import com.factcheck.result.PageResult;
 import com.factcheck.service.AdminAccountService;
 import com.factcheck.util.ValidationUtils;
+import com.factcheck.vo.AdminBriefVO;
 import com.factcheck.vo.UserProfileVO;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
@@ -40,6 +41,23 @@ public class AdminAccountServiceImpl implements AdminAccountService {
     private UserMapper userMapper;
     @Autowired
     private OperationLogMapper operationLogMapper;
+
+    /**
+     * 查询管理员简要列表（P3-35：诊断转派下拉框）
+     *
+     * <p>转派原先只能让管理员手填一个 ID——填错就是一个无效指派，
+     * 这里提供真实可选的管理员列表。只返回 id/username/nickname。</p>
+     */
+    @Override
+    public List<AdminBriefVO> listAdmins() {
+        return userMapper.listAdmins().stream()
+                .map(u -> AdminBriefVO.builder()
+                        .id(u.getId())
+                        .username(u.getUsername())
+                        .nickname(u.getNickname())
+                        .build())
+                .collect(Collectors.toList());
+    }
 
     /**
      * 创建管理员账号

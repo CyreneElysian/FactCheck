@@ -5,6 +5,7 @@ import com.factcheck.result.PageResult;
 import com.factcheck.result.Result;
 import com.factcheck.service.*;
 import com.factcheck.vo.*;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -29,6 +30,15 @@ public class AdminAccountController {
         adminAccountService.create(adminAccountCreateDTO);
         return Result.success();
     }
+    /**
+     * 管理员简要列表（P3-35：诊断转派下拉框数据源）
+     */
+    @GetMapping("/admins")
+    public Result<List<AdminBriefVO>> admins() {
+        log.info("查询管理员列表");
+        return Result.success(adminAccountService.listAdmins());
+    }
+
     /**
      * 分页查询用户列表
      */

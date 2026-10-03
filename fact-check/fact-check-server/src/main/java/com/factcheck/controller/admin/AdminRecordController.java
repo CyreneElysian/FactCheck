@@ -64,4 +64,24 @@ public class AdminRecordController {
         adminRecordService.updateConclusion(id, adminConclusionDTO);
         return Result.success();
     }
+
+    /**
+     * 管理员补充证据（P3-35：AI 没找到证据或证据不足时人工补一条来源）
+     */
+    @PostMapping("/{id}/evidence")
+    public Result addEvidence(@PathVariable Long id, @RequestBody EvidenceCreateDTO evidenceCreateDTO) {
+        log.info("管理员补充证据：recordId={}, title={}", id, evidenceCreateDTO.getTitle());
+        adminRecordService.addEvidence(id, evidenceCreateDTO);
+        return Result.success();
+    }
+
+    /**
+     * 删除证据（P3-35：删除不相关/错误来源）
+     */
+    @DeleteMapping("/{id}/evidence/{evidenceId}")
+    public Result removeEvidence(@PathVariable Long id, @PathVariable Long evidenceId) {
+        log.info("管理员删除证据：recordId={}, evidenceId={}", id, evidenceId);
+        adminRecordService.removeEvidence(id, evidenceId);
+        return Result.success();
+    }
 }

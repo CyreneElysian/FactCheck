@@ -59,6 +59,17 @@ export const updateUserStatus = (id: number | string, status: number) =>
 /** 查询结论修订历史 */
 export const getRecordRevisions = (id: number | string) => request.get(`/admin/records/${id}/revisions`)
 
+/** 管理员简要列表（P3-35：诊断转派下拉框，替代手填 ID） */
+export const listAdmins = () => request.get('/admin/account/admins')
+
+/** 补充证据（P3-35） */
+export const addEvidence = (recordId: number | string, data: any) =>
+  request.post(`/admin/records/${recordId}/evidence`, data)
+
+/** 删除证据（P3-35） */
+export const removeEvidence = (recordId: number | string, evidenceId: number | string) =>
+  request.delete(`/admin/records/${recordId}/evidence/${evidenceId}`)
+
 /** 管理员个人中心 */
 export const getAdminProfile = () => request.get('/admin/profile')
 

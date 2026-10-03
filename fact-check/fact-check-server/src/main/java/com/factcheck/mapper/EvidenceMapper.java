@@ -28,6 +28,29 @@ public interface EvidenceMapper {
     void insertBatch(@Param("list") List<Evidence> list);
 
     /**
+     * 新增单条证据（管理员补充，P3-35）
+     */
+    @Insert("insert into t_evidence(record_id, title, url, snippet, source, source_credibility, " +
+            "relevance_score, source_type, create_time) values " +
+            "(#{recordId}, #{title}, #{url}, #{snippet}, #{source}, #{sourceCredibility}, " +
+            "#{relevanceScore}, #{sourceType}, #{createTime})")
+    @org.apache.ibatis.annotations.Options(useGeneratedKeys = true, keyProperty = "id")
+    void insert(Evidence evidence);
+
+    /**
+     * 按 ID 查证据（删除前校验归属用）
+     */
+    @Select("select id, record_id, title, url, snippet, source, source_credibility, relevance_score, " +
+            "source_type, create_time from t_evidence where id = #{id}")
+    Evidence getById(Long id);
+
+    /**
+     * 按 ID 删除证据
+     */
+    @Delete("delete from t_evidence where id = #{id}")
+    void deleteById(Long id);
+
+    /**
      * 根据记录 ID 查询证据
      * @param recordId 记录ID
      * @return 证据列表
