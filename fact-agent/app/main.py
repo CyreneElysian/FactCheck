@@ -22,6 +22,7 @@ from .schemas import (
     HealthResponse,
     IndexAddRequest,
 )
+from .services.credibility import current_rules
 from .services.dedup_service import DedupService
 from .services.detect_service import DetectService
 from .services.embedding import EmbeddingService
@@ -72,12 +73,30 @@ else:
                 describe_tool(search_tool), settings.SEARCH_TOP_K, settings.SEARCH_FETCH_TOP)
 if not settings.LLM_API_KEY:
     logger.error("LLM_API_KEY 未配置，/detect 将无法调用大模型")
+if settings.INTERNAL_TOKEN:
+    logger.info("内部鉴权已启用：/detect、/dedup、/index/add 需要请求头 X-Internal-Token")
+else:
+    logger.error("INTERNAL_TOKEN 未配置：内部接口将一律返回 401（fail-closed）。"
+                 "请在 .env 中设置 INTERNAL_TOKEN，并让 Java 侧 fact-check.agent.internal-token 取相同值")
+logger.info("可信度规则：%s", current_rules().describe())
 logger.info("检测时间预算：%ds（Java 侧读超时应大于该值）", settings.DETECT_TOTAL_BUDGET)
 
 
 def _check_token(x_internal_token: str = Header("", alias="X-Internal-Token")):
-    """内部接口鉴权，未配置 INTERNAL_TOKEN 时不校验"""
-    if settings.INTERNAL_TOKEN and x_internal_token != settings.INTERNAL_TOKEN:
+    """
+    内部接口鉴权（P2-21）
+
+    规则：**配置了 INTERNAL_TOKEN 就必须带对，没配置则拒绝所有请求**（fail-closed）。
+    早期版本是"未配置就不校验"，配合 Java 侧根本不发这个头，等于这层鉴权从未生效；
+    现在的取舍是：宁可让未配置的环境以 401 明确失败（启动日志里会说清原因），
+    也不要静默地裸奔——Agent 若被误暴露到内网/公网，任何人调用都会消耗 LLM 额度与写向量索引。
+    """
+    if not settings.INTERNAL_TOKEN:
+        raise HTTPException(
+            status_code=401,
+            detail="agent internal token not configured (set INTERNAL_TOKEN)",
+        )
+    if x_internal_token != settings.INTERNAL_TOKEN:
         raise HTTPException(status_code=401, detail="invalid internal token")
 
 
@@ -101,6 +120,8 @@ def health():
         embedding_model=settings.EMBEDDING_MODEL,
         llm_model=settings.LLM_MODEL,
         llm_configured=bool(settings.LLM_API_KEY),
+        internal_auth_enabled=bool(settings.INTERNAL_TOKEN),
+        credibility_rules=current_rules().describe(),
     )
 
 

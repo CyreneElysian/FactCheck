@@ -10,6 +10,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
@@ -43,8 +44,9 @@ public class AgentClient {
         factory.setConnectTimeout(5000);
         factory.setReadTimeout(readTimeout * 1000);
         this.restTemplate = new RestTemplate(factory);
-        log.info("初始化 Python Agent 客户端：baseUrl={}, readTimeout={}s",
-                agentProperties.getBaseUrl(), readTimeout);
+        log.info("初始化 Python Agent 客户端：baseUrl={}, readTimeout={}s, 内部鉴权={}",
+                agentProperties.getBaseUrl(), readTimeout,
+                StringUtils.hasText(agentProperties.getInternalToken()) ? "已启用" : "未配置令牌");
     }
 
     /**
@@ -107,12 +109,27 @@ public class AgentClient {
         post("/index/add", body);
     }
 
+    /**
+     * 内部接口鉴权请求头（P2-21）
+     *
+     * <p>Python 侧对 /detect、/dedup、/index/add 做 fail-closed 校验：配置了 INTERNAL_TOKEN
+     * 就必须带对，没配置则一律 401。早期版本 Java 根本不发这个头、Python 未配置就不校验，
+     * 这层鉴权等于从未生效——Agent 一旦被误暴露，任何人都能消耗 LLM 额度并写向量索引。</p>
+     */
+    static final String INTERNAL_TOKEN_HEADER = "X-Internal-Token";
+
     private JSONObject post(String path, Map<String, Object> body) {
         String url = agentProperties.getBaseUrl() + path;
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         if (agentProperties != null && agentProperties.getBaseUrl() == null) {
             throw new IllegalStateException("Agent baseUrl 未配置");
+        }
+        if (StringUtils.hasText(agentProperties.getInternalToken())) {
+            headers.set(INTERNAL_TOKEN_HEADER, agentProperties.getInternalToken());
+        } else {
+            // 不抛异常：本地先起 Agent（未配令牌）时仍允许联调，但每次调用都留下明确告警
+            log.warn("未配置 fact-check.agent.internal-token，Agent 侧若启用了内部鉴权将返回 401");
         }
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         log.info("调用 Python Agent：url={}, body={}", url, JSON.toJSONString(body));

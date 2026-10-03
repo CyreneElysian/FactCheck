@@ -65,6 +65,10 @@ fact-check:
     exact-enabled: true
     semantic-enabled: true
     min-text-length: 8
+    # 内部鉴权令牌（P2-21）：作为 X-Internal-Token 发给 Python Agent，
+    # **必须与 Python 侧 .env 的 INTERNAL_TOKEN 一致**，否则 Agent 会返回 401（fail-closed）。
+    # 下面的默认值仅供本地联调，生产环境务必用环境变量覆盖
+    internal-token: ${FACTCHECK_AGENT_INTERNAL_TOKEN:dev-internal-token-change-me}
   ocr:
     endpoint: ${FACTCHECK_OCR_ENDPOINT:https://ocrapi-advanced.taobao.com/ocrservice/advanced}
     # 留空表示未配置：OcrServiceImpl 会直接抛出"OCR 识别失败"，避免用占位符发起无效请求

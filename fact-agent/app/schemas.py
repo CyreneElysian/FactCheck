@@ -68,3 +68,8 @@ class HealthResponse(BaseModel):
     embedding_model: str = ""
     llm_model: str = ""
     llm_configured: bool = Field(False, description="是否已配置 LLM_API_KEY")
+    internal_auth_enabled: bool = Field(
+        False,
+        description="是否启用了内部鉴权（INTERNAL_TOKEN）。为 False 时内部接口一律返回 401（fail-closed）"
+    )
+    credibility_rules: str = Field("", description="当前生效的来源可信度规则来源与规模，便于确认改的规则文件是否生效")

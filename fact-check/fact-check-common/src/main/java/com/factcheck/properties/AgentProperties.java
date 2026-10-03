@@ -17,4 +17,9 @@ public class AgentProperties {
     private boolean exactEnabled;
     private boolean semanticEnabled;
     private int minTextLength;
+    /**
+     * 内部鉴权令牌（P2-21）：作为请求头 X-Internal-Token 发给 Python Agent。
+     * 必须与 Python 侧 .env 的 INTERNAL_TOKEN 一致；生产环境通过环境变量注入。
+     */
+    private String internalToken;
 }
