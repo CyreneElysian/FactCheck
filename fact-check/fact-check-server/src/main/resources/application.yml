@@ -71,6 +71,18 @@ fact-check:
     provider: ${FACTCHECK_CONTENT_SAFETY_PROVIDER:local}
     # 图片地址允许的域名白名单，为空表示仅校验协议与主机名（把 OSS 域名填进来可进一步收紧）
     image-host-whitelist: []
+  rate-limit:
+    # 限流（S9）：检测提交 / 登录 / 注册三个场景，Redis INCR + EXPIRE 实现
+    enabled: ${FACTCHECK_RATE_LIMIT_ENABLED:true}
+    detect-per-day: ${FACTCHECK_RATE_LIMIT_DETECT_PER_DAY:50}
+    # 登录：按用户名拦针对性爆破 + 按 IP 拦批量撞库。
+    # 只限流、不锁定账号——硬锁账号会被用来做拒绝服务（知道用户名就能把真实用户锁在门外）
+    login-per-username: ${FACTCHECK_RATE_LIMIT_LOGIN_PER_USERNAME:5}
+    login-per-ip: ${FACTCHECK_RATE_LIMIT_LOGIN_PER_IP:20}
+    login-window-minutes: ${FACTCHECK_RATE_LIMIT_LOGIN_WINDOW_MINUTES:10}
+    # 注册：同一 IP 每小时最多 5 次，防批量注册小号
+    register-per-ip: ${FACTCHECK_RATE_LIMIT_REGISTER_PER_IP:5}
+    register-window-minutes: ${FACTCHECK_RATE_LIMIT_REGISTER_WINDOW_MINUTES:60}
   alioss:
     endpoint: ${fact-check.alioss.endpoint}
     access-key-id: ${fact-check.alioss.access-key-id}

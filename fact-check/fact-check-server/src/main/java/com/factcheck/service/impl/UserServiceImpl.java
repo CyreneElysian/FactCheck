@@ -16,6 +16,8 @@ import com.factcheck.exception.AccountLockedException;
 import com.factcheck.exception.AccountNotFoundException;
 import com.factcheck.exception.LoginFailedException;
 import com.factcheck.exception.PasswordErrorException;
+import com.factcheck.service.RateLimitService;
+import com.factcheck.util.ClientIpUtils;
 import com.factcheck.util.ValidationUtils;
 import com.factcheck.exception.UserNotLoginException;
 import com.factcheck.mapper.UserMapper;
@@ -47,6 +49,8 @@ public class UserServiceImpl implements UserService {
     private UserMapper userMapper;
     @Autowired
     private WeChatProperties weChatProperties;
+    @Autowired
+    private RateLimitService rateLimitService;
 
     /**
      * 用户注册
@@ -54,6 +58,9 @@ public class UserServiceImpl implements UserService {
     @Override
     public User register(UserRegisterDTO userRegisterDTO) {
         log.info("用户注册：username={}", userRegisterDTO == null ? null : userRegisterDTO.getUsername());
+
+        // 防刷限流（S9 / P2-16）：按客户端 IP 限制注册频次，防止批量注册小号
+        rateLimitService.checkRegister(ClientIpUtils.currentIp());
 
         // 参数校验（P2-17）：原先**完全没有校验**——密码为 null 会直接在
         // passwordEncoder.encode(null) 抛 NPE（前端只能看到"未知错误"），
@@ -87,6 +94,14 @@ public class UserServiceImpl implements UserService {
     @Override
     public User login(UserLoginDTO userLoginDTO) {
         log.info("用户登录：username={}", userLoginDTO == null ? null : userLoginDTO.getUsername());
+
+        // 防爆破限流（S9 / P2-16）：按用户名 + 按 IP 双维度，计数在所有尝试之前，
+        // 因此"错误密码尝试"同样消耗配额。放在参数校验之前是刻意的：
+        // 即使请求体不合法也属于一次尝试，不该绕过计数。
+        // 只限流、不锁定账号——硬锁会被用来把真实用户锁在门外（见 RateLimitService 注释）。
+        rateLimitService.checkLogin(
+                userLoginDTO == null ? null : userLoginDTO.getUsername(),
+                ClientIpUtils.currentIp());
 
         // 参数校验（P2-17）：缺参时给明确提示，而不是把 null 带进 mapper 再变成"未知错误"
         String username = ValidationUtils.requireText(userLoginDTO.getUsername(), "用户名", 50);

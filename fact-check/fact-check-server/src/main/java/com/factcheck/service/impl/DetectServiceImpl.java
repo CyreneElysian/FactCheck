@@ -29,6 +29,7 @@ import com.factcheck.result.PageResult;
 import com.factcheck.service.AgentClient;
 import com.factcheck.service.ContentSafetyService;
 import com.factcheck.service.DetectService;
+import com.factcheck.service.RateLimitService;
 import com.factcheck.util.ValidationUtils;
 import com.factcheck.vo.AuthorityInfoVO;
 import com.factcheck.vo.ConclusionRevisionVO;
@@ -63,7 +64,6 @@ public class DetectServiceImpl implements DetectService {
 
     private static final String DEFAULT_CATEGORY = "其他";
     private static final int PENDING_HOURS = 48;
-    private static final int MAX_DETECT_PER_DAY = 50;
 
     @Autowired
     private FactCheckRecordMapper factCheckRecordMapper;
@@ -83,6 +83,8 @@ public class DetectServiceImpl implements DetectService {
     private AgentProperties agentProperties;
     @Autowired
     private ContentSafetyService contentSafetyService;
+    @Autowired
+    private RateLimitService rateLimitService;
     @Autowired
     private RedisTemplate redisTemplate;
     @Autowired
@@ -222,24 +224,13 @@ public class DetectServiceImpl implements DetectService {
     }
 
     /**
-     * 检测防刷限流：同一用户每天最多提交 50 次
+     * 检测防刷限流：同一用户每天最多提交 N 次（N 由 fact-check.rate-limit.detect-per-day 配置）
+     *
+     * <p>P2-16 之后改为复用统一的 {@link RateLimitService}，与登录/注册共用一套计数逻辑与阈值配置，
+     * 不再各写一份 INCR + EXPIRE。</p>
      */
     private void checkRateLimit(Long userId) {
-        try {
-            String key = RedisKeyConstant.DETECT_LIMIT_PREFIX + userId;
-            Long count = stringRedisTemplate.opsForValue().increment(key);
-            if (count != null && count == 1) {
-                stringRedisTemplate.expire(key, 1, TimeUnit.DAYS);
-            }
-            if (count != null && count > MAX_DETECT_PER_DAY) {
-                log.warn("用户检测次数超限：userId={}, count={}", userId, count);
-                throw new RateLimitException(MessageConstant.RATE_LIMIT);
-            }
-        } catch (RateLimitException e) {
-            throw e;
-        } catch (Exception e) {
-            log.warn("检测限流检查失败，放行：userId={}, error={}", userId, e.getMessage());
-        }
+        rateLimitService.checkDetectSubmit(userId);
     }
 
     /**
