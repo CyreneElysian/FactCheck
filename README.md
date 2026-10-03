@@ -287,11 +287,20 @@ Agent 未启动时加 `--skip-index` 跳过该步。
 全部测试**离线可跑**（不需要 MySQL / Redis / 网络）：
 
 ```bash
-# Java：62 个用例（JUnit 5 + Mockito，无 Spring 上下文）
+# Java：224 个用例（JUnit 5 + Mockito，无 Spring 上下文）
 cd fact-check && mvn test
 
-# Python：63 个用例（标准库 unittest，零第三方依赖）
-cd fact-agent && python -m unittest discover -s tests -t . -v
+# Python：111 个用例（标准库 unittest，零第三方依赖）
+cd fact-agent && python -m unittest discover -s tests -t .
+
+# 小程序静态自检：110 项（JS 语法 / JSON / 页面齐套 / 跳转目标 / 事件绑定）
+cd fact-check-mini && python check_mini.py
+
+# 前端单元测试：需要先 npm i（离线装不上 vitest）
+cd fact-check-web && npm run test:run      # vitest
+cd fact-check-web && npm run test:offline  # 零依赖兜底：同一批 spec，只用 node 跑
+cd fact-check-web && npm run type-check    # vue-tsc（含模板类型检查）
+cd fact-check-web && npm run lint          # 需要先 npm i（eslint / prettier）
 
 # AI 能力评测（离线去重评测不需要任何 Key）
 py -3.10 fact-agent/eval/evaluate.py --mode dedup
@@ -299,7 +308,36 @@ py -3.10 fact-agent/eval/evaluate.py --mode dedup
 py -3.10 fact-agent/eval/evaluate.py --mode live --subset 10
 ```
 
+> **关于 `test:offline`**：本机处于离线环境（npm registry 不可达、缓存里也没有 vitest），
+> 于是写了一个约 60 行的零依赖运行器（`scripts/vitest-shim.mjs` + `spec-loader.mjs`），
+> 把 spec 里的 `vitest` 与 `@/` 解析到本地实现——**同一批 spec 两种方式都能跑**，不存在两份断言。
+> 它的价值是真实的：写完后立刻跑出过一个 `ws:////host`（四斜杠）的拼接 bug。
+> 装好 vitest 后请用 `npm run test:run`（支持组件渲染、覆盖率、watch）。
+
 评测结果见 [`docs/评测报告.md`](docs/评测报告.md)（含阈值敏感性图表与真实联网判定结果）。
+
+### 10. 一键启动（可选）
+
+```powershell
+.\start-all.ps1 check    # 环境自检：工具链 / 端口 / MySQL / Redis / nginx / 内部令牌
+.\start-all.ps1 all      # 依次启动 Agent(8001) 与 Java(8080)，并等待就绪
+.\start-all.ps1 stop     # 停止由脚本启动的进程
+```
+
+> 脚本用 `-WindowStyle Hidden` 启动子进程。若你要**捕获脚本输出**（如 `.\start-all.ps1 all > logs\start.log`），
+> 请重定向到文件而不是管道：子进程会继承 stdout 管道，用 `|` 时调用方要等服务退出才会拿到输出。
+
+### 11. 容器化部署（可选，推荐）
+
+```bash
+docker compose up -d --build     # MySQL + Redis + Agent + Java + nginx 五个服务
+docker compose logs -f server
+docker compose down              # 停止（加 -v 会同时清空数据卷）
+```
+
+首次启动需要网络（拉基础镜像、容器内装 Maven/pip 依赖、下载 embedding 模型）；
+之后可完全离线。密钥通过宿主机环境变量注入（见 `docker-compose.yml` 里的 `FACTCHECK_*`），
+Agent 与 Java 的**内部令牌由同一个 compose 变量提供**，不会出现两侧不一致导致全量 401 的情况。
 
 ---
 

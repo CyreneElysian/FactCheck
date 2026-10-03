@@ -1,0 +1,38 @@
+# Java 后端镜像（P4-43）
+#
+# 多阶段构建：
+#   builder 用 maven 镜像编译打包（首次需要网络拉依赖）
+#   runner  只带 JRE，镜像更小、也不用把源码带进运行环境
+#
+# 离线提示：如果宿主机已用 `mvn -o package` 打好包，也可以把下面的 builder 阶段
+# 换成 `FROM eclipse-temurin:11-jre` + `COPY fact-check-server/target/*.jar app.jar`，
+# 这样构建过程完全不需要网络。
+
+FROM maven:3.9-eclipse-temurin-11 AS builder
+WORKDIR /build
+
+# 先只拷 pom，利用 Docker 层缓存：依赖没变时不重复下载
+COPY pom.xml ./
+COPY fact-check-common/pom.xml fact-check-common/
+COPY fact-check-pojo/pom.xml fact-check-pojo/
+COPY fact-check-server/pom.xml fact-check-server/
+RUN mvn -B -q dependency:go-offline || true
+
+COPY . .
+# 跳过测试：镜像构建阶段不跑单测（测试由 CI/本地 `mvn test` 负责）
+RUN mvn -B -q clean package -DskipTests
+
+FROM eclipse-temurin:11-jre
+WORKDIR /app
+
+# 时区与日志时间戳对齐（项目日志用 Asia/Shanghai 阅读）
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+COPY --from=builder /build/fact-check-server/target/fact-check-server-*.jar app.jar
+
+# 只暴露应用端口；对外由 nginx 反代
+EXPOSE 8080
+
+# 容器内存感知：让 JVM 按容器限额设置堆，避免被 OOMKill
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-Duser.timezone=Asia/Shanghai", "-jar", "/app/app.jar"]

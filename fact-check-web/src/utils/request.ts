@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
+import { buildAuthHeader } from '@/utils/authHeader'
 
 const request = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
@@ -8,15 +9,11 @@ const request = axios.create({
 })
 
 request.interceptors.request.use(config => {
-  const token = localStorage.getItem('token')
-  const role = localStorage.getItem('role')
-  if (token) {
-    if (role === '1') {
-      config.headers['token'] = token
-    } else {
-      config.headers['authentication'] = token
-    }
-  }
+  // 双 token 头的映射逻辑抽到 utils/authHeader（纯函数，可单测）
+  const headers = buildAuthHeader(localStorage.getItem('token'), localStorage.getItem('role'))
+  Object.keys(headers).forEach(key => {
+    config.headers[key] = headers[key]
+  })
   return config
 })
 

@@ -1,0 +1,36 @@
+# Python Agent 镜像（P4-43）
+#
+# 说明：
+# - 用 python:3.10-slim（与开发环境的 3.10.7 对齐）
+# - 依赖较重（torch / sentence-transformers / faiss-cpu），首次构建需要网络且体积较大
+# - 模型不进镜像：通过 compose 把宿主机 `fact-agent/models` 挂到 /app/models，
+#   再在 .env 里设 EMBEDDING_MODEL=/app/models/bge_model 即可完全离线启动
+
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# torch 等包在 slim 镜像里需要 libgomp（OpenMP）与 libgl 的运行库
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgomp1 curl \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    TZ=Asia/Shanghai
+
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY app ./app
+COPY config ./config
+
+# 向量索引与元数据目录（compose 里挂成数据卷）
+RUN mkdir -p /app/data
+VOLUME ["/app/data"]
+
+EXPOSE 8001
+
+# 与本地开发一致，用 `python -m app.main` 启动（该入口会读 AGENT_HOST/AGENT_PORT 并起 uvicorn）
+CMD ["python", "-m", "app.main"]
