@@ -55,9 +55,5 @@ class EmbeddingService:
         vec = model.encode([text], normalize_embeddings=True, show_progress_bar=False)[0]
         return np.asarray(vec, dtype="float32")
 
-    @property
-    def dim(self) -> int:
-        """向量维度，未加载模型时返回 0"""
-        if self._model is None:
-            return 0
-        return self._model.get_sentence_embedding_dimension()
+    # 说明（P5-51）：这里原有 `dim` 属性（返回向量维度），全项目零引用，已删除。
+    # DedupService 建索引时直接用「首个向量」的 shape 取维度，不需要额外的 getter。

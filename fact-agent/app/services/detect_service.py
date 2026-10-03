@@ -50,6 +50,24 @@ _TAG_PATTERN = re.compile(r"</?\s*untrusted_[a-z_]+\s*>", re.IGNORECASE)
 _RELEVANCE_FLOOR = 0.3
 
 # ----------------------------------------------------------------------
+# 可预期的外部调用异常（P5-73）
+#
+# 这些 helper 里"降级继续"的分支只应捕获**可预期的失败**：网络/服务不可用、上游返回非法值。
+# 早期一律写 except Exception，会把 AttributeError / TypeError / NameError 这类**编程错误**
+# 也吞成一条 WARNING —— 代码写错了却表现成"搜索偶尔失败"，非常难查。
+#
+# RuntimeError 也归入"可预期"：上层封装（llm.py、HTTP 工具、requests 包装）普遍把调用失败
+# 统一包成 RuntimeError；真正要放行上去的是 AttributeError / TypeError / NameError / IndexError
+# 这些明确的编码错误——它们会冒泡到 detect() 顶层，记完整堆栈并返回 error=True（Java 记为检测失败）。
+# ----------------------------------------------------------------------
+_EXPECTED_LLM_ERRORS = (RuntimeError, ValueError, KeyError)
+_EXPECTED_SEARCH_ERRORS = (requests.RequestException, RuntimeError, ValueError, KeyError)
+_EXPECTED_FETCH_ERRORS = (requests.RequestException, RuntimeError, ValueError, KeyError, OSError)
+
+# 检测总预算下限：低于该值整条链路来不及走完。配置过小时**显式告警**而不是静默改写
+_MIN_DETECT_BUDGET = 5
+
+# ----------------------------------------------------------------------
 # 抓取网页的安全约束（SSRF 防护）
 #
 # 被抓取的 URL 来自搜索引擎结果，属于**不可信输入**：
@@ -154,7 +172,13 @@ class DetectService:
         Returns:
             DetectResponse；error=True 表示服务侧故障（应标记为"检测失败"而非转人工）
         """
-        deadline = time.monotonic() + max(5, settings.DETECT_TOTAL_BUDGET)
+        budget = settings.DETECT_TOTAL_BUDGET
+        if budget < _MIN_DETECT_BUDGET:
+            # 显式告警：早期是 max(5, budget) 直接静默改写，配置写错（例如 0.5）时看不出任何异常
+            logger.error("DETECT_TOTAL_BUDGET=%s 小于下限 %ds，已按 %ds 执行；请修正配置",
+                         budget, _MIN_DETECT_BUDGET, _MIN_DETECT_BUDGET)
+            budget = _MIN_DETECT_BUDGET
+        deadline = time.monotonic() + budget
         text = (text or "").strip()
         if not text:
             # 空内容没有任何可核查的信息：直接返回"无法判断"，不消耗任何 LLM 调用
@@ -206,7 +230,7 @@ class DetectService:
             )
         try:
             llm_text = self.llm.chat(messages, timeout=min(settings.LLM_TIMEOUT, remaining))
-        except Exception as exc:
+        except _EXPECTED_LLM_ERRORS as exc:
             logger.error("LLM 检测调用失败：%s", exc)
             return DetectResponse(
                 can_judge=False,
@@ -251,7 +275,7 @@ class DetectService:
             if queries:
                 logger.info("LLM 生成搜索词：%s", queries)
                 return queries
-        except Exception as exc:
+        except _EXPECTED_LLM_ERRORS as exc:
             logger.warning("LLM 生成搜索词失败，使用原句：%s", exc)
         return fallback
 
@@ -271,7 +295,7 @@ class DetectService:
                     if item.url:
                         seen_urls.add(item.url)
                     merged.append(item)
-            except Exception as exc:
+            except _EXPECTED_SEARCH_ERRORS as exc:
                 logger.warning("搜索失败（query=%s）：%s", query, exc)
         return merged
 
@@ -292,7 +316,7 @@ class DetectService:
                 if text:
                     item.content = text[: settings.SEARCH_PAGE_MAX_CHARS]
                     logger.info("已抓取网页正文：url=%s, length=%d", item.url, len(item.content))
-            except Exception as exc:
+            except _EXPECTED_FETCH_ERRORS as exc:
                 logger.warning("网页抓取失败，使用搜索摘要：url=%s, error=%s", item.url, exc)
         return results
 
