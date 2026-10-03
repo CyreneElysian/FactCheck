@@ -25,10 +25,12 @@ import com.factcheck.mapper.EvidenceMapper;
 import com.factcheck.mapper.FactCheckRecordMapper;
 import com.factcheck.mapper.MessageMapper;
 import com.factcheck.properties.AgentProperties;
+import com.factcheck.properties.HotProperties;
 import com.factcheck.result.PageResult;
 import com.factcheck.service.AgentClient;
 import com.factcheck.service.ContentSafetyService;
 import com.factcheck.service.DetectService;
+import com.factcheck.service.HotRankService;
 import com.factcheck.service.RateLimitService;
 import com.factcheck.util.ValidationUtils;
 import com.factcheck.vo.AuthorityInfoVO;
@@ -85,6 +87,10 @@ public class DetectServiceImpl implements DetectService {
     private ContentSafetyService contentSafetyService;
     @Autowired
     private RateLimitService rateLimitService;
+    @Autowired
+    private HotRankService hotRankService;
+    @Autowired
+    private HotProperties hotProperties;
     @Autowired
     private RedisTemplate redisTemplate;
     @Autowired
@@ -194,6 +200,10 @@ public class DetectServiceImpl implements DetectService {
             record.setAuthorityId(matchedAuthority.getId());
             log.info("检测命中权威信息：recordId={}, authorityId={}, title={}",
                     record.getId(), matchedAuthority.getId(), matchedAuthority.getTitle());
+            // AUTHORITY 权重（P2-14）：该消息已有关联的权威信息，属于"有权威答案"的高价值内容。
+            // 说明：技术方案原写"发布权威信息 +5"，但权威信息是独立知识库（AdminAuthorityDTO 无 recordId），
+            // 不存在"为某条记录发布权威信息"的动作；记录与权威信息的唯一关联点就是这里，故权重挂在此处。
+            hotRankService.addScore(record.getId(), HotScoreConstant.AUTHORITY_SCORE);
         }
 
         saveLog(userId, content, contentHash, category, sourceType, 0, null, record.getId());
@@ -301,15 +311,10 @@ public class DetectServiceImpl implements DetectService {
     }
 
     /**
-     * 热度累加
+     * 热度累加（P2-14 之后收敛到 {@link HotRankService}，不再各 Service 各写一份）
      */
     private void incrementHot(Long recordId, double score) {
-        try {
-            redisTemplate.opsForZSet().incrementScore(RedisKeyConstant.HOT_CLAIM_ZSET, String.valueOf(recordId), score);
-            log.info("热度更新：recordId={}, score={}", recordId, score);
-        } catch (Exception e) {
-            log.warn("热度更新失败：recordId={}, error={}", recordId, e.getMessage());
-        }
+        hotRankService.addScore(recordId, score);
     }
 
     /**
@@ -490,6 +495,10 @@ public class DetectServiceImpl implements DetectService {
         if (record == null || (userId != null && !userId.equals(record.getUserId()))) {
             throw new RecordNotFoundException(MessageConstant.RECORD_NOT_FOUND);
         }
+        // VIEW 权重（P2-14）：查看详情 +0.5，但同一用户对同一记录在窗口内只计一次
+        // （前端等待异步检测结果时本来就会轮询该接口，不去重的话热度榜可被刷新刷上去）
+        hotRankService.addScoreOnce(recordId, HotScoreConstant.VIEW_SCORE,
+                "user:" + (userId == null ? "anonymous" : userId), hotProperties.getViewDedupMinutes());
         return toVO(record, true);
     }
 

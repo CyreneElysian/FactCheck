@@ -2,7 +2,6 @@ package com.factcheck.service.impl;
 
 import com.factcheck.constant.HotScoreConstant;
 import com.factcheck.constant.MessageConstant;
-import com.factcheck.constant.RedisKeyConstant;
 import com.factcheck.context.BaseContext;
 import com.factcheck.dto.AppealPageQueryDTO;
 import com.factcheck.dto.AppealSubmitDTO;
@@ -15,6 +14,7 @@ import com.factcheck.mapper.AppealMapper;
 import com.factcheck.mapper.FactCheckRecordMapper;
 import com.factcheck.result.PageResult;
 import com.factcheck.service.AppealService;
+import com.factcheck.service.HotRankService;
 import com.factcheck.util.ValidationUtils;
 import com.factcheck.vo.AppealVO;
 import com.github.pagehelper.Page;
@@ -41,7 +41,7 @@ public class AppealServiceImpl implements AppealService {
     @Autowired
     private FactCheckRecordMapper factCheckRecordMapper;
     @Autowired
-    private RedisTemplate redisTemplate;
+    private HotRankService hotRankService;
 
     /**
      * 用户发起申诉
@@ -84,13 +84,8 @@ public class AppealServiceImpl implements AppealService {
                 .createTime(LocalDateTime.now())
                 .build());
 
-        // 申诉热度 +3
-        try {
-            redisTemplate.opsForZSet().incrementScore(RedisKeyConstant.HOT_CLAIM_ZSET,
-                    String.valueOf(record.getId()), HotScoreConstant.APPEAL_SCORE);
-        } catch (Exception e) {
-            log.warn("申诉热度更新失败：recordId={}, error={}", record.getId(), e.getMessage());
-        }
+        // 申诉热度 +3（P2-14 之后统一走 HotRankService）
+        hotRankService.addScore(record.getId(), HotScoreConstant.APPEAL_SCORE);
         log.info("申诉提交成功：recordId={}, userId={}", record.getId(), userId);
     }
 

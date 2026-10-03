@@ -14,6 +14,7 @@ import com.factcheck.mapper.FactCheckRecordMapper;
 import com.factcheck.mapper.OperationLogMapper;
 import com.factcheck.mapper.UserMapper;
 import com.factcheck.service.AdminPendingService;
+import com.factcheck.service.HotRankService;
 import com.factcheck.vo.AuthorityInfoVO;
 import com.factcheck.vo.DetectRecordVO;
 import com.factcheck.vo.EvidenceVO;
@@ -23,7 +24,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -35,8 +42,20 @@ public class AdminPendingServiceImpl implements AdminPendingService {
 
     private static final int PENDING_TOP_LIMIT = 10;
 
+    /**
+     * 待诊断状态
+     */
+    private static final int PENDING_STATUS = 1;
+
+    /**
+     * 从热度榜取候选时的放大倍数：榜上可能混有已完成/已删除的记录，多取一些再过滤
+     */
+    private static final int HOT_CANDIDATE_FACTOR = 5;
+
     @Autowired
     private FactCheckRecordMapper factCheckRecordMapper;
+    @Autowired
+    private HotRankService hotRankService;
     @Autowired
     private AuthorityInfoMapper authorityInfoMapper;
     @Autowired
@@ -47,13 +66,55 @@ public class AdminPendingServiceImpl implements AdminPendingService {
     private OperationLogMapper operationLogMapper;
 
     /**
-     * 查询待诊断热门消息 Top10
+     * 查询待诊断热门消息 Top10（P2-15）
+     *
+     * <p>热度以 Redis ZSET 为准（与技术方案 §5.1、用户端热度榜一致），而不是数据库的 `hit_count`：
+     * 先按热度取一批候选 ID → 回查数据库并过滤"仍处于待诊断"→ 按热度顺序返回；
+     * 若 Redis 里的候选不足 10 条（常见于 Redis 被清空、或热榜里多为已完成的记录），
+     * 再用数据库排序补齐，保证这个功能**不会因为缓存为空而返回空列表**。</p>
      */
     @Override
     public List<PendingClaimVO> top10() {
         log.info("管理员查询待诊断热门消息Top10：status=1");
-        List<FactCheckRecord> records = factCheckRecordMapper.listByStatus(1);
-        List<PendingClaimVO> result = records.stream()
+
+        List<FactCheckRecord> picked = new ArrayList<>();
+        Set<Long> pickedIds = new LinkedHashSet<>();
+
+        // 1. 先按 Redis 热度顺序取候选（多取一些，因为里面可能混有已完成/已删除的记录）
+        List<Long> hotIds = hotRankService.topRecordIds(PENDING_TOP_LIMIT * HOT_CANDIDATE_FACTOR);
+        if (!hotIds.isEmpty()) {
+            for (FactCheckRecord record : factCheckRecordMapper.listByIds(hotIds)) {
+                if (record.getStatus() != null && record.getStatus() == PENDING_STATUS
+                        && pickedIds.add(record.getId())) {
+                    picked.add(record);
+                }
+            }
+            // 按热度顺序重排（数据库返回的顺序不确定）
+            Map<Long, Integer> hotOrder = new HashMap<>();
+            for (int i = 0; i < hotIds.size(); i++) {
+                hotOrder.putIfAbsent(hotIds.get(i), i);
+            }
+            picked.sort(Comparator.comparingInt(r -> hotOrder.getOrDefault(r.getId(), Integer.MAX_VALUE)));
+            log.info("待诊断Top10：命中 Redis 热度榜候选 {} 条（共 {} 条候选 ID）", picked.size(), hotIds.size());
+        } else {
+            log.warn("热度榜为空或 Redis 不可用，待诊断Top10 降级为数据库排序");
+        }
+
+        // 2. 不足则用数据库排序补齐（原先的实现只有这一步）
+        if (picked.size() < PENDING_TOP_LIMIT) {
+            int before = picked.size();
+            for (FactCheckRecord record : factCheckRecordMapper.listByStatus(PENDING_STATUS)) {
+                if (picked.size() >= PENDING_TOP_LIMIT) {
+                    break;
+                }
+                if (pickedIds.add(record.getId())) {
+                    picked.add(record);
+                }
+            }
+            log.info("待诊断Top10：数据库补齐 {} 条", picked.size() - before);
+        }
+
+        List<PendingClaimVO> result = picked.stream()
                 .limit(PENDING_TOP_LIMIT)
                 .map(this::toPendingVO)
                 .collect(Collectors.toList());

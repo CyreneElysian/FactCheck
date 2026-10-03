@@ -71,6 +71,17 @@ public interface FactCheckRecordMapper {
     List<FactCheckRecord> listByStatus(@Param("status") Integer status);
 
     /**
+     * 按 ID 集合批量查询记录（调用方自行按需排序）
+     *
+     * <p>用于"先从 Redis 热度榜拿到 Top10 的 ID，再回查数据库"这条链路（P2-15）。
+     * 调用方必须保证 {@code ids} 非空，否则 SQL 会变成 {@code in ()}。</p>
+     *
+     * @param ids 记录 ID 列表（非空）
+     * @return 记录列表（顺序不保证，由调用方重排）
+     */
+    List<FactCheckRecord> listByIds(@Param("ids") List<Long> ids);
+
+    /**
      * 管理端分页查询检测记录
      * @param category 分类
      * @param status 状态

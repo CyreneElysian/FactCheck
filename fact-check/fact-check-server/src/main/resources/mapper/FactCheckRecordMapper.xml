@@ -84,6 +84,17 @@
         order by hit_count desc, create_time asc
     </select>
 
+    <select id="listByIds" resultType="com.factcheck.entity.FactCheckRecord">
+        select id, user_id, content, content_hash, category, source_type, image_url, status,
+               verdict, verdict_source, confidence, reasoning_chain, ai_summary, version,
+               hit_count, assignee_id, deadline, authority_id, create_time, update_time, complete_time
+        from t_fact_check_record
+        where id in
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
     <select id="adminPage" resultType="com.factcheck.entity.FactCheckRecord">
         select id, user_id, content, content_hash, category, source_type, image_url, status,
                verdict, verdict_source, confidence, reasoning_chain, ai_summary, version,

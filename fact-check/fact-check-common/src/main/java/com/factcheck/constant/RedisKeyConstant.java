@@ -7,6 +7,12 @@ public class RedisKeyConstant {
     /** 热门消息 ZSET key */
     public static final String HOT_CLAIM_ZSET = "fact:hot:claim";
     /**
+     * 查看详情计热度的去重 key 前缀，完整形式 `fact:hot:view:{身份}:{recordId}`
+     *
+     * <p>用于"同一用户对同一记录在窗口内只计一次"，避免刷新详情页把热度刷上榜。</p>
+     */
+    public static final String HOT_VIEW_DEDUP_PREFIX = "fact:hot:view:";
+    /**
      * 限流 key 统一前缀，完整形式 `fact:limit:{场景}:{身份}`
      *
      * <p>注意：检测场景拼出来的 key 与旧版 {@link #DETECT_LIMIT_PREFIX} 完全一致

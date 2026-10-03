@@ -83,6 +83,10 @@ fact-check:
     # 注册：同一 IP 每小时最多 5 次，防批量注册小号
     register-per-ip: ${FACTCHECK_RATE_LIMIT_REGISTER_PER_IP:5}
     register-window-minutes: ${FACTCHECK_RATE_LIMIT_REGISTER_WINDOW_MINUTES:60}
+  hot:
+    # 热度榜（技术方案 5.1）：检测 +1 / 查看详情 +0.5 / 申诉 +3 / 人工诊断 +2 / 命中权威信息 +5
+    # 查看详情的去重窗口：同一用户对同一记录在该窗口内只计一次，防止刷新详情页刷榜
+    view-dedup-minutes: ${FACTCHECK_HOT_VIEW_DEDUP_MINUTES:30}
   alioss:
     endpoint: ${fact-check.alioss.endpoint}
     access-key-id: ${fact-check.alioss.access-key-id}

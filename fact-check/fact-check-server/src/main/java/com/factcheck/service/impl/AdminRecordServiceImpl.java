@@ -3,7 +3,6 @@ package com.factcheck.service.impl;
 import com.alibaba.fastjson.JSONObject;
 import com.factcheck.constant.HotScoreConstant;
 import com.factcheck.constant.MessageConstant;
-import com.factcheck.constant.RedisKeyConstant;
 import com.factcheck.context.BaseContext;
 import com.factcheck.dto.AdminConclusionDTO;
 import com.factcheck.dto.AdminRecordPageQueryDTO;
@@ -22,6 +21,7 @@ import com.factcheck.mapper.FactCheckRecordMapper;
 import com.factcheck.mapper.MessageMapper;
 import com.factcheck.mapper.OperationLogMapper;
 import com.factcheck.result.PageResult;
+import com.factcheck.service.HotRankService;
 import com.factcheck.util.ValidationUtils;
 import com.factcheck.service.AdminRecordService;
 import com.factcheck.service.AgentClient;
@@ -63,7 +63,7 @@ public class AdminRecordServiceImpl implements AdminRecordService {
     @Autowired
     private AgentClient agentClient;
     @Autowired
-    private RedisTemplate redisTemplate;
+    private HotRankService hotRankService;
     @Autowired
     private DetectWebSocketHandler detectWebSocketHandler;
 
@@ -299,15 +299,10 @@ public class AdminRecordServiceImpl implements AdminRecordService {
     }
 
     /**
-     * 热度累加
+     * 热度累加（P2-14 之后收敛到 {@link HotRankService}）
      */
     private void incrementHot(Long recordId, double score) {
-        try {
-            redisTemplate.opsForZSet().incrementScore(RedisKeyConstant.HOT_CLAIM_ZSET, String.valueOf(recordId), score);
-            log.info("热度更新：recordId={}, score={}", recordId, score);
-        } catch (Exception e) {
-            log.warn("热度更新失败：recordId={}, error={}", recordId, e.getMessage());
-        }
+        hotRankService.addScore(recordId, score);
     }
 
     /**
