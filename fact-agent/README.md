@@ -56,6 +56,7 @@ python -m app.main
 
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
+| `AGENT_HOST` / `AGENT_PORT` | `127.0.0.1` / `8001` | **默认只监听回环**：Agent 只需被同机 Java 调用。跨机部署才改 `0.0.0.0`，且必须同时更换 `INTERNAL_TOKEN` |
 | `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL` | — | OpenAI 兼容 LLM |
 | `LLM_TIMEOUT` / `LLM_RETRY` | `60` / `2` | 单次请求超时（秒）与重试次数 |
 | `LLM_TEMPERATURE` | `0.1` | 事实核查需要稳定 JSON 输出，不建议调高 |
