@@ -6,10 +6,9 @@ tavily/serpapi/bocha 的构造函数只存 api_key）。
 """
 import unittest
 
+from app.services import credibility
 from app.services.credibility import (
-    HIGH_CREDIBILITY_DOMAINS,
-    MEDIUM_CREDIBILITY_DOMAINS,
-    UNKNOWN_SCORE,
+    DEFAULT_UNKNOWN_SCORE,
     is_known_domain,
     score_source,
 )
@@ -45,9 +44,9 @@ class TestCredibilityScoring(OfflineTestCase):
 
     def test_lookalike_domain_is_not_high_credibility(self):
         """锁定行为：后缀匹配不会把伪装域名（evilgov.cn / gov.cn.attacker.com）误判为权威"""
-        self.assertEqual(UNKNOWN_SCORE, score_source("https://evilgov.cn/a"))
-        self.assertEqual(UNKNOWN_SCORE, score_source("https://gov.cn.attacker.com/a"))
-        self.assertEqual(UNKNOWN_SCORE, score_source("https://notxinhuanet.com/a"))
+        self.assertEqual(DEFAULT_UNKNOWN_SCORE, score_source("https://evilgov.cn/a"))
+        self.assertEqual(DEFAULT_UNKNOWN_SCORE, score_source("https://gov.cn.attacker.com/a"))
+        self.assertEqual(DEFAULT_UNKNOWN_SCORE, score_source("https://notxinhuanet.com/a"))
 
     def test_score_source_is_case_insensitive_on_domain(self):
         """锁定行为：域名大小写不影响评分（netloc 先 lower）"""
@@ -61,10 +60,10 @@ class TestCredibilityScoring(OfflineTestCase):
     def test_score_source_handles_garbage_input(self):
         """锁定行为：非 URL / 非字符串输入不抛异常，一律落到未收录分值"""
         for value in ("not a url", "http://", "://bad", None, 12345):
-            self.assertEqual(UNKNOWN_SCORE, score_source(value))
+            self.assertEqual(DEFAULT_UNKNOWN_SCORE, score_source(value))
 
     def test_is_known_domain(self):
-        """锁定行为：is_known_domain 以 UNKNOWN_SCORE 为阈值判断域名是否已收录"""
+        """锁定行为：is_known_domain 以未收录分值为阈值判断域名是否已收录"""
         self.assertTrue(is_known_domain("https://www.xinhuanet.com/a"))
         self.assertTrue(is_known_domain("https://www.zhihu.com/d"))
         self.assertTrue(is_known_domain("https://wjw.wuhan.gov.cn/b"))
@@ -73,12 +72,24 @@ class TestCredibilityScoring(OfflineTestCase):
         self.assertFalse(is_known_domain("https://evilgov.cn/a"))
 
     def test_domain_tables_are_consistent(self):
-        """锁定行为：规则表本身无重复、无空串，且两档域名不会互相覆盖"""
-        for table in (HIGH_CREDIBILITY_DOMAINS, MEDIUM_CREDIBILITY_DOMAINS):
-            self.assertEqual(len(table), len(set(table)), "规则表不应有重复项")
-            self.assertNotIn("", table)
-        self.assertEqual(set(), set(HIGH_CREDIBILITY_DOMAINS) & set(MEDIUM_CREDIBILITY_DOMAINS),
-                         "同一域名不应同时出现在两档规则里")
+        """锁定行为：规则表本身无重复、无空串，且各档域名不会互相覆盖
+
+        P2-30 之后规则来自 config/credibility_rules.json，因此这里改为遍历
+        当前生效的规则对象（而不是模块里的常量）。
+        """
+        tiers = credibility.current_rules().tiers
+        self.assertGreaterEqual(len(tiers), 2)
+
+        seen = {}
+        for tier in tiers:
+            entries = list(tier.exact) + list(tier.suffixes)
+            self.assertEqual(len(entries), len(set(entries)),
+                             f"{tier.name} 档内不应有重复项")
+            for entry in entries:
+                self.assertNotEqual("", entry, "规则表不应有空串")
+                self.assertNotIn(entry, seen,
+                                 f"域名 {entry} 同时出现在「{seen.get(entry)}」与「{tier.name}」两档")
+                seen[entry] = tier.name
 
 
 class TestSearchToolFactory(OfflineTestCase):

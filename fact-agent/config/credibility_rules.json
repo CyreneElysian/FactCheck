@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "_readme": [
+    "来源可信度规则库（S13）。改词表不需要改代码，改完重启 Agent 即生效。",
+    "匹配顺序：按 tiers 的先后顺序，命中即返回该档分值；都不命中则返回 unknown_score。",
+    "exact：完整域名精确匹配（如 news.cn 只匹配 news.cn 本身）。",
+    "suffixes：后缀匹配，www.xinhuanet.com 与 wjw.wuhan.gov.cn 都会命中对应后缀。",
+    "分值是确定性的：同一域名永远得到同一分值，因此证据可信度以此为准，不采信模型自报的数字。",
+    "注意：本表只覆盖最主流的站点，未收录域名一律落到 unknown_score（不是'不可信'，而是'未收录'）。"
+  ],
+  "unknown_score": 0.3,
+  "tiers": [
+    {
+      "name": "官方/权威",
+      "description": "政府、官方媒体、国家级科普与辟谣平台、高校与国际组织",
+      "score": 0.95,
+      "exact": [],
+      "suffixes": [
+        "gov.cn",
+        "people.com.cn",
+        "xinhuanet.com",
+        "news.cn",
+        "cctv.com",
+        "chinanews.com.cn",
+        "china.com.cn",
+        "gmw.cn",
+        "who.int",
+        "edu.cn",
+        "org.cn",
+        "kepuchina.cn",
+        "piyao.org.cn",
+        "chinacdc.cn"
+      ]
+    },
+    {
+      "name": "主流媒体/平台",
+      "description": "门户、百科与聚合平台：信息量大可作参考，但权威性弱于上档",
+      "score": 0.5,
+      "exact": [],
+      "suffixes": [
+        "baidu.com",
+        "wikipedia.org",
+        "zhihu.com",
+        "weibo.com",
+        "sohu.com",
+        "163.com",
+        "sina.com.cn",
+        "qq.com",
+        "ifeng.com",
+        "thepaper.cn",
+        "guancha.cn"
+      ]
+    }
+  ]
+}
