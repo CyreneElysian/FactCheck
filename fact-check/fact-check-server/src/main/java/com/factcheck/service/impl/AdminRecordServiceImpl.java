@@ -35,6 +35,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
@@ -107,6 +108,7 @@ public class AdminRecordServiceImpl implements AdminRecordService {
      * 人工诊断：提交结论与推理依据
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void submitConclusion(Long recordId, AdminConclusionDTO adminConclusionDTO) {
         Long adminId = BaseContext.getCurrentId();
         log.info("管理员人工诊断：recordId={}, adminId={}, verdict={}", recordId, adminId, adminConclusionDTO.getVerdict());
@@ -171,6 +173,7 @@ public class AdminRecordServiceImpl implements AdminRecordService {
      * 修改历史结论并附原因
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void updateConclusion(Long recordId, AdminConclusionDTO adminConclusionDTO) {
         Long adminId = BaseContext.getCurrentId();
         log.info("管理员修改历史结论：recordId={}, adminId={}, verdict={}, reason={}",

@@ -76,6 +76,11 @@ public class AdminAppealServiceImpl implements AdminAppealService {
     @Override
     @Transactional
     public void handle(Long appealId, AdminAppealHandleDTO handleDTO) {
+        // 空值保护（P5-72）：经 Controller 不可达（请求体必填），但内部调用或测试传 null 时
+        // 会在下面的 getAccept() 直接 NPE，报错信息毫无指向性
+        if (handleDTO == null) {
+            throw new BaseException("处理参数不能为空");
+        }
         Long adminId = BaseContext.getCurrentId();
         log.info("管理员处理申诉：appealId={}, adminId={}, accept={}", appealId, adminId, handleDTO.getAccept());
         if (adminId == null) {

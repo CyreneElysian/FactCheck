@@ -42,4 +42,14 @@ public class JwtTokenAdminInterceptor implements HandlerInterceptor {
             return false;
         }
     }
+
+    /**
+     * 请求结束后清理 ThreadLocal（P5-48）：Tomcat 线程会复用，
+     * 不清理会让下一个请求读到上一个请求的身份（越权隐患）
+     */
+    @Override
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
+                                Object handler, Exception ex) {
+        BaseContext.removeCurrentId();
+    }
 }

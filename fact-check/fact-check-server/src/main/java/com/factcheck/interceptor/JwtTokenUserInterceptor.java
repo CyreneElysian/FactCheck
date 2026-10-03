@@ -42,4 +42,19 @@ public class JwtTokenUserInterceptor implements HandlerInterceptor {
             return false;
         }
     }
+
+    /**
+     * 请求结束后清理 ThreadLocal（P5-48）
+     *
+     * <p>Tomcat 的工作线程是复用的：不清理的话，上一个请求的用户 ID 会残留在线程上，
+     * 一旦某个请求没经过拦截器却读到了 {@code BaseContext.getCurrentId()}，
+     * 就会拿到**别人的身份**——这是典型的越权隐患，也顺带造成内存泄漏。</p>
+     *
+     * <p>无论请求成功、抛异常还是被拒绝（preHandle 返回 false 也会回调 afterCompletion）都会执行。</p>
+     */
+    @Override
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
+                                Object handler, Exception ex) {
+        BaseContext.removeCurrentId();
+    }
 }
