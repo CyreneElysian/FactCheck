@@ -106,7 +106,10 @@ class DetectWebSocketHandshakeInterceptorTest {
     @Test
     @DisplayName("token 无效（用别的密钥签发）→ 拒绝握手")
     void shouldRejectInvalidToken() {
-        String forged = JwtUtil.createJWT("another-secret-key", 3600_000L, Map.of("userId", OWNER_ID));
+        // 注意：伪造用的密钥同样要 ≥32 字节，否则 jjwt 0.12 会因"密钥过短"直接拒绝签发
+        // （这正说明升级后弱密钥无法蒙混过关）
+        String forged = JwtUtil.createJWT("another-secret-key-for-forgery-0123456789",
+                3600_000L, Map.of("userId", OWNER_ID));
 
         assertThat(handshake("recordId=1&token=" + forged, new HashMap<>())).isFalse();
     }
