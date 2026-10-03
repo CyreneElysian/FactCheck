@@ -13,6 +13,7 @@ import com.factcheck.exception.AccountExistsException;
 import com.factcheck.exception.BaseException;
 import com.factcheck.mapper.UserMapper;
 import com.factcheck.properties.WeChatProperties;
+import com.factcheck.service.RateLimitService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,6 +39,10 @@ class UserServiceImplRegisterTest {
 
     @Mock
     private WeChatProperties weChatProperties;
+
+    /** P2-16：注册入口会先做按 IP 的限流，这里只验证"被调用"，具体计数逻辑有自己的测试 */
+    @Mock
+    private RateLimitService rateLimitService;
 
     @InjectMocks
     private UserServiceImpl userService;
