@@ -301,8 +301,25 @@ cd fact-check-web && npm run test:run      # vitest
 cd fact-check-web && npm run test:offline  # 零依赖兜底：同一批 spec，只用 node 跑
 cd fact-check-web && npm run type-check    # vue-tsc（含模板类型检查）
 cd fact-check-web && npm run lint          # 需要先 npm i（eslint / prettier）
+```
 
-# AI 能力评测（离线去重评测不需要任何 Key）
+**一条命令跑完全部检查**（等价于 CI 流水线，可直接当提交前钩子）：
+
+```powershell
+cd fact-check
+.\run-checks.ps1              # java / python / mini / web-type / web-test / compose / secret-scan
+.\run-checks.ps1 -Only java,web
+.\run-checks.ps1 -Online      # Maven 走在线仓库（默认 -o 离线）
+```
+
+> 本项目的 CI 文件是 GitHub Actions（[`.github/workflows/ci.yml`](.github/workflows/ci.yml)），
+> 而仓库托管在 **Gitee**——Gitee 不执行 GitHub Actions，因此日常用 `run-checks.ps1` 在本地跑同样这七项
+> （实机验证：7 项全 PASS、退出码 0）。想在 Gitee 上跑托管流水线需改用 Gitee Go，
+> 具体步骤见 [`docs/环境限制与联网后待办.md`](docs/环境限制与联网后待办.md) 第三节。
+
+AI 能力评测（离线去重评测不需要任何 Key）：
+
+```bash
 py -3.10 fact-agent/eval/evaluate.py --mode dedup
 # 联网判定评测需要 LLM_API_KEY 与搜索源配置
 py -3.10 fact-agent/eval/evaluate.py --mode live --subset 10

@@ -92,5 +92,9 @@ print("5) WXML 事件绑定：检查完成")
 print()
 if failures:
     print(f"结果：{len(failures)} 项失败（共 {checks} 项检查）")
+    print(f"RESULT: {len(failures)} FAILED ({checks} checks)")
     sys.exit(1)
 print(f"结果：全部通过（共 {checks} 项检查）")
+# 额外输出一行 ASCII 摘要：Windows PowerShell 5.1 按 GBK 读子进程输出，
+# 中文摘要匹配不到（会导致 CI 日志/本地脚本里这一项显示为空），ASCII 行则稳定可读。
+print(f"RESULT: ALL PASSED ({checks} checks)")
