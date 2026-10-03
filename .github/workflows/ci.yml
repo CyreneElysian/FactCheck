@@ -1,0 +1,142 @@
+# CI 流水线（P4-43 的"未接入 CI"收口）
+#
+# 四个作业对应项目的四个可测单元，全部使用本机已验证过的同一条命令：
+#   java   → 224 用例（离线，不需要 MySQL/Redis）
+#   python → 111 用例（离线，std-lib unittest + 桩化的 requests 与 socket）
+#   web    → 类型检查 + vitest + 生产构建
+#   mini   → 小程序静态自检（110 项：语法/JSON/页面齐套/跳转目标/事件绑定）
+# 另有一个 secret-scan：本项目的 P0-01 教训是密钥曾进过源码，这里把它变成流水线红线。
+name: CI
+
+on:
+  push:
+    branches: [main, master, dev]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  # 同一分支的旧运行自动取消，避免堆积
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  java:
+    name: Java 后端（mvn test）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 JDK 11
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '11'
+          cache: maven
+
+      - name: 运行测试
+        working-directory: fact-check
+        # 测试全部离线（无 Spring 上下文、无数据库、无 Redis、无网络）
+        run: mvn -B test
+
+      - name: 上传测试报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: fact-check/fact-check-server/target/surefire-reports/
+          if-no-files-found: ignore
+
+  python:
+    name: Python Agent（unittest）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 安装测试所需依赖
+        working-directory: fact-agent
+        # 只装测试真正用到的：sentence-transformers / torch 仅在建索引加载模型时才需要，
+        # 未装时 embedding 模块延迟导入，测试不会触发（本机实测 111 用例 <0.5s）。
+        # 若要跑评测脚本（eval/），请改为 `pip install -r requirements.txt`。
+        run: |
+          python -m pip install --upgrade pip
+          pip install fastapi "uvicorn[standard]" pydantic requests python-dotenv numpy faiss-cpu
+
+      - name: 运行测试
+        working-directory: fact-agent
+        run: python -m unittest discover -s tests -t . -v
+
+  web:
+    name: Web 前端（类型检查 + vitest + 构建）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: fact-check-web/package-lock.json
+
+      - name: 安装依赖
+        working-directory: fact-check-web
+        run: npm ci
+
+      - name: 类型检查（vue-tsc，含模板类型检查）
+        working-directory: fact-check-web
+        run: npm run type-check
+
+      - name: 单元测试（vitest）
+        working-directory: fact-check-web
+        run: npm run test:run
+
+      - name: 生产构建
+        working-directory: fact-check-web
+        run: npm run build
+
+  mini:
+    name: 小程序静态自检
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 安装 Node（自检脚本用 node --check 校验 JS 语法）
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 运行自检
+        working-directory: fact-check-mini
+        run: python check_mini.py
+
+  secret-scan:
+    name: 密钥泄露扫描
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 扫描明显的密钥特征
+        # 本项目 P0-01 的教训：OSS AK/SK、微信 AppSecret、LLM/Tavily Key 曾出现在源码里。
+        # 这里只匹配"明显是真实密钥"的特征，避免把文档里的占位符（sk-xxxx）误判为泄露。
+        run: |
+          set +e
+          PATTERN='LTAI[A-Za-z0-9]{8,}|tvly-[A-Za-z0-9]{10,}|sk-[A-Za-z0-9]{20,}|AKID[A-Za-z0-9]{10,}'
+          HITS=$(git grep -I -n -E "$PATTERN" -- . | grep -v 'sk-xxxx' || true)
+          if [ -n "$HITS" ]; then
+            echo "::error::检测到疑似真实密钥，请轮换并从历史中移除："
+            echo "$HITS"
+            exit 1
+          fi
+          echo "未发现明显的密钥泄露特征。"

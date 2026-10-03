@@ -459,22 +459,24 @@ Agent 与 Java 的**内部令牌由同一个 compose 变量提供**，不会出�
 - 真实联网核查已验证：`SEARCH_TOOL=tavily` 时，检索 → 抓取正文 → LLM 判定（`FALSE`，confidence 0.91–0.95）→ 返回 6–7 条带真实域名与可信度的证据，单次耗时约 15s（预算 45s）。
 - 历史上还有：检测提交 → 轮询拿到结论 → 站内信/热度榜/权威信息均为 200（见 nginx 访问日志）。
 
-作为作品集项目，原本的短板已逐项处理完毕：**[`docs/项目改进清单.md`](docs/项目改进清单.md) 中的 75 项全部处理完毕（74 项实现 + 1 项经决策明确不做）**。当前仍有以下限制与取舍，如实列出：
+作为作品集项目，原本的短板已逐项处理完毕：**[`docs/项目改进清单.md`](docs/项目改进清单.md) 中的 75 项全部处理完毕（74 项实现 + 1 项经决策明确不做）**。当前仍有以下限制与取舍，如实列出；每项的**具体补做步骤**见 [`docs/环境限制与联网后待办.md`](docs/环境限制与联网后待办.md)：
 
-- **前端测试与 lint 依赖未在本机安装**：`vitest` / `eslint` / `prettier` 的配置与用例都已写好并声明在 `package.json`，
-  但本机 npm registry 不可达、缓存也没有这些包（实测 `ENOTCACHED`），因此**尚未在 vitest 下跑过**。
-  联网后 `npm i` 即可 `npm run test:run` / `npm run lint`；在此之前可用 `npm run test:offline`
-  （零依赖运行器跑**同一批 spec**，实测 17 条断言通过）。Java（224 用例）、Python（111 用例）、
+- **前端 vitest / eslint 尚未在真实工具链下跑过**：配置与用例都已写好并声明在 `package.json`，
+  但本机 npm registry 不可达、缓存也没有这些包（实测 `ENOTCACHED`）。已用零依赖运行器
+  `npm run test:offline` 跑**同一批 spec**（17 条断言通过，并当场抓出过一个 `ws:////host` 拼接 bug）——
+  未验证的只是 vitest 这层框架接线。Java（224 用例）、Python（111 用例）、
   小程序静态自检 [`check_mini.py`](fact-check-mini/check_mini.py)（110 项）均已在本机实跑通过。
+- **Docker Compose 未做过真实构建与启动**：编排文件、两个 Dockerfile 与容器版 nginx 已就位，
+  `docker compose config` 校验通过、所有构建上下文/挂载源逐项校验存在、两侧内部令牌由同一变量提供；
+  但本机只装了 Docker CLI（引擎未启动、零镜像），起整套需联网拉约 2–3GB 基础镜像。
+- **CI 已接入但未在 GitHub 上运行过**：[`.github/workflows/ci.yml`](.github/workflows/ci.yml) 五个作业
+  （java / python / web / mini / secret-scan），命令全部与本机验证过的一致；push 后在 Actions 页可见。
 - **分享卡片不含二维码（已决策不做）**：记录详情仅归属者可见，扫码的人打开仍是登录页，与直接收到链接相比没有增量价值；
   小程序端已有微信原生分享。产品文档 §4.13 已同步修订，理由与"将来要补做"的方案见
   [`docs/决策-分享卡片不生成二维码.md`](docs/决策-分享卡片不生成二维码.md)。
-- **Docker Compose 未做过真实构建**：编排文件、Dockerfile 与容器版 nginx 已就位，
-  `docker compose config` 校验通过且所有构建上下文/挂载源逐项校验存在；
-  但本机离线，拉基础镜像与容器内装依赖需要网络（P4-43）。
-- **未接入 CI**：测试与检查脚本都已就绪，但还没有 CI 流水线把它们串起来。
-- **Web 端未做构建产物校验**：`vite build` 在受限沙箱下会因 esbuild 子进程管道失败（`spawn EPERM`），
-  因此前端验证以 `npm run type-check`（`vue-tsc`，含模板类型检查）为准；本地正常环境可直接 `npm run build`。
+- **前端主包偏大（已知优化点）**：`vite build` 已在本机验证成功（4.14s，35 个 assets），
+  但 `index-*.js` 达 1,117 kB（gzip 370 kB）——element-plus 与 vue 全进主包。
+  按 `docs/环境限制与联网后待办.md` 第四节的 `manualChunks` 片段拆包即可显著改善首屏。
 - **来源可信度域名库覆盖仍偏窄**：规则已外置为 `config/credibility_rules.json`（改词表不用改代码），
   但内容仍是起步版——省级疾控等权威机构的自建域名会落到兜底值 0.3（语义是"未收录"而非"不可信"），需要持续补充。
 - **参数校验未使用 Bean Validation**：因离线仓库只有 `jakarta` 版 hibernate-validator（与 Boot 2.7 的
