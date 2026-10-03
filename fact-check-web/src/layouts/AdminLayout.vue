@@ -2,7 +2,13 @@
   <el-container class="admin-layout">
     <el-aside width="220px" class="aside">
       <div class="logo">事实检测·管理端</div>
-      <el-menu :default-active="$route.path" router background-color="#001529" text-color="#fff" active-text-color="#409eff">
+      <el-menu
+        :default-active="$route.path"
+        router
+        background-color="#001529"
+        text-color="#fff"
+        active-text-color="#409eff"
+      >
         <el-menu-item index="/admin/dashboard">工作台</el-menu-item>
         <el-menu-item index="/admin/pending">待诊断 Top10</el-menu-item>
         <el-menu-item index="/admin/records">结论管理</el-menu-item>
@@ -51,11 +57,36 @@ const logout = () => {
 </script>
 
 <style scoped>
-.admin-layout { min-height: 100vh; }
-.aside { background: #001529; }
-.logo { color: #fff; font-size: 18px; font-weight: bold; padding: 18px 16px; }
-.header { display: flex; align-items: center; justify-content: space-between; background: #fff; border-bottom: 1px solid #e4e7ed; }
-.avatar-wrap { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-.nickname { font-size: 14px; }
-.main { padding: 24px; background: #f5f7fa; }
+.admin-layout {
+  min-height: 100vh;
+}
+.aside {
+  background: #001529;
+}
+.logo {
+  color: #fff;
+  font-size: 18px;
+  font-weight: bold;
+  padding: 18px 16px;
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  border-bottom: 1px solid #e4e7ed;
+}
+.avatar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.nickname {
+  font-size: 14px;
+}
+.main {
+  padding: 24px;
+  background: #f5f7fa;
+}
 </style>

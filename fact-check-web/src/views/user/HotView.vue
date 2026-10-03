@@ -8,12 +8,12 @@
     </template>
     <!-- P3-34：整行可点击进入详情（走 /hot/{id} 公开接口，服务端只放行榜内记录） -->
     <el-table
-      :data="list"
       v-loading="loading"
+      :data="list"
       row-key="recordId"
       highlight-current-row
-      @row-click="onRowClick"
       style="cursor: pointer"
+      @row-click="onRowClick"
     >
       <el-table-column prop="recordId" label="ID" width="80" />
       <el-table-column prop="content" label="消息内容" show-overflow-tooltip />

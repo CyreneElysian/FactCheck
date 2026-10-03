@@ -4,12 +4,24 @@
     <!-- P3-36：补筛选（文档 §4.8 要求按状态/结论/分类/关键词） -->
     <el-form inline>
       <el-form-item label="分类">
-        <el-select v-model="query.category" clearable placeholder="全部" style="width: 140px" @change="onSearch">
+        <el-select
+          v-model="query.category"
+          clearable
+          placeholder="全部"
+          style="width: 140px"
+          @change="onSearch"
+        >
           <el-option v-for="c in CATEGORIES" :key="c" :label="c" :value="c" />
         </el-select>
       </el-form-item>
       <el-form-item label="状态">
-        <el-select v-model="query.status" clearable placeholder="全部" style="width: 150px" @change="onSearch">
+        <el-select
+          v-model="query.status"
+          clearable
+          placeholder="全部"
+          style="width: 150px"
+          @change="onSearch"
+        >
           <el-option label="检测中" :value="0" />
           <el-option label="待人工诊断" :value="1" />
           <el-option label="已完成" :value="2" />
@@ -17,14 +29,26 @@
         </el-select>
       </el-form-item>
       <el-form-item label="结论">
-        <el-select v-model="query.verdict" clearable placeholder="全部" style="width: 130px" @change="onSearch">
+        <el-select
+          v-model="query.verdict"
+          clearable
+          placeholder="全部"
+          style="width: 130px"
+          @change="onSearch"
+        >
           <el-option label="真" :value="1" />
           <el-option label="假" :value="2" />
           <el-option label="无法判定" :value="3" />
         </el-select>
       </el-form-item>
       <el-form-item label="关键词">
-        <el-input v-model="query.keyword" clearable placeholder="搜索消息内容" style="width: 200px" @keyup.enter="onSearch" />
+        <el-input
+          v-model="query.keyword"
+          clearable
+          placeholder="搜索消息内容"
+          style="width: 200px"
+          @keyup.enter="onSearch"
+        />
       </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="onSearch">查询</el-button>
@@ -32,13 +56,16 @@
       </el-form-item>
     </el-form>
 
-    <el-table :data="records" v-loading="loading">
+    <el-table v-loading="loading" :data="records">
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column prop="content" label="内容" show-overflow-tooltip />
       <el-table-column prop="category" label="分类" width="100" />
       <el-table-column label="结论" width="120">
         <template #default="{ row }">
-          <el-tag v-if="row.status === 2" :type="row.verdict === 1 ? 'success' : row.verdict === 2 ? 'danger' : 'info'">
+          <el-tag
+            v-if="row.status === 2"
+            :type="row.verdict === 1 ? 'success' : row.verdict === 2 ? 'danger' : 'info'"
+          >
             {{ row.verdict === 1 ? '真' : row.verdict === 2 ? '假' : '无法判定' }}
           </el-tag>
           <el-tag v-else-if="row.status === 1" type="warning">待人工</el-tag>
@@ -74,7 +101,7 @@
     />
 
     <el-dialog v-model="historyVisible" title="结论修订历史" width="720px">
-      <el-table :data="historyRecords" v-loading="historyLoading">
+      <el-table v-loading="historyLoading" :data="historyRecords">
         <el-table-column prop="id" label="ID" width="70" />
         <el-table-column label="旧结论" width="90">
           <template #default="{ row }">{{ verdictText(row.oldVerdict) }}</template>

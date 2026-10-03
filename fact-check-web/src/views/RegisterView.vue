@@ -7,10 +7,22 @@
           <el-input v-model="form.username" placeholder="用户名（4-20位字母/数字/下划线）" size="large" />
         </el-form-item>
         <el-form-item>
-          <el-input v-model="form.password" type="password" placeholder="密码（8-20位，含字母和数字）" size="large" show-password />
+          <el-input
+            v-model="form.password"
+            type="password"
+            placeholder="密码（8-20位，含字母和数字）"
+            size="large"
+            show-password
+          />
         </el-form-item>
         <el-form-item>
-          <el-input v-model="form.confirmPassword" type="password" placeholder="确认密码" size="large" show-password />
+          <el-input
+            v-model="form.confirmPassword"
+            type="password"
+            placeholder="确认密码"
+            size="large"
+            show-password
+          />
         </el-form-item>
         <el-form-item>
           <el-input v-model="form.nickname" placeholder="昵称（选填）" size="large" />
@@ -59,8 +71,22 @@ const onRegister = async () => {
 </script>
 
 <style scoped>
-.register-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f5f7fa; }
-.register-card { width: 400px; }
-.register-card h2 { text-align: center; margin-bottom: 24px; }
-.footer { text-align: center; margin-top: 8px; }
+.register-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f7fa;
+}
+.register-card {
+  width: 400px;
+}
+.register-card h2 {
+  text-align: center;
+  margin-bottom: 24px;
+}
+.footer {
+  text-align: center;
+  margin-top: 8px;
+}
 </style>

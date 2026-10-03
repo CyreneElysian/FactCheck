@@ -40,9 +40,16 @@
     <div v-if="detail.imageUrl" style="margin-top: 12px">
       <b>用户上传图片：</b>
       <div>
-        <el-image :src="detail.imageUrl" style="max-width: 320px" fit="contain" :preview-src-list="[detail.imageUrl]" />
+        <el-image
+          :src="detail.imageUrl"
+          style="max-width: 320px"
+          fit="contain"
+          :preview-src-list="[detail.imageUrl]"
+        />
       </div>
-      <div style="color: #909399; font-size: 12px">上方"消息内容"为 OCR 识别文本，可由管理员核对后作为判定依据</div>
+      <div style="color: #909399; font-size: 12px">
+        上方"消息内容"为 OCR 识别文本，可由管理员核对后作为判定依据
+      </div>
     </div>
 
     <el-alert v-if="detail.aiSummary" type="info" :closable="false" style="margin-top: 12px">
@@ -54,10 +61,12 @@
       证据（{{ evidenceList.length }} 条，其中管理员补充 {{ manualCount }} 条）
     </el-divider>
 
-    <el-table :data="evidenceList" v-loading="evidenceLoading" size="small">
+    <el-table v-loading="evidenceLoading" :data="evidenceList" size="small">
       <el-table-column label="标题" show-overflow-tooltip>
         <template #default="{ row }">
-          <el-link v-if="row.url" type="primary" :href="row.url" target="_blank" rel="noopener">{{ row.title }}</el-link>
+          <el-link v-if="row.url" type="primary" :href="row.url" target="_blank" rel="noopener">{{
+            row.title
+          }}</el-link>
           <span v-else>{{ row.title }}</span>
         </template>
       </el-table-column>
@@ -90,7 +99,12 @@
 
     <el-form v-if="evidenceFormVisible" label-width="80px" style="max-width: 720px; margin-top: 12px">
       <el-form-item label="标题" required>
-        <el-input v-model="evidenceForm.title" maxlength="200" show-word-limit placeholder="例如：湖北省卫健委 2026-10-03 通报" />
+        <el-input
+          v-model="evidenceForm.title"
+          maxlength="200"
+          show-word-limit
+          placeholder="例如：湖北省卫健委 2026-10-03 通报"
+        />
       </el-form-item>
       <el-form-item label="链接">
         <el-input v-model="evidenceForm.url" placeholder="https://…（选填，必须是 http/https）" />
@@ -200,13 +214,11 @@ const isTimeout = computed(() => {
   return !!deadline && new Date(String(deadline).replace(/-/g, '/')) < new Date()
 })
 const percent = (value: any) =>
-  value === null || value === undefined || isNaN(Number(value))
-    ? '-'
-    : `${Math.round(Number(value) * 100)}%`
+  value === null || value === undefined || isNaN(Number(value)) ? '-' : `${Math.round(Number(value) * 100)}%`
 
 const assigneeName = (adminId: number) => {
   const hit = admins.value.find(a => a.id === adminId)
-  return hit ? (hit.nickname || hit.username) : `#${adminId}`
+  return hit ? hit.nickname || hit.username : `#${adminId}`
 }
 
 const load = async () => {
@@ -295,7 +307,9 @@ const onSubmit = async () => {
 
 /** 权威信息标题：截取消息前 40 字并标注结论 */
 const buildAuthorityTitle = () => {
-  const content = String(detail.value.content || '').replace(/\s+/g, ' ').trim()
+  const content = String(detail.value.content || '')
+    .replace(/\s+/g, ' ')
+    .trim()
   const short = content.length > 40 ? content.slice(0, 40) + '…' : content
   const verdict = form.verdict === 1 ? '真' : form.verdict === 2 ? '假' : '无法判定'
   return `【${verdict}】${short}`

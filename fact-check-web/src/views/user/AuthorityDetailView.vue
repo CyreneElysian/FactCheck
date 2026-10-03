@@ -1,7 +1,7 @@
 <template>
   <el-card v-loading="loading">
     <h2>{{ detail.title }}</h2>
-    <p><b>分类：</b>{{ detail.category }}　<b>来源：</b>{{ detail.source }}</p>
+    <p><b>分类：</b>{{ detail.category }} <b>来源：</b>{{ detail.source }}</p>
     <p v-if="detail.publishTime"><b>发布时间：</b>{{ detail.publishTime }}</p>
     <el-divider />
     <div style="white-space: pre-wrap">{{ detail.content }}</div>

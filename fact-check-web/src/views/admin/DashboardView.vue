@@ -30,6 +30,13 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.num { font-size: 28px; font-weight: bold; color: #409eff; }
-.label { margin-top: 8px; color: #909399; }
+.num {
+  font-size: 28px;
+  font-weight: bold;
+  color: #409eff;
+}
+.label {
+  margin-top: 8px;
+  color: #909399;
+}
 </style>

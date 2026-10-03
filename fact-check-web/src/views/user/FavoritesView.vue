@@ -1,7 +1,7 @@
 <template>
   <el-card>
     <template #header>我的收藏</template>
-    <el-table :data="records" v-loading="loading">
+    <el-table v-loading="loading" :data="records">
       <el-table-column prop="recordId" label="记录ID" width="100" />
       <el-table-column prop="content" label="检测内容" show-overflow-tooltip />
       <el-table-column label="结论" width="100">

@@ -6,7 +6,7 @@
         <el-button type="primary" link @click="onReadAll">全部已读</el-button>
       </div>
     </template>
-    <el-table :data="records" v-loading="loading">
+    <el-table v-loading="loading" :data="records">
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column label="类型" width="110">
         <template #default="{ row }">{{ typeText(row.type) }}</template>
@@ -15,13 +15,17 @@
       <el-table-column prop="content" label="内容" show-overflow-tooltip />
       <el-table-column label="状态" width="100">
         <template #default="{ row }">
-          <el-tag :type="row.isRead === 1 ? 'info' : 'danger'">{{ row.isRead === 1 ? '已读' : '未读' }}</el-tag>
+          <el-tag :type="row.isRead === 1 ? 'info' : 'danger'">{{
+            row.isRead === 1 ? '已读' : '未读'
+          }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column prop="createTime" label="时间" width="180" />
       <el-table-column label="操作" width="180">
         <template #default="{ row }">
-          <el-button v-if="row.relatedId" type="primary" link @click="goRecord(row.relatedId)">查看关联记录</el-button>
+          <el-button v-if="row.relatedId" type="primary" link @click="goRecord(row.relatedId)"
+            >查看关联记录</el-button
+          >
           <el-button v-if="row.isRead === 0" type="primary" link @click="onRead(row.id)">标记已读</el-button>
         </template>
       </el-table-column>
@@ -55,8 +59,17 @@ const query = reactive({ page: 1, pageSize: 10 })
 
 /** 站内信类型文案（与后端 message.type 约定一致） */
 const typeText = (value: number) =>
-  value === 2 ? 'AI 判定' : value === 3 ? '人工诊断' : value === 4 ? '申诉结果'
-    : value === 5 ? '系统通知' : value === 6 ? '检测失败' : '通知'
+  value === 2
+    ? 'AI 判定'
+    : value === 3
+      ? '人工诊断'
+      : value === 4
+        ? '申诉结果'
+        : value === 5
+          ? '系统通知'
+          : value === 6
+            ? '检测失败'
+            : '通知'
 
 const load = async () => {
   loading.value = true

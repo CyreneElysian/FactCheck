@@ -50,8 +50,22 @@ const onLogin = async () => {
 </script>
 
 <style scoped>
-.login-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f5f7fa; }
-.login-card { width: 400px; }
-.login-card h2 { text-align: center; margin-bottom: 24px; }
-.footer { text-align: center; margin-top: 8px; }
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f7fa;
+}
+.login-card {
+  width: 400px;
+}
+.login-card h2 {
+  text-align: center;
+  margin-bottom: 24px;
+}
+.footer {
+  text-align: center;
+  margin-top: 8px;
+}
 </style>

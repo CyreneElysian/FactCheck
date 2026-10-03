@@ -14,7 +14,14 @@
         </el-form-item>
 
         <el-form-item v-if="activeTab === 'text'" label="消息内容">
-          <el-input v-model="content" type="textarea" :rows="4" maxlength="5000" show-word-limit placeholder="请输入要诊断的消息" />
+          <el-input
+            v-model="content"
+            type="textarea"
+            :rows="4"
+            maxlength="5000"
+            show-word-limit
+            placeholder="请输入要诊断的消息"
+          />
         </el-form-item>
 
         <el-form-item v-else label="上传图片">
@@ -81,10 +88,12 @@
           <b>推理链：</b>
           <pre style="white-space: pre-wrap">{{ result.reasoningChain }}</pre>
         </div>
-        <div v-if="result.aiSummary">
-          <b>AI 说明：</b>{{ result.aiSummary }}
-        </div>
-        <el-table v-if="result.evidenceList && result.evidenceList.length" :data="result.evidenceList" style="margin-top: 12px">
+        <div v-if="result.aiSummary"><b>AI 说明：</b>{{ result.aiSummary }}</div>
+        <el-table
+          v-if="result.evidenceList && result.evidenceList.length"
+          :data="result.evidenceList"
+          style="margin-top: 12px"
+        >
           <el-table-column label="证据标题">
             <template #default="{ row }">
               <el-link v-if="row.url" type="primary" :href="row.url" target="_blank" rel="noopener">
@@ -102,7 +111,9 @@
           </el-table-column>
         </el-table>
         <div style="margin-top: 12px">
-          <el-button type="primary" link @click="$router.push(`/history/${result.id}`)">查看详情/申诉/收藏</el-button>
+          <el-button type="primary" link @click="$router.push(`/history/${result.id}`)"
+            >查看详情/申诉/收藏</el-button
+          >
         </div>
       </div>
     </el-card>
@@ -141,9 +152,7 @@ const confidenceText = computed(() => {
 })
 /** 证据可信度/相关度同样按百分比展示 */
 const percent = (value: any) =>
-  value === null || value === undefined || isNaN(Number(value))
-    ? '-'
-    : `${Math.round(Number(value) * 100)}%`
+  value === null || value === undefined || isNaN(Number(value)) ? '-' : `${Math.round(Number(value) * 100)}%`
 
 const onUploadImage = async (options: any) => {
   ocrLoading.value = true

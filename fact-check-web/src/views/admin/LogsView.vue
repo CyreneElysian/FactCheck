@@ -1,7 +1,7 @@
 <template>
   <el-card>
     <template #header>操作日志</template>
-    <el-table :data="records" v-loading="loading">
+    <el-table v-loading="loading" :data="records">
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column prop="adminId" label="操作人ID" width="100" />
       <el-table-column prop="operation" label="操作" width="160" />

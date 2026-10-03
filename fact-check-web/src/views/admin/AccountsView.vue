@@ -6,13 +6,15 @@
         <el-button type="primary" @click="createVisible = true">创建管理员</el-button>
       </div>
     </template>
-    <el-table :data="records" v-loading="loading">
+    <el-table v-loading="loading" :data="records">
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column prop="username" label="用户名" />
       <el-table-column prop="nickname" label="昵称" />
       <el-table-column label="角色" width="120">
         <template #default="{ row }">
-          <el-tag :type="row.role === 1 ? 'warning' : 'info'">{{ row.role === 1 ? '管理员' : '用户' }}</el-tag>
+          <el-tag :type="row.role === 1 ? 'warning' : 'info'">{{
+            row.role === 1 ? '管理员' : '用户'
+          }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column label="状态" width="120">
@@ -24,8 +26,16 @@
       </el-table-column>
       <el-table-column label="操作" width="120">
         <template #default="{ row }">
-          <el-button v-if="row.status === 1 && row.role !== 1" type="danger" link @click="onUpdateStatus(row, 0)">禁用</el-button>
-          <el-button v-else-if="row.status === 0" type="primary" link @click="onUpdateStatus(row, 1)">启用</el-button>
+          <el-button
+            v-if="row.status === 1 && row.role !== 1"
+            type="danger"
+            link
+            @click="onUpdateStatus(row, 0)"
+            >禁用</el-button
+          >
+          <el-button v-else-if="row.status === 0" type="primary" link @click="onUpdateStatus(row, 1)"
+            >启用</el-button
+          >
         </template>
       </el-table-column>
     </el-table>
@@ -41,7 +51,9 @@
     <el-dialog v-model="createVisible" title="创建管理员" width="480px">
       <el-form label-width="80px">
         <el-form-item label="用户名"><el-input v-model="createForm.username" /></el-form-item>
-        <el-form-item label="密码"><el-input v-model="createForm.password" type="password" show-password /></el-form-item>
+        <el-form-item label="密码"
+          ><el-input v-model="createForm.password" type="password" show-password
+        /></el-form-item>
         <el-form-item label="昵称"><el-input v-model="createForm.nickname" /></el-form-item>
       </el-form>
       <template #footer>

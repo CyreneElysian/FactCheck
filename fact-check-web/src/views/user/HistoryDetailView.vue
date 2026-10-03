@@ -3,7 +3,10 @@
     <template #header>
       <div style="display: flex; align-items: center; gap: 12px">
         <span>检测详情 #{{ id }}</span>
-        <el-tag v-if="record.status === 2" :type="record.verdict === 1 ? 'success' : record.verdict === 2 ? 'danger' : 'info'">
+        <el-tag
+          v-if="record.status === 2"
+          :type="record.verdict === 1 ? 'success' : record.verdict === 2 ? 'danger' : 'info'"
+        >
           {{ verdictText(record.verdict) }}
         </el-tag>
         <el-tag v-else-if="record.status === 1" type="warning">待人工诊断</el-tag>
@@ -28,7 +31,11 @@
       <pre style="white-space: pre-wrap">{{ record.reasoningChain }}</pre>
     </div>
 
-    <el-table v-if="record.evidenceList && record.evidenceList.length" :data="record.evidenceList" style="margin-top: 12px">
+    <el-table
+      v-if="record.evidenceList && record.evidenceList.length"
+      :data="record.evidenceList"
+      style="margin-top: 12px"
+    >
       <el-table-column prop="title" label="证据标题" />
       <el-table-column prop="source" label="来源" width="120" />
       <el-table-column prop="sourceCredibility" label="可信度" width="90" />
@@ -80,7 +87,7 @@
     </el-dialog>
 
     <el-dialog v-model="historyVisible" title="结论修订历史" width="720px">
-      <el-table :data="historyRecords" v-loading="historyLoading">
+      <el-table v-loading="historyLoading" :data="historyRecords">
         <el-table-column prop="id" label="ID" width="70" />
         <el-table-column label="旧结论" width="90">
           <template #default="{ row }">{{ verdictText(row.oldVerdict) }}</template>
@@ -194,7 +201,8 @@ const drawShareCard = () => {
   ctx.fillText('事实检测结果', canvas.width / 2, 70)
 
   const verdict = verdictText(record.value.verdict)
-  const verdictColor = record.value.verdict === 1 ? '#67c23a' : record.value.verdict === 2 ? '#f56c6c' : '#909399'
+  const verdictColor =
+    record.value.verdict === 1 ? '#67c23a' : record.value.verdict === 2 ? '#f56c6c' : '#909399'
   ctx.fillStyle = verdictColor
   ctx.font = 'bold 48px sans-serif'
   ctx.fillText(verdict, canvas.width / 2, 145)
@@ -222,8 +230,15 @@ const drawShareCard = () => {
 /** 分享卡片上的记录链接 */
 const shareUrl = computed(() => `${window.location.origin}/history/${id}`)
 
-const wrapText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number,
-                  maxWidth: number, lineHeight: number, maxLines: number) => {
+const wrapText = (
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number,
+  maxLines: number
+) => {
   const chars = Array.from(text)
   let line = ''
   let lineCount = 0

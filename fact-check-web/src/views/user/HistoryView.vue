@@ -19,13 +19,16 @@
       </el-form-item>
     </el-form>
 
-    <el-table :data="records" v-loading="loading">
+    <el-table v-loading="loading" :data="records">
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column prop="content" label="内容" show-overflow-tooltip />
       <el-table-column prop="category" label="分类" width="100" />
       <el-table-column label="结论" width="100">
         <template #default="{ row }">
-          <el-tag v-if="row.status === 2" :type="row.verdict === 1 ? 'success' : row.verdict === 2 ? 'danger' : 'info'">
+          <el-tag
+            v-if="row.status === 2"
+            :type="row.verdict === 1 ? 'success' : row.verdict === 2 ? 'danger' : 'info'"
+          >
             {{ verdictText(row.verdict) }}
           </el-tag>
           <el-tag v-else-if="row.status === 1" type="warning">待人工</el-tag>

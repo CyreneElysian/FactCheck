@@ -16,7 +16,7 @@
       </el-form-item>
     </el-form>
 
-    <el-table :data="records" v-loading="loading">
+    <el-table v-loading="loading" :data="records">
       <el-table-column prop="title" label="标题" show-overflow-tooltip />
       <el-table-column prop="category" label="分类" width="120" />
       <el-table-column prop="source" label="来源" width="180" />

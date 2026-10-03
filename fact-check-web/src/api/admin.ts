@@ -7,13 +7,16 @@ export const getPendingTop10 = () => request.get('/admin/pending/top10')
 export const getPendingDetail = (id: number | string) => request.get(`/admin/pending/${id}`)
 
 /** 转派 */
-export const assignPending = (id: number | string, data: any) => request.put(`/admin/pending/${id}/assign`, data)
+export const assignPending = (id: number | string, data: any) =>
+  request.put(`/admin/pending/${id}/assign`, data)
 
 /** 人工诊断 */
-export const submitConclusion = (id: number | string, data: any) => request.post(`/admin/records/${id}/conclusion`, data)
+export const submitConclusion = (id: number | string, data: any) =>
+  request.post(`/admin/records/${id}/conclusion`, data)
 
 /** 修改结论 */
-export const updateConclusion = (id: number | string, data: any) => request.put(`/admin/records/${id}/conclusion`, data)
+export const updateConclusion = (id: number | string, data: any) =>
+  request.put(`/admin/records/${id}/conclusion`, data)
 
 /** 检测记录分页 */
 export const pageAdminRecords = (params: any) => request.get('/admin/records', { params })
@@ -22,7 +25,8 @@ export const pageAdminRecords = (params: any) => request.get('/admin/records', {
 export const pageAdminAppeals = (params: any) => request.get('/admin/appeals', { params })
 
 /** 处理申诉 */
-export const handleAppeal = (id: number | string, data: any) => request.post(`/admin/appeals/${id}/handle`, data)
+export const handleAppeal = (id: number | string, data: any) =>
+  request.post(`/admin/appeals/${id}/handle`, data)
 
 /** 统计概览 */
 export const getStatsOverview = () => request.get('/admin/stats/overview')

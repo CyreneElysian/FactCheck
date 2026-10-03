@@ -10,13 +10,15 @@ import { WS_TOKEN_PARAM, buildDetectSocketUrl } from '@/utils/wsUrl'
  */
 describe('buildDetectSocketUrl', () => {
   it('http 站点用 ws 协议', () => {
-    expect(buildDetectSocketUrl(12, 'tk', 'http://localhost:8080'))
-      .toBe('ws://localhost:8080/api/ws/detect?recordId=12&token=tk')
+    expect(buildDetectSocketUrl(12, 'tk', 'http://localhost:8080')).toBe(
+      'ws://localhost:8080/api/ws/detect?recordId=12&token=tk'
+    )
   })
 
   it('https 站点用 wss 协议', () => {
-    expect(buildDetectSocketUrl(12, 'tk', 'https://example.com'))
-      .toBe('wss://example.com/api/ws/detect?recordId=12&token=tk')
+    expect(buildDetectSocketUrl(12, 'tk', 'https://example.com')).toBe(
+      'wss://example.com/api/ws/detect?recordId=12&token=tk'
+    )
   })
 
   it('未登录时不附加 token 参数（服务端会拒绝握手，前端由轮询兜底）', () => {
@@ -40,7 +42,8 @@ describe('buildDetectSocketUrl', () => {
   })
 
   it('带端口与非默认路径的站点也能正确拼接', () => {
-    expect(buildDetectSocketUrl(3, 'tk', 'https://example.com:8443'))
-      .toBe('wss://example.com:8443/api/ws/detect?recordId=3&token=tk')
+    expect(buildDetectSocketUrl(3, 'tk', 'https://example.com:8443')).toBe(
+      'wss://example.com:8443/api/ws/detect?recordId=3&token=tk'
+    )
   })
 })

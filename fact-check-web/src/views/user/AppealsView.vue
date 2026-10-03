@@ -1,7 +1,7 @@
 <template>
   <el-card>
     <template #header>我的申诉</template>
-    <el-table :data="records" v-loading="loading">
+    <el-table v-loading="loading" :data="records">
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column prop="recordContent" label="检测内容" show-overflow-tooltip />
       <el-table-column prop="reasonType" label="类型" width="100" />

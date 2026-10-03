@@ -91,6 +91,10 @@ jobs:
         working-directory: fact-check-web
         run: npm run type-check
 
+      - name: 代码规范（eslint）
+        working-directory: fact-check-web
+        run: npm run lint
+
       - name: 单元测试（vitest）
         working-directory: fact-check-web
         run: npm run test:run

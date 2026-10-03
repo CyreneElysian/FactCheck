@@ -56,11 +56,14 @@ const loadUnread = async () => {
   }
 }
 
-watch(() => route.path, () => {
-  if (userStore.token) {
-    loadUnread()
+watch(
+  () => route.path,
+  () => {
+    if (userStore.token) {
+      loadUnread()
+    }
   }
-})
+)
 
 onMounted(() => {
   if (userStore.token) {
@@ -75,12 +78,41 @@ const logout = () => {
 </script>
 
 <style scoped>
-.user-layout { min-height: 100vh; background: #f5f7fa; }
-.header { display: flex; align-items: center; gap: 24px; background: #fff; border-bottom: 1px solid #e4e7ed; }
-.logo { font-size: 20px; font-weight: bold; color: #409eff; cursor: pointer; }
-.menu { flex: 1; }
-.right { display: flex; align-items: center; gap: 12px; }
-.avatar-wrap { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-.nickname { font-size: 14px; }
-.main { padding: 24px; }
+.user-layout {
+  min-height: 100vh;
+  background: #f5f7fa;
+}
+.header {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  background: #fff;
+  border-bottom: 1px solid #e4e7ed;
+}
+.logo {
+  font-size: 20px;
+  font-weight: bold;
+  color: #409eff;
+  cursor: pointer;
+}
+.menu {
+  flex: 1;
+}
+.right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.avatar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.nickname {
+  font-size: 14px;
+}
+.main {
+  padding: 24px;
+}
 </style>

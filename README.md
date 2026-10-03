@@ -296,11 +296,11 @@ cd fact-agent && python -m unittest discover -s tests -t .
 # 小程序静态自检：110 项（JS 语法 / JSON / 页面齐套 / 跳转目标 / 事件绑定）
 cd fact-check-mini && python check_mini.py
 
-# 前端单元测试：需要先 npm i（离线装不上 vitest）
+# 前端单元测试（npm i 之后可用）
 cd fact-check-web && npm run test:run      # vitest
 cd fact-check-web && npm run test:offline  # 零依赖兜底：同一批 spec，只用 node 跑
 cd fact-check-web && npm run type-check    # vue-tsc（含模板类型检查）
-cd fact-check-web && npm run lint          # 需要先 npm i（eslint / prettier）
+cd fact-check-web && npm run lint          # eslint（当前 0 error 0 warning）
 ```
 
 **一条命令跑完全部检查**（等价于 CI 流水线，可直接当提交前钩子）：
@@ -478,11 +478,11 @@ Agent 与 Java 的**内部令牌由同一个 compose 变量提供**，不会出�
 
 作为作品集项目，原本的短板已逐项处理完毕：**[`docs/项目改进清单.md`](docs/项目改进清单.md) 中的 75 项全部处理完毕（74 项实现 + 1 项经决策明确不做）**。当前仍有以下限制与取舍，如实列出；每项的**具体补做步骤**见 [`docs/环境限制与联网后待办.md`](docs/环境限制与联网后待办.md)：
 
-- **前端 vitest / eslint 尚未在真实工具链下跑过**：配置与用例都已写好并声明在 `package.json`，
-  但本机 npm registry 不可达、缓存也没有这些包（实测 `ENOTCACHED`）。已用零依赖运行器
-  `npm run test:offline` 跑**同一批 spec**（17 条断言通过，并当场抓出过一个 `ws:////host` 拼接 bug）——
-  未验证的只是 vitest 这层框架接线。Java（224 用例）、Python（111 用例）、
-  小程序静态自检 [`check_mini.py`](fact-check-mini/check_mini.py)（110 项）均已在本机实跑通过。
+- **前端工具链已全部跑通**：`npm i` 之后 `npm run test:run`（vitest）**2 个文件 / 12 个用例全通过**、
+  `npm run lint`（eslint）**0 error 0 warning**、`npm run type-check`、`npm run build` 均通过，
+  全仓已按 prettier 统一格式。接工具链时真抓到两个只在实跑时才暴露的问题：eslint 配置被写成 `.cjs`
+  扩展名（会按 JavaScript 执行而直接语法报错）、以及一处全角空格触发 `no-irregular-whitespace`——都已修复。
+  Java（224 用例）、Python（111 用例）、小程序静态自检 [`check_mini.py`](fact-check-mini/check_mini.py)（110 项）同样在本机实跑通过。
 - **Docker Compose 未做过真实构建与启动**：编排文件、两个 Dockerfile 与容器版 nginx 已就位，
   `docker compose config` 校验通过、所有构建上下文/挂载源逐项校验存在、两侧内部令牌由同一变量提供；
   但本机只装了 Docker CLI（引擎未启动、零镜像），起整套需联网拉约 2–3GB 基础镜像。

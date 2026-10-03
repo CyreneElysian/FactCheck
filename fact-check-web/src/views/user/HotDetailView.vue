@@ -39,9 +39,7 @@
       <pre style="white-space: pre-wrap">{{ record.reasoningChain }}</pre>
     </div>
 
-    <div v-if="record.aiSummary" style="margin-top: 12px">
-      <b>AI 说明：</b>{{ record.aiSummary }}
-    </div>
+    <div v-if="record.aiSummary" style="margin-top: 12px"><b>AI 说明：</b>{{ record.aiSummary }}</div>
 
     <el-table
       v-if="record.evidenceList && record.evidenceList.length"
@@ -100,9 +98,7 @@ const confidenceText = computed(() =>
 )
 
 const percent = (value: any) =>
-  value === null || value === undefined || isNaN(Number(value))
-    ? '-'
-    : `${Math.round(Number(value) * 100)}%`
+  value === null || value === undefined || isNaN(Number(value)) ? '-' : `${Math.round(Number(value) * 100)}%`
 
 onMounted(async () => {
   loading.value = true

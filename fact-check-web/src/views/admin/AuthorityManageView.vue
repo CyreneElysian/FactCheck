@@ -6,13 +6,15 @@
         <el-button type="primary" @click="openAdd">新增</el-button>
       </div>
     </template>
-    <el-table :data="records" v-loading="loading">
+    <el-table v-loading="loading" :data="records">
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column prop="title" label="标题" show-overflow-tooltip />
       <el-table-column prop="category" label="分类" width="120" />
       <el-table-column label="状态" width="100">
         <template #default="{ row }">
-          <el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? '已发布' : row.status === 0 ? '草稿' : '已下线' }}</el-tag>
+          <el-tag :type="row.status === 1 ? 'success' : 'info'">{{
+            row.status === 1 ? '已发布' : row.status === 0 ? '草稿' : '已下线'
+          }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column label="操作" width="240">
@@ -39,7 +41,9 @@
         <el-form-item label="分类"><el-input v-model="form.category" /></el-form-item>
         <el-form-item label="来源"><el-input v-model="form.source" /></el-form-item>
         <el-form-item label="原文链接"><el-input v-model="form.sourceUrl" /></el-form-item>
-        <el-form-item label="正文"><el-input v-model="form.content" type="textarea" :rows="5" /></el-form-item>
+        <el-form-item label="正文"
+          ><el-input v-model="form.content" type="textarea" :rows="5"
+        /></el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="editVisible = false">取消</el-button>
@@ -52,7 +56,13 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { deleteAuthority, pageAdminAuthority, saveAuthority, updateAuthority, updateAuthorityStatus } from '@/api/admin'
+import {
+  deleteAuthority,
+  pageAdminAuthority,
+  saveAuthority,
+  updateAuthority,
+  updateAuthorityStatus
+} from '@/api/admin'
 
 const loading = ref(false)
 const records = ref<any[]>([])

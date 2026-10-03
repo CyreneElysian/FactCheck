@@ -1,7 +1,7 @@
 <template>
   <el-card>
     <template #header>待诊断热门消息 Top10</template>
-    <el-table :data="list" v-loading="loading">
+    <el-table v-loading="loading" :data="list">
       <el-table-column prop="recordId" label="ID" width="80" />
       <el-table-column prop="content" label="消息内容" show-overflow-tooltip />
       <el-table-column prop="category" label="分类" width="100" />
@@ -14,7 +14,9 @@
       </el-table-column>
       <el-table-column label="操作" width="120">
         <template #default="{ row }">
-          <el-button type="primary" link @click="$router.push(`/admin/pending/${row.recordId}`)">诊断</el-button>
+          <el-button type="primary" link @click="$router.push(`/admin/pending/${row.recordId}`)"
+            >诊断</el-button
+          >
         </template>
       </el-table-column>
     </el-table>

@@ -4,7 +4,13 @@
     <!-- P3-36：补状态筛选（文档要求可按处理状态查看） -->
     <el-form inline>
       <el-form-item label="状态">
-        <el-select v-model="query.status" clearable placeholder="全部" style="width: 150px" @change="onSearch">
+        <el-select
+          v-model="query.status"
+          clearable
+          placeholder="全部"
+          style="width: 150px"
+          @change="onSearch"
+        >
           <el-option label="待处理" :value="0" />
           <el-option label="已采纳" :value="1" />
           <el-option label="已驳回" :value="2" />
@@ -15,7 +21,7 @@
       </el-form-item>
     </el-form>
 
-    <el-table :data="records" v-loading="loading">
+    <el-table v-loading="loading" :data="records">
       <el-table-column prop="id" label="ID" width="80" />
       <el-table-column prop="recordId" label="记录ID" width="100" />
       <el-table-column label="类型" width="110">
