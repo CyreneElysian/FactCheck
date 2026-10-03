@@ -211,7 +211,7 @@ const drawShareCard = () => {
   ctx.fillStyle = '#409eff'
   ctx.font = '14px sans-serif'
   ctx.textAlign = 'center'
-  ctx.fillText(shareUrl, canvas.width / 2, 330)
+  ctx.fillText(shareUrl.value, canvas.width / 2, 330)
 
   ctx.fillStyle = '#909399'
   ctx.font = '14px sans-serif'
