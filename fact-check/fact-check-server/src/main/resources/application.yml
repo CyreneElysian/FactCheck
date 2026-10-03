@@ -13,6 +13,12 @@ spring:
     active: ${FACTCHECK_PROFILE:dev,local}
   main:
     allow-circular-references: true
+  mvc:
+    pathmatch:
+      # springfox 3.0.0（knife4j 接口文档的底层）与 Spring Boot 2.6+ 的兼容要求：
+      # Boot 2.6 起默认路径匹配策略换成了 PathPatternParser，springfox 只支持 AntPathMatcher，
+      # 不显式设置会在启动/访问 /doc.html 时报错
+      matching-strategy: ant_path_matcher
   datasource:
     druid:
       driver-class-name: ${fact-check.datasource.driver-class-name}

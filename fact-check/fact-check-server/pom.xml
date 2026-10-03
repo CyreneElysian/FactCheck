@@ -100,6 +100,18 @@
             <groupId>javax.xml.bind</groupId>
             <artifactId>jaxb-api</artifactId>
         </dependency>
+        <!--
+          接口文档（P2-26）：knife4j 3.0.2 基于 springfox 3.0.0，UI 在 /doc.html。
+          版本必须显式指定：3.0.2 是适配 Spring Boot 2.x 的最后一个大版本，
+          而本地离线仓库里只有这一版（无 springdoc/springfox-boot-starter 之外的版本）。
+          已知兼容要求：springfox 3.0.0 配 Boot 2.6+ 必须使用 ant_path_matcher 路径匹配策略，
+          见 application.yml 中的 spring.mvc.pathmatch.matching-strategy。
+        -->
+        <dependency>
+            <groupId>com.github.xiaoymin</groupId>
+            <artifactId>knife4j-spring-boot-starter</artifactId>
+            <version>3.0.2</version>
+        </dependency>
     </dependencies>
 
     <build>
