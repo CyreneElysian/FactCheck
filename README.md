@@ -369,7 +369,8 @@ py -3.10 fact-agent/eval/evaluate.py --mode live --subset 10
 | `DEDUP_MIN_TEXT_LENGTH` | `8` | 最短语义去重文本长度 |
 | `EMBEDDING_MODEL` | `BAAI/bge-small-zh-v1.5` | 可用 HuggingFace 名称或本地路径；**相对路径一律相对 `fact-agent/` 解析** |
 | `AGENT_DATA_DIR` | `./data` | FAISS 索引目录（相对 `fact-agent/` 解析） |
-| `INTERNAL_TOKEN` | 空 | 内部鉴权；留空则不校验（Java 侧目前不发送该请求头，配了会 401） |
+| `INTERNAL_TOKEN` | `dev-internal-token-change-me` | 内部鉴权；**必须与 Java 侧 `fact-check.agent.internal-token` 一致**，留空则内部接口一律 401（fail-closed） |
+| `CREDIBILITY_RULES_FILE` | 空 | 来源可信度规则库路径；留空用 `fact-agent/config/credibility_rules.json`（改词表不用改代码） |
 
 > ⚠️ **默认 `SEARCH_TOOL=dummy`，即不联网**，此时检测退化为纯 LLM 自身知识判断。要体现"联网核查"能力，必须配置真实搜索源。
 >
@@ -424,12 +425,16 @@ py -3.10 fact-agent/eval/evaluate.py --mode live --subset 10
 
 - **零自动化测试**：Java / Python / 前端三个模块均无测试代码（P4-42）。
 - **未接入 Docker / CI**：技术方案建议的 Docker Compose 编排尚未落地，环境搭建依赖手工步骤（P4-43）。
-- **内容安全审核（S2）尚未实质实现**：`ContentSafetyServiceImpl` 目前是空实现（仅日志），图片审核未接入（P2-13）。
-- **热度权重未全部接入**：查看详情（+0.5）与发布权威信息（+5）两个权重尚未生效（P2-14）。
-- **限流只覆盖检测提交**：登录/注册尚未限流（P2-16）；后端尚未接入 Bean Validation 参数校验（P2-17）。
+- **前端无自动化测试、无 lint 工具链**：`vitest` / `eslint` / `prettier` 未接入（P4-42 未完成部分、P4-45）。
 - **小程序端**：记录详情页较薄（缺证据列表/评分/收藏/申诉入口），未实现微信原生分享，无分页与未读红点（P3-30~33）。
-- **来源可信度域名表较窄**：仅覆盖主流站点，省级疾控等权威机构自建域名会落到兜底值 0.3，后续应扩充或改为管理员维护。
-- **内部鉴权未启用**：Python 侧支持 `X-Internal-Token`，但 Java 侧尚未发送该头（P2-21）。
+- **来源可信度域名库覆盖仍偏窄**：规则已外置为 `config/credibility_rules.json`（改词表不用改代码），
+  但内容仍是起步版——省级疾控等权威机构的自建域名会落到兜底值 0.3（语义是"未收录"而非"不可信"），需要持续补充。
+- **参数校验未使用 Bean Validation**：因离线仓库只有 `jakarta` 版 hibernate-validator（与 Boot 2.7 的
+  `javax` 命名空间不兼容），改用自研的 `ValidationUtils`；联网环境可机械替换为 `@Valid` 注解（详见改进清单 P2-17）。
+- **记录详情刻意不做缓存**：状态会异步变化（AI 判定/人工诊断/申诉改判），缓存脏读风险大于收益（P2-28 决策）。
+- **剩余代码质量项**：jjwt 仍为 0.9.1、`WebMvcConfiguration` 直接继承 `WebMvcConfigurationSupport`
+  （关掉了 Boot 的 MVC 自动配置）、部分死代码与线程上下文清理（P5 系列）。
+- **Agent 侧残留**：`Settings` 在导入期求值环境变量；`search` 的查询词过滤按首字符丢弃略粗（P5-69、P5-51）。
 - **无初始分类字典**：消息分类为代码内固定枚举，数据库无字典表（设计如此，非缺陷）。
 
 > 已知问题均已在改进清单中排序，未做隐藏。

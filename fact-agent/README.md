@@ -69,12 +69,14 @@ python -m app.main
 | `DEDUP_MIN_TEXT_LENGTH` | `8` | 低于该长度只做精确去重 |
 | `EMBEDDING_MODEL` | `BAAI/bge-small-zh-v1.5` | 支持 HuggingFace 名称或本地目录；**相对路径相对 `fact-agent/` 解析** |
 | `AGENT_DATA_DIR` | `./data` | FAISS 索引与元数据目录（相对 `fact-agent/` 解析） |
-| `INTERNAL_TOKEN` | 空 | 内部鉴权；留空则不校验。**Java 侧目前不发送 `X-Internal-Token`，配了会 401** |
+| `INTERNAL_TOKEN` | `dev-internal-token-change-me` | 内部鉴权。**必须与 Java 侧 `fact-check.agent.internal-token` 一致**；留空则内部接口一律 401（fail-closed） |
+| `CREDIBILITY_RULES_FILE` | 空 | 来源可信度规则库路径；留空用 `fact-agent/config/credibility_rules.json` |
 
 ## Java 调用约定
 
 Java 通过 HTTP 调用，默认地址 `http://127.0.0.1:8001`。
-若配置了 `INTERNAL_TOKEN`，请求头需携带 `X-Internal-Token`（见上方注意事项）。
+`/detect`、`/dedup`、`/index/add` 都需要请求头 `X-Internal-Token`（Java 侧 `AgentClient` 会自动附加）：
+未配置 `INTERNAL_TOKEN` 时这些接口一律返回 401，`/health` 不受影响（便于探活）。
 
 ## 实现说明
 
@@ -83,8 +85,10 @@ Java 通过 HTTP 调用，默认地址 `http://127.0.0.1:8001`。
   **不会**用空索引覆盖原文件。
 - **联网检测**：LLM 生成 1-3 个查询词 → 多查询检索并按 URL 去重 → 抓取前 N 条网页正文
   （正文存 `content`，不覆盖原始摘要）→ 组装提示词 → 强制校验 JSON 输出。
-- **来源可信度（S13）**：由确定性域名规则表 `app/services/credibility.py` 决定，
-  **不采信模型自报的可信度**（自报数字无法复核）。规则表为起步版，未收录域名落到 0.3。
+- **来源可信度（S13）**：确定性域名规则表，规则**外置**在 `config/credibility_rules.json`
+  （`exact` 精确匹配 / `suffixes` 后缀匹配，按档位顺序命中），改词表不用改代码。
+  **不采信模型自报的可信度**（自报数字无法复核）；未收录域名落到 `unknown_score`（默认 0.3，
+  语义是"未收录"而不是"不可信"）。文件缺失或写坏会回退内置兜底规则，不会让 Agent 起不来。
 - **相关度**：**只用一种确定性口径**——`位置分 × (0.3 + 0.7 × 词面重合率)`（字符二元组）。
   乘性组合保证"排得靠前"不会单独换来中高分（完全不重合时最多 0.3）。
   模型自报的 `relevance_score` **不参与排序、也不写进结果**（只记 debug 日志），
