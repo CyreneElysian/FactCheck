@@ -21,8 +21,11 @@ public class RedisKeyConstant {
     public static final String RATE_LIMIT_PREFIX = "fact:limit:";
     /** 检测限流 key 前缀（保留给文档与旧代码引用，实际由 RATE_LIMIT_PREFIX + 场景 拼出） */
     public static final String DETECT_LIMIT_PREFIX = "fact:limit:detect:";
-    /** 记录详情缓存 key 前缀 */
-    public static final String RECORD_CACHE_PREFIX = "fact:cache:record:";
+
+    // 说明（P2-28 决策）：原设计里还有一个 `fact:cache:record:{id}`（记录详情缓存 30 分钟），
+    // 该常量一直是零引用的死代码，已删除。原因是记录状态会**异步变化**
+    // （AI 检测完成、管理员人工诊断、申诉改判），缓存详情很容易让用户看到过期状态，
+    // 脏读风险大于收益；详见《技术方案》5.3。
 
     private RedisKeyConstant() {
     }
