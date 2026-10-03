@@ -8,7 +8,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.MalformedJwtException;
-import io.jsonwebtoken.SignatureException;
+import io.jsonwebtoken.security.SignatureException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -27,7 +27,7 @@ import org.junit.jupiter.api.Test;
  */
 class JwtUtilTest {
 
-    /** 测试用密钥，长度足够 HS256 使用 */
+    /** 测试用密钥，长度足够 HS256 使用（0.12.x 起会强制校验长度 ≥32 字节） */
     private static final String SECRET = "fact-check-unit-test-secret-key-0123456789";
 
     /** 另一把密钥，用于验证“换密钥必然解析失败” */
@@ -64,7 +64,9 @@ class JwtUtilTest {
 
     /**
      * 用错误密钥解析必须失败（签名校验不通过）。
-     * 具体异常类型是 SignatureException，这里用它精确定位“签名不匹配”这一类失败。
+     *
+     * <p>P5-71 升级 jjwt 0.12.5 后，异常类型从 {@code io.jsonwebtoken.SignatureException}
+     * 移到了 {@code io.jsonwebtoken.security.SignatureException}。</p>
      */
     @Test
     @DisplayName("用错误密钥解析抛 SignatureException")
@@ -75,6 +77,48 @@ class JwtUtilTest {
                 () -> JwtUtil.parseJWT(WRONG_SECRET, token));
 
         assertThat(ex).isInstanceOf(JwtException.class);
+    }
+
+    /**
+     * 密钥过短必须**明确失败**（P5-71 的升级收益）
+     *
+     * <p>jjwt 0.9.1 对 HS256 密钥长度不做校验，随手写 "abc" 也能签出 token；
+     * 0.12.x 强制 ≥256 位。我们在 {@code JwtUtil} 里把它转成可读的提示，
+     * 避免部署时用弱密钥还以为一切正常。</p>
+     */
+    @Test
+    @DisplayName("密钥过短（<32 字节）→ 抛出可读异常，而不是签出一个弱签名 token")
+    void shouldRejectWeakSecret() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> JwtUtil.createJWT("short", ONE_HOUR_MILLIS, claims(1L, "user")));
+
+        assertThat(ex.getMessage()).contains("JWT 密钥过短").contains("32");
+    }
+
+    @Test
+    @DisplayName("解析时同样拒绝弱密钥")
+    void shouldRejectWeakSecretOnParse() {
+        String token = JwtUtil.createJWT(SECRET, ONE_HOUR_MILLIS, claims(1L, "user"));
+
+        assertThrows(IllegalArgumentException.class, () -> JwtUtil.parseJWT("short", token));
+    }
+
+    /**
+     * 签名算法必须**固定为 HS256**（P5-71）
+     *
+     * <p>jjwt 0.12 的 {@code signWith(key)} 会按密钥长度自动选算法（64 字节 → HS512），
+     * 那样签名算法就随密钥长度漂移，既偏离文档约定，也让"换个更长的密钥"变成破坏性变更。
+     * 这条用例直接从 token 头部读 {@code alg} 来锁定。</p>
+     */
+    @Test
+    @DisplayName("签名算法固定为 HS256（不随密钥长度漂移）")
+    void shouldAlwaysSignWithHs256() throws Exception {
+        String token = JwtUtil.createJWT(SECRET, ONE_HOUR_MILLIS, claims(1L, "user"));
+
+        String headerJson = new String(java.util.Base64.getUrlDecoder().decode(token.split("\\.")[0]),
+                java.nio.charset.StandardCharsets.UTF_8);
+
+        assertThat(headerJson).contains("\"alg\":\"HS256\"");
     }
 
     /**

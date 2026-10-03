@@ -1,6 +1,7 @@
 package com.factcheck.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.factcheck.properties.AgentProperties;
 import com.sun.net.httpserver.HttpExchange;
@@ -15,9 +16,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.web.client.ResourceAccessException;
 
 /**
- * {@link AgentClient} 的内部鉴权请求头测试（P2-21）
+ * {@link AgentClient} 的请求头与重试行为测试（P2-21 / P5-59）
  *
  * <p>用 JDK 自带的 {@code HttpServer} 起一个**真实的本地 HTTP 服务**来接收请求，
  * 而不是 mock RestTemplate——这样验证的是"实际发出的报文里到底有没有这个头"，
@@ -29,6 +31,7 @@ import org.junit.jupiter.api.Test;
 class AgentClientTest {
 
     private HttpServer server;
+    private int port;
     private final List<String> receivedTokens = new ArrayList<>();
     private final List<String> receivedBodies = new ArrayList<>();
 
@@ -37,6 +40,7 @@ class AgentClientTest {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/", this::handle);
         server.start();
+        port = server.getAddress().getPort();
     }
 
     @AfterEach
@@ -110,5 +114,45 @@ class AgentClientTest {
 
         assertThat(receivedTokens).containsExactly("secret-token");
         assertThat(receivedBodies.get(0)).contains("\"record_id\":42");
+    }
+
+    // ------------------------------------------------------------------
+    // 连接失败重试（P5-59）
+    // ------------------------------------------------------------------
+
+    @Test
+    @DisplayName("只读接口遇连接失败会重试一次（Agent 刚重启、端口短暂拒绝连接的场景）")
+    void shouldRetryOnceForReadOnlyCall() throws Exception {
+        // 先关掉服务，制造连接失败
+        server.stop(0);
+        AgentProperties properties = new AgentProperties();
+        properties.setBaseUrl("http://127.0.0.1:" + port);
+        properties.setTimeout(2);
+        AgentClient client = new AgentClient(properties);
+
+        long start = System.currentTimeMillis();
+        assertThatThrownBy(() -> client.dedup("武汉又出现新型病毒了"))
+                .isInstanceOf(ResourceAccessException.class);
+        long elapsed = System.currentTimeMillis() - start;
+
+        // 两次尝试之间至少有退避时间（500ms），据此确认确实重试过而不是一次就放弃
+        assertThat(elapsed).isGreaterThanOrEqualTo(450L);
+    }
+
+    @Test
+    @DisplayName("有副作用的 indexAdd 不重试（超时后重试可能写入重复向量）")
+    void shouldNotRetryForIndexAdd() throws Exception {
+        server.stop(0);
+        AgentProperties properties = new AgentProperties();
+        properties.setBaseUrl("http://127.0.0.1:" + port);
+        properties.setTimeout(2);
+        AgentClient client = new AgentClient(properties);
+
+        long start = System.currentTimeMillis();
+        assertThatThrownBy(() -> client.indexAdd(1L, "内容"))
+                .isInstanceOf(ResourceAccessException.class);
+        long elapsed = System.currentTimeMillis() - start;
+
+        assertThat(elapsed).isLessThan(450L);
     }
 }

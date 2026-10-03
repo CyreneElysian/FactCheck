@@ -131,6 +131,9 @@ public class AdminRecordServiceImpl implements AdminRecordService {
                 .verdict(adminConclusionDTO.getVerdict())
                 .verdictSource(2)
                 .reasoningChain(adminConclusionDTO.getReasoningChain())
+                // P2-20：产品文档 §5.4 要求"记录状态=已完成（人工判定），记录版本+1"。
+                // 版本号是"结论被改过几次"的留痕，与 AI 判定、改结论、申诉采纳三条路径保持一致。
+                .version(record.getVersion() == null ? 2 : record.getVersion() + 1)
                 .completeTime(LocalDateTime.now())
                 .updateTime(LocalDateTime.now())
                 .build());

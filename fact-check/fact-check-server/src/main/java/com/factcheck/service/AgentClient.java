@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
@@ -110,6 +111,16 @@ public class AgentClient {
     }
 
     /**
+     * 连接失败时的重试次数（P5-59，首次 + 1 次重试）
+     */
+    private static final int CONNECT_RETRY_ATTEMPTS = 2;
+
+    /**
+     * 重试前的退避时间（毫秒）
+     */
+    private static final long RETRY_BACKOFF_MILLIS = 500L;
+
+    /**
      * 内部接口鉴权请求头（P2-21）
      *
      * <p>Python 侧对 /detect、/dedup、/index/add 做 fail-closed 校验：配置了 INTERNAL_TOKEN
@@ -119,6 +130,17 @@ public class AgentClient {
     static final String INTERNAL_TOKEN_HEADER = "X-Internal-Token";
 
     private JSONObject post(String path, Map<String, Object> body) {
+        // /index/add 会写 Agent 的向量索引，属于有副作用的调用：超时后重试可能写入重复向量，
+        // 因此默认不重试；/detect 与 /dedup 是只读的，可以安全重试
+        return post(path, body, !"/index/add".equals(path));
+    }
+
+    /**
+     * 发送 POST 请求
+     *
+     * @param retryOnConnectFailure 连接失败时是否重试（仅对只读接口置 true）
+     */
+    private JSONObject post(String path, Map<String, Object> body, boolean retryOnConnectFailure) {
         String url = agentProperties.getBaseUrl() + path;
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -133,9 +155,44 @@ public class AgentClient {
         }
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
         log.info("调用 Python Agent：url={}, body={}", url, JSON.toJSONString(body));
-        String response = restTemplate.postForObject(url, request, String.class);
-        log.info("Python Agent 响应：{}", response);
-        return JSONObject.parseObject(response);
+
+        ResourceAccessException lastFailure = null;
+        for (int attempt = 1; attempt <= (retryOnConnectFailure ? CONNECT_RETRY_ATTEMPTS : 1); attempt++) {
+            try {
+                String response = restTemplate.postForObject(url, request, String.class);
+                log.info("Python Agent 响应：{}", response);
+                return JSONObject.parseObject(response);
+            } catch (ResourceAccessException e) {
+                lastFailure = e;
+                boolean connectFailure = isConnectFailure(e);
+                boolean hasNextAttempt = attempt < CONNECT_RETRY_ATTEMPTS;
+                if (!retryOnConnectFailure || !connectFailure || !hasNextAttempt) {
+                    throw e;
+                }
+                // 只对"连接层失败"重试：典型场景是 Agent 刚重启、端口短暂拒绝连接；
+                // 读超时说明请求已经发出去并在执行，重试会重复消耗 LLM 额度
+                log.warn("调用 Agent 连接失败，{}ms 后重试（第 {} 次）：url={}, error={}",
+                        RETRY_BACKOFF_MILLIS, attempt + 1, url, e.getMessage());
+                sleepQuietly(RETRY_BACKOFF_MILLIS);
+            }
+        }
+        throw lastFailure;
+    }
+
+    /**
+     * 是否为连接层失败（而非读超时）
+     */
+    private static boolean isConnectFailure(ResourceAccessException e) {
+        Throwable cause = e.getCause();
+        return cause instanceof java.net.ConnectException || cause instanceof java.net.NoRouteToHostException;
+    }
+
+    private static void sleepQuietly(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     @Data
