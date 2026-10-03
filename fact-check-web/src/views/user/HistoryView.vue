@@ -4,7 +4,7 @@
     <el-form inline>
       <el-form-item label="分类">
         <el-select v-model="query.category" clearable placeholder="全部" style="width: 140px">
-          <el-option v-for="c in categories" :key="c" :label="c" :value="c" />
+          <el-option v-for="c in CATEGORIES" :key="c" :label="c" :value="c" />
         </el-select>
       </el-form-item>
       <el-form-item label="状态">
@@ -54,8 +54,8 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { pageDetectRecords } from '@/api/detect'
+import { CATEGORIES } from '@/constants/categories'
 
-const categories = ['其他', '健康', '社会', '财经', '科技', '政策']
 const loading = ref(false)
 const records = ref<any[]>([])
 const total = ref(0)

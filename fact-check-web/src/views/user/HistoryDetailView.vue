@@ -37,11 +37,18 @@
 
     <div v-if="record.status === 2" style="margin-top: 16px">
       <el-button type="warning" @click="appealVisible = true">申诉/纠错</el-button>
-      <el-button type="primary" @click="onFavorite">收藏</el-button>
+      <!-- P3-37：按后端返回的 favorited 回显状态，并支持取消收藏（原先按钮永远显示"收藏"） -->
+      <el-button :type="record.favorited ? 'info' : 'primary'" @click="onToggleFavorite">
+        {{ record.favorited ? '取消收藏' : '收藏' }}
+      </el-button>
       <el-button type="success" @click="onShare">分享</el-button>
       <el-button type="info" @click="openHistory">历史版本</el-button>
+      <!-- P3-37：评分回显历史值（后端 myRating），可随时修改 -->
       <el-button :type="rating === 1 ? 'success' : 'default'" @click="onRate(1)">有帮助</el-button>
       <el-button :type="rating === 0 ? 'danger' : 'default'" @click="onRate(0)">无帮助</el-button>
+      <span v-if="rating !== null" style="margin-left: 8px; color: #909399; font-size: 12px">
+        你已评分，可随时修改
+      </span>
     </div>
 
     <el-dialog v-model="appealVisible" title="申诉/纠错" width="480px">
@@ -97,7 +104,7 @@ import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getDetectRecord, getRecordRevisions } from '@/api/detect'
 import { submitAppeal } from '@/api/appeal'
-import { addFavorite } from '@/api/favorite'
+import { addFavorite, removeFavorite } from '@/api/favorite'
 import { submitRating } from '@/api/rating'
 
 const route = useRoute()
@@ -120,14 +127,24 @@ const load = async () => {
   try {
     const res: any = await getDetectRecord(id)
     record.value = res.data
+    // P3-37：回显历史评分（未评过为 null）
+    rating.value = res.data.myRating === undefined ? null : res.data.myRating
   } finally {
     loading.value = false
   }
 }
 
-const onFavorite = async () => {
-  await addFavorite(id)
-  ElMessage.success('已收藏')
+/** 收藏 / 取消收藏（P3-37） */
+const onToggleFavorite = async () => {
+  if (record.value.favorited) {
+    await removeFavorite(id)
+    record.value.favorited = false
+    ElMessage.success('已取消收藏')
+  } else {
+    await addFavorite(id)
+    record.value.favorited = true
+    ElMessage.success('已收藏')
+  }
 }
 
 const onRate = async (value: number) => {

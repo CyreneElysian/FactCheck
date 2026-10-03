@@ -1,11 +1,15 @@
 package com.factcheck.service.impl;
 
+import com.factcheck.constant.MessageConstant;
 import com.factcheck.constant.RedisKeyConstant;
 import com.factcheck.dto.HotEntry;
 import com.factcheck.entity.FactCheckRecord;
+import com.factcheck.exception.RecordNotFoundException;
 import com.factcheck.mapper.FactCheckRecordMapper;
+import com.factcheck.service.DetectService;
 import com.factcheck.service.HotRankService;
 import com.factcheck.service.HotService;
+import com.factcheck.vo.DetectRecordVO;
 import com.factcheck.vo.HotClaimVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +34,8 @@ public class HotServiceImpl implements HotService {
     private HotRankService hotRankService;
     @Autowired
     private FactCheckRecordMapper factCheckRecordMapper;
+    @Autowired
+    private DetectService detectService;
 
     /**
      * 查询热门消息 Top10
@@ -71,5 +77,29 @@ public class HotServiceImpl implements HotService {
         }
         log.info("热门消息Top10查询完成：返回 {} 条", result.size());
         return result;
+    }
+
+    /**
+     * 公开查看热度榜中的记录详情（P3-34）
+     *
+     * <p><b>为什么需要"在榜"校验</b>：热度榜是公开的，但检测详情接口是"仅归属者可见"。
+     * 若直接把详情接口放开，任何人都能靠遍历 id 读到别人的消息原文、推理链与证据（IDOR）；
+     * 若不做这个接口，热度榜点了就 404。折中方案是**只公开当前确实在 Top10 里的记录**——
+     * 这些内容本来就已经公开展示在榜上，公开范围没有实质扩大。</p>
+     */
+    @Override
+    public DetectRecordVO publicDetail(Long recordId) {
+        log.info("公开查看热度榜记录详情：recordId={}", recordId);
+        if (recordId == null) {
+            throw new RecordNotFoundException(MessageConstant.RECORD_NOT_FOUND);
+        }
+        boolean inTop = top10().stream()
+                .anyMatch(item -> recordId.equals(item.getRecordId()));
+        if (!inTop) {
+            // 与"记录不存在"返回同一个错误，避免通过错误文案探测某条记录是否存在
+            log.info("记录不在热度榜中，拒绝公开查看：recordId={}", recordId);
+            throw new RecordNotFoundException(MessageConstant.RECORD_NOT_FOUND);
+        }
+        return detectService.buildPublicRecord(recordId);
     }
 }

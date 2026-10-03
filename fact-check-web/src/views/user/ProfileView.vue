@@ -61,6 +61,8 @@ const onUploadAvatar = async (options: any) => {
 
 const onSave = async () => {
   await updateProfile({ nickname: form.nickname, avatar: form.avatar })
+  // P3-39：同步到 store，顶部导航的头像/昵称立即刷新（原先要刷新页面才更新）
+  userStore.updateUserInfo({ nickname: form.nickname, avatar: form.avatar })
   ElMessage.success('资料已保存')
 }
 

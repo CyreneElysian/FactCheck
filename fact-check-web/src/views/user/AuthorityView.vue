@@ -4,7 +4,8 @@
     <el-form inline>
       <el-form-item label="分类">
         <el-select v-model="query.category" clearable placeholder="全部" style="width: 160px">
-          <el-option v-for="c in categories" :key="c" :label="c" :value="c" />
+          <!-- P3-39：分类统一取自 constants/categories（原先这里少一个"其他"） -->
+          <el-option v-for="c in CATEGORIES" :key="c" :label="c" :value="c" />
         </el-select>
       </el-form-item>
       <el-form-item label="关键词">
@@ -41,8 +42,8 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { pageAuthority } from '@/api/authority'
+import { CATEGORIES } from '@/constants/categories'
 
-const categories = ['健康', '政策', '社会', '财经', '科技']
 const loading = ref(false)
 const records = ref<any[]>([])
 const total = ref(0)

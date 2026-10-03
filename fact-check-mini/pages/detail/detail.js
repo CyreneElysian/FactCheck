@@ -37,7 +37,14 @@ Page({
     reasonOptions: REASON_OPTIONS,
     reasonIndex: 0,
     appealContent: '',
-    appealBusy: false
+    appealBusy: false,
+    /**
+     * 只读模式（P3-34）
+     *
+     * 从热度榜点进来的记录大多不属于当前用户，走的是公开接口（/hot/{id}），
+     * 此时隐藏收藏/评分/申诉，只保留浏览与分享。
+     */
+    readonly: false
   },
 
   onLoad(options) {
@@ -69,16 +76,24 @@ Page({
   async load() {
     try {
       const res = await get(`/detect/record/${this.data.id}`)
-      this.apply(res.data || {})
+      this.apply(res.data || {}, false)
+      return
     } catch (e) {
-      // 401 / 网络异常已由 request 层提示
+      // 详情接口只允许查看自己的记录；热度榜里别人的记录会走到这里
+    }
+    try {
+      const res = await get(`/hot/${this.data.id}`)
+      this.apply(res.data || {}, true)
+      wx.showToast({ title: '该消息因热度公开，仅可查看', icon: 'none' })
+    } catch (e) {
+      wx.showToast({ title: '记录不存在或已不在热度榜中', icon: 'none' })
     } finally {
       this.setData({ loading: false })
     }
   },
 
   /** 把后端返回的记录整理成可直接渲染的数据 */
-  apply(record) {
+  apply(record, readonly) {
     const evidenceList = (record.evidenceList || []).map(item => {
       const credibility = Number(item.sourceCredibility)
       const relevance = Number(item.relevanceScore)
@@ -99,6 +114,7 @@ Page({
 
     this.setData({
       record,
+      readonly: !!readonly,
       statusText: STATUS_TEXT[record.status] || '未知状态',
       verdictText: VERDICT_TEXT[record.verdict] || '待诊断',
       verdictClass: VERDICT_CLASS[record.verdict] || 'verdict-unknown',

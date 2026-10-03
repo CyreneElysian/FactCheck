@@ -33,6 +33,18 @@ export const useUserStore = defineStore('user', {
       localStorage.removeItem('token')
       localStorage.removeItem('role')
       localStorage.removeItem('userInfo')
+    },
+    /**
+     * 局部更新用户信息（P3-39）
+     *
+     * 个人中心保存昵称/头像后原先只调接口、不更新 store，导致
+     * 顶部导航的头像与昵称仍是登录时的旧值（刷新页面才好）。
+     * 这里同时写回 localStorage，保证刷新后也一致。
+     */
+    updateUserInfo(partial: Partial<UserInfo>) {
+      if (!this.userInfo) return
+      this.userInfo = { ...this.userInfo, ...partial }
+      localStorage.setItem('userInfo', JSON.stringify(this.userInfo))
     }
   }
 })

@@ -80,8 +80,13 @@
       </view>
     </view>
 
-    <!-- 操作区：仅已完成（status=2）可评分/申诉 -->
-    <view class="card">
+    <!-- 操作区：仅已完成（status=2）可评分/申诉；公开视图（热度榜进入）为只读 -->
+    <view wx:if="{{readonly}}" class="card">
+      <view class="muted">该消息因热度进入 Top10 而公开展示（只读）。收藏、评分与申诉请到「历史记录」中打开自己的记录。</view>
+      <button class="btn-primary" size="mini" open-type="share" style="margin-top: 16rpx">分享给好友</button>
+    </view>
+
+    <view wx:else class="card">
       <view class="title">这条结论对你有帮助吗？</view>
       <view class="row">
         <button
@@ -131,7 +136,7 @@
       </view>
     </view>
 
-    <view class="card">
+    <view wx:if="{{!readonly}}" class="card">
       <view class="row" bindtap="goAppeals">
         <view>我的申诉记录</view>
         <view class="muted">›</view>

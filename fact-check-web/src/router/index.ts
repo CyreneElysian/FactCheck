@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
+import { createRouter, createWebHistory, RouteLocationNormalized, RouteRecordRaw } from 'vue-router'
 import UserLayout from '@/layouts/UserLayout.vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 
@@ -13,6 +13,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'history', component: () => import('@/views/user/HistoryView.vue'), meta: { title: '历史记录' } },
       { path: 'history/:id', component: () => import('@/views/user/HistoryDetailView.vue'), meta: { title: '检测详情' } },
       { path: 'hot', component: () => import('@/views/user/HotView.vue'), meta: { title: '热门 Top10' } },
+      { path: 'hot/:id', component: () => import('@/views/user/HotDetailView.vue'), meta: { title: '热门消息详情' } },
       { path: 'authority', component: () => import('@/views/user/AuthorityView.vue'), meta: { title: '权威信息' } },
       { path: 'authority/:id', component: () => import('@/views/user/AuthorityDetailView.vue'), meta: { title: '权威信息详情' } },
       { path: 'appeals', component: () => import('@/views/user/AppealsView.vue'), meta: { title: '我的申诉' } },
@@ -52,11 +53,25 @@ router.beforeEach((to, _from, next) => {
   const role = Number(localStorage.getItem('role') || 0)
   if (to.path !== '/login' && to.path !== '/register' && !token) {
     next('/login')
-  } else if (to.path.startsWith('/admin') && role !== 1) {
+  } else if (isAdminRoute(to) && role !== 1) {
     next('/')
   } else {
     next()
   }
 })
+
+/**
+ * 是否需要管理员身份（P3-39）
+ *
+ * 原先这里写死 `to.path.startsWith('/admin')`，而路由表里已经声明了 `meta.requiresAdmin`，
+ * 声明了却不用：一旦以后把管理端页面挪到别的路径前缀，守卫就会静默失效。
+ * 现在以 meta 为准，并保留路径前缀作为兜底。
+ */
+function isAdminRoute(to: RouteLocationNormalized): boolean {
+  if (to.matched.some(record => record.meta && record.meta.requiresAdmin)) {
+    return true
+  }
+  return to.path.startsWith('/admin')
+}
 
 export default router

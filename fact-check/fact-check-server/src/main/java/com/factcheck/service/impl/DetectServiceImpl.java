@@ -527,6 +527,26 @@ public class DetectServiceImpl implements DetectService {
     }
 
     /**
+     * 构造公开视图（P3-34）：不校验归属，但清空私有/运营字段
+     *
+     * <p>调用方必须先自行把关（当前只有热度榜公开详情会调它，且已确认记录在 Top10 内）。</p>
+     */
+    @Override
+    public DetectRecordVO buildPublicRecord(Long recordId) {
+        FactCheckRecord record = factCheckRecordMapper.getById(recordId);
+        if (record == null) {
+            throw new RecordNotFoundException(MessageConstant.RECORD_NOT_FOUND);
+        }
+        DetectRecordVO vo = toVO(record, true);
+        // 公开视图不暴露：指派人、诊断截止时间（运营信息）、以及"我的"收藏/评分状态
+        vo.setAssigneeId(null);
+        vo.setDeadline(null);
+        vo.setFavorited(null);
+        vo.setMyRating(null);
+        return vo;
+    }
+
+    /**
      * 分页查询当前用户的检测记录
      */
     @Override
