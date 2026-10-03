@@ -26,5 +26,6 @@ public class MessageConstant {
     public static final String WECHAT_LOGIN_FAILED = "微信登录失败";
     public static final String WECHAT_NOT_BOUND = "微信未绑定账号，请先绑定";
     public static final String UNKNOWN_ERROR = "未知错误";
+    public static final String REQUEST_BODY_INVALID = "请求体格式不正确或为空";
     public static final String DATA_INTEGRITY_VIOLATION = "数据完整性校验失败，请检查提交内容";
 }

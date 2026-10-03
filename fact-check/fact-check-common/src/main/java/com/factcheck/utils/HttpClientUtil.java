@@ -1,6 +1,7 @@
 package com.factcheck.utils;
 
 import com.alibaba.fastjson.JSONObject;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
@@ -23,6 +24,7 @@ import java.util.Map;
 /**
  * HTTP 请求工具类
  */
+@Slf4j
 public class HttpClientUtil {
 
     static final int TIMEOUT_MSEC = 5 * 1000;
@@ -51,7 +53,8 @@ public class HttpClientUtil {
                 result = EntityUtils.toString(response.getEntity(), "UTF-8");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            // 技术方案 §3.2 要求统一用 SLF4J（原先用 printStackTrace，日志无法被采集与检索）
+            log.error("HTTP GET 请求失败：url={}, error={}", url, e.getMessage(), e);
         } finally {
             try {
                 if (response != null) {
@@ -59,7 +62,7 @@ public class HttpClientUtil {
                 }
                 httpClient.close();
             } catch (IOException e) {
-                e.printStackTrace();
+                log.warn("关闭 HTTP 连接失败：{}", e.getMessage(), e);
             }
         }
         return result;
@@ -96,7 +99,7 @@ public class HttpClientUtil {
                 }
                 httpClient.close();
             } catch (IOException e) {
-                e.printStackTrace();
+                log.warn("关闭 HTTP 连接失败：{}", e.getMessage(), e);
             }
         }
         return resultString;
@@ -135,7 +138,7 @@ public class HttpClientUtil {
                 }
                 httpClient.close();
             } catch (IOException e) {
-                e.printStackTrace();
+                log.warn("关闭 HTTP 连接失败：{}", e.getMessage(), e);
             }
         }
         return resultString;

@@ -9,6 +9,12 @@ import lombok.Data;
  */
 @Data
 public class Result<T> implements Serializable {
+
+    /**
+     * 成功返回的默认文案（技术方案 §6.1 约定为 "success"；原先恒为 null）
+     */
+    public static final String SUCCESS_MSG = "success";
+
     private Integer code;
     private String msg;
     private T data;
@@ -16,6 +22,7 @@ public class Result<T> implements Serializable {
     public static <T> Result<T> success() {
         Result<T> result = new Result<T>();
         result.code = 1;
+        result.msg = SUCCESS_MSG;
         return result;
     }
 
@@ -23,6 +30,7 @@ public class Result<T> implements Serializable {
         Result<T> result = new Result<T>();
         result.data = object;
         result.code = 1;
+        result.msg = SUCCESS_MSG;
         return result;
     }
 

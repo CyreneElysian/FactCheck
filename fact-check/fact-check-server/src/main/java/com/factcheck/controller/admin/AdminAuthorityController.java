@@ -40,10 +40,14 @@ public class AdminAuthorityController {
     }
     /**
      * 编辑权威信息
+     *
+     * <p>P5-54：以路径上的 {@code id} 为准并写回 DTO，避免"路径一个 id、请求体另一个 id"
+     * 时更新的其实是请求体里那条（脆弱且容易被前端漏传 id 影响）。</p>
      */
     @PutMapping("/{id}")
     public Result update(@PathVariable Long id, @RequestBody AdminAuthorityDTO adminAuthorityDTO) {
         log.info("编辑权威信息：{},{}", id, adminAuthorityDTO);
+        adminAuthorityDTO.setId(id);
         adminAuthorityService.update(adminAuthorityDTO);
         return Result.success();
     }

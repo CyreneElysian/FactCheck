@@ -6,6 +6,8 @@ import com.factcheck.result.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -84,6 +86,27 @@ public class GlobalExceptionHandler {
     static boolean isDuplicateKey(int errorCode, String sqlState) {
         return errorCode == MYSQL_DUPLICATE_ENTRY
                 || SQLSTATE_UNIQUE_VIOLATION.equals(sqlState);
+    }
+
+    /**
+     * 请求体缺失或格式错误（JSON 解析失败、空体）
+     *
+     * <p>不单独处理的话会落到兜底分支返回"未知错误"，客户端根本看不出是自己传错了
+     * （实测 POST 空体就是这种情况）。</p>
+     */
+    @ExceptionHandler
+    public Result exceptionHandler(HttpMessageNotReadableException ex) {
+        log.warn("请求体不可读：{}", ex.getMessage());
+        return Result.error(MessageConstant.REQUEST_BODY_INVALID);
+    }
+
+    /**
+     * 缺少必填查询参数（例如分页接口漏传且没有默认值时）
+     */
+    @ExceptionHandler
+    public Result exceptionHandler(MissingServletRequestParameterException ex) {
+        log.warn("缺少必填参数：{}", ex.getParameterName());
+        return Result.error("缺少必填参数：" + ex.getParameterName());
     }
 
     /**

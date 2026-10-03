@@ -284,13 +284,21 @@ public class DetectServiceImpl implements DetectService {
     }
 
     /**
-     * 内容规范化：去首尾空格、统一空白字符
+     * 内容规范化：去首尾空格、统一空白字符（P5-53）
+     *
+     * <p>只做 trim 是不够的：从网页/小程序粘贴的文本常带全角空格（U+3000）、不换行空格（U+00A0）
+     * 与连续换行，它们会让**精确去重**（按内容哈希）把同一句话判成两条不同的记录，
+     * 也会让词面重合计算失真。这里统一替换为半角空格并压缩连续空白。</p>
      */
     private String normalizeContent(String content) {
         if (content == null) {
             return "";
         }
-        return content.trim();
+        return content
+                .replace('\u3000', ' ')   // 全角空格
+                .replace('\u00A0', ' ')   // 不换行空格
+                .replaceAll("\\s+", " ")  // 连续空白（含换行/制表符）压缩为一个空格
+                .trim();
     }
 
     /**

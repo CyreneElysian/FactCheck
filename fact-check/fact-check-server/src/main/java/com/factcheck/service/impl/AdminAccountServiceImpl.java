@@ -110,15 +110,16 @@ public class AdminAccountServiceImpl implements AdminAccountService {
         if (adminId == null) {
             throw new BaseException(MessageConstant.ADMIN_NOT_LOGIN);
         }
-        if (status == null || (status != 0 && status != 1)) {
-            throw new BaseException("用户状态只能为：1正常、0禁用");
+        // P5-55：支持 0 禁用 / 1 正常 / 2 注销（产品文档 §4.5 的用户状态含"已注销"）
+        if (status == null || (status != 0 && status != 1 && status != 2)) {
+            throw new BaseException("用户状态只能为：1正常、0禁用、2注销");
         }
         User user = userMapper.getById(userId);
         if (user == null) {
             throw new AccountNotFoundException(MessageConstant.ACCOUNT_NOT_FOUND);
         }
         if (user.getRole() != null && user.getRole() == 1) {
-            throw new BaseException("不能禁用管理员账号");
+            throw new BaseException(status == 2 ? "不能注销管理员账号" : "不能禁用管理员账号");
         }
         userMapper.update(User.builder()
                 .id(userId)

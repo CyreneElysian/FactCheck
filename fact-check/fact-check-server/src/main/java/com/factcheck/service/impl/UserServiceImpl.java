@@ -10,19 +10,21 @@ import com.factcheck.dto.UserProfileDTO;
 import com.factcheck.dto.UserRegisterDTO;
 import com.factcheck.dto.WechatBindDTO;
 import com.factcheck.dto.WechatLoginDTO;
+import com.factcheck.entity.OperationLog;
 import com.factcheck.entity.User;
 import com.factcheck.exception.AccountExistsException;
 import com.factcheck.exception.AccountLockedException;
 import com.factcheck.exception.AccountNotFoundException;
 import com.factcheck.exception.LoginFailedException;
 import com.factcheck.exception.PasswordErrorException;
-import com.factcheck.service.RateLimitService;
-import com.factcheck.util.ClientIpUtils;
-import com.factcheck.util.ValidationUtils;
 import com.factcheck.exception.UserNotLoginException;
+import com.factcheck.mapper.OperationLogMapper;
 import com.factcheck.mapper.UserMapper;
 import com.factcheck.properties.WeChatProperties;
+import com.factcheck.service.RateLimitService;
 import com.factcheck.service.UserService;
+import com.factcheck.util.ClientIpUtils;
+import com.factcheck.util.ValidationUtils;
 import com.factcheck.utils.HttpClientUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,6 +53,8 @@ public class UserServiceImpl implements UserService {
     private WeChatProperties weChatProperties;
     @Autowired
     private RateLimitService rateLimitService;
+    @Autowired
+    private OperationLogMapper operationLogMapper;
 
     /**
      * 用户注册
@@ -114,7 +118,13 @@ public class UserServiceImpl implements UserService {
         if (!StatusConstant.ENABLE.equals(user.getStatus())) {
             throw new AccountLockedException(MessageConstant.ACCOUNT_LOCKED);
         }
+        boolean isAdmin = user.getRole() != null && user.getRole() == 1;
         if (!passwordEncoder.matches(password, user.getPassword())) {
+            if (isAdmin) {
+                // 只对**真实存在的管理员账号**记录失败日志：否则任意用户名都能往 t_operation_log 写一行，
+                // 等于给攻击者一个放大写入的入口（登录本身另有频次限流兜底）
+                saveAdminLoginLog(user.getId(), "管理员登录失败（密码错误）");
+            }
             throw new PasswordErrorException(MessageConstant.PASSWORD_ERROR);
         }
 
@@ -125,7 +135,30 @@ public class UserServiceImpl implements UserService {
                 .build();
         userMapper.update(update);
         user.setLastLoginTime(update.getLastLoginTime());
+        if (isAdmin) {
+            // S3：管理员登录必须留痕（成功与失败都记，便于事后核查异常登录）
+            saveAdminLoginLog(user.getId(), "管理员登录");
+        }
         return user;
+    }
+
+    /**
+     * 写管理员登录操作日志（P5-56）
+     *
+     * <p>审计写入失败不应影响登录本身，因此单独 try/catch 并记 ERROR。</p>
+     */
+    private void saveAdminLoginLog(Long adminId, String operation) {
+        try {
+            operationLogMapper.insert(OperationLog.builder()
+                    .adminId(adminId)
+                    .operation(operation)
+                    .method("UserServiceImpl.login")
+                    .params("adminId=" + adminId)
+                    .createTime(LocalDateTime.now())
+                    .build());
+        } catch (Exception e) {
+            log.error("管理员登录日志写入失败：adminId={}, error={}", adminId, e.getMessage(), e);
+        }
     }
 
     /**

@@ -11,9 +11,12 @@ import static org.mockito.Mockito.when;
 
 import com.factcheck.constant.MessageConstant;
 import com.factcheck.dto.UserLoginDTO;
+import com.factcheck.entity.OperationLog;
 import com.factcheck.entity.User;
+import com.factcheck.exception.AccountNotFoundException;
 import com.factcheck.exception.PasswordErrorException;
 import com.factcheck.exception.RateLimitException;
+import com.factcheck.mapper.OperationLogMapper;
 import com.factcheck.mapper.UserMapper;
 import com.factcheck.properties.WeChatProperties;
 import com.factcheck.service.RateLimitService;
@@ -21,6 +24,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -66,6 +70,9 @@ class UserServiceImplLoginTest {
 
     @Mock
     private RateLimitService rateLimitService;
+
+    @Mock
+    private OperationLogMapper operationLogMapper;
 
     @InjectMocks
     private UserServiceImpl userService;
@@ -172,5 +179,73 @@ class UserServiceImplLoginTest {
         userService.login(dto("alice", RAW_PASSWORD));
 
         verify(rateLimitService).checkLogin("alice", null);
+    }
+
+    // ------------------------------------------------------------------
+    // 管理员登录留痕（P5-56 / S3）
+    // ------------------------------------------------------------------
+
+    private User admin() {
+        User admin = enabledUser();
+        admin.setRole(1);
+        return admin;
+    }
+
+    @Test
+    @DisplayName("管理员登录成功 → 写一条操作日志（S3 要求留痕）")
+    void shouldLogAdminLoginSuccess() {
+        stubRequestFromProxy();
+        when(userMapper.getByUsername("alice")).thenReturn(admin());
+
+        userService.login(dto("alice", RAW_PASSWORD));
+
+        ArgumentCaptor<OperationLog> captor = ArgumentCaptor.forClass(OperationLog.class);
+        verify(operationLogMapper).insert(captor.capture());
+        assertThat(captor.getValue().getAdminId()).isEqualTo(1L);
+        assertThat(captor.getValue().getOperation()).isEqualTo("管理员登录");
+    }
+
+    @Test
+    @DisplayName("管理员密码错误 → 同样留痕（便于核查异常登录），且不影响抛出的业务异常")
+    void shouldLogAdminLoginFailure() {
+        stubRequestFromProxy();
+        when(userMapper.getByUsername("alice")).thenReturn(admin());
+
+        assertThatThrownBy(() -> userService.login(dto("alice", "wrong-password")))
+                .isInstanceOf(PasswordErrorException.class);
+
+        ArgumentCaptor<OperationLog> captor = ArgumentCaptor.forClass(OperationLog.class);
+        verify(operationLogMapper).insert(captor.capture());
+        assertThat(captor.getValue().getOperation()).contains("失败");
+    }
+
+    @Test
+    @DisplayName("普通用户登录不写操作日志（避免把审计表灌满）；用户不存在时也不写")
+    void shouldNotLogForOrdinaryUser() {
+        stubRequestFromProxy();
+        when(userMapper.getByUsername("alice")).thenReturn(enabledUser());
+
+        userService.login(dto("alice", RAW_PASSWORD));
+
+        verify(operationLogMapper, never()).insert(any(OperationLog.class));
+
+        // 用户名不存在：同样不写（否则任意用户名都能往审计表写一行）
+        when(userMapper.getByUsername("nobody")).thenReturn(null);
+        assertThatThrownBy(() -> userService.login(dto("nobody", "x")))
+                .isInstanceOf(AccountNotFoundException.class);
+        verify(operationLogMapper, never()).insert(any(OperationLog.class));
+    }
+
+    @Test
+    @DisplayName("审计写入失败不影响登录成功（日志不能反过来阻断业务）")
+    void shouldNotBreakLoginWhenAuditFails() {
+        stubRequestFromProxy();
+        when(userMapper.getByUsername("alice")).thenReturn(admin());
+        // insert 返回 void，必须用 doThrow 语法
+        doThrow(new RuntimeException("数据库不可用")).when(operationLogMapper).insert(any(OperationLog.class));
+
+        User logged = userService.login(dto("alice", RAW_PASSWORD));
+
+        assertThat(logged.getId()).isEqualTo(1L);
     }
 }

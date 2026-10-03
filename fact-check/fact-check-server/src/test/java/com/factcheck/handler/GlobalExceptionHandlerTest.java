@@ -10,6 +10,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 
 /**
  * {@link GlobalExceptionHandler} 单元测试。
@@ -125,6 +127,32 @@ class GlobalExceptionHandlerTest {
         assertThat(result.getCode()).isEqualTo(0);
         assertThat(result.getMsg()).isEqualTo(MessageConstant.ALREADY_EXISTS);
         assertThat(GlobalExceptionHandler.isDuplicateKey(1062, "23000")).isTrue();
+    }
+
+    /**
+     * 请求体为空或 JSON 写错时，必须给出可操作的提示，而不是笼统的"未知错误"。
+     * （实测：POST 空体时客户端只看到"未知错误"，完全不知道是自己传错了。）
+     */
+    @Test
+    @DisplayName("请求体不可读 → 明确的“请求体格式不正确或为空”")
+    void shouldConvertUnreadableBody() {
+        Result<?> result = handler.exceptionHandler(new HttpMessageNotReadableException("Required request body is missing"));
+
+        assertThat(result.getCode()).isEqualTo(0);
+        assertThat(result.getMsg()).isEqualTo(MessageConstant.REQUEST_BODY_INVALID);
+    }
+
+    /**
+     * 缺少必填查询参数时提示具体是哪个参数（分页接口的 page/pageSize 已有默认值，这里覆盖其余情况）。
+     */
+    @Test
+    @DisplayName("缺少必填参数 → 提示参数名")
+    void shouldConvertMissingRequestParameter() {
+        Result<?> result = handler.exceptionHandler(
+                new MissingServletRequestParameterException("recordId", "Long"));
+
+        assertThat(result.getCode()).isEqualTo(0);
+        assertThat(result.getMsg()).contains("recordId");
     }
 
     /**
