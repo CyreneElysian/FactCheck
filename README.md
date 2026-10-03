@@ -389,7 +389,11 @@ py -3.10 fact-agent/eval/evaluate.py --mode live --subset 10
 - 统一前缀 `/api`，RESTful JSON。
 - 统一返回体：`{ "code": 1, "msg": "success", "data": {} }`；分页返回 `{ "total": 100, "records": [] }`。
 - 请求头：用户端 `authentication`，管理端 `token`（两者使用不同 JWT 密钥）。
-- 完整接口清单见 [`docs/技术方案.md`](docs/技术方案.md) 第 6 章。
+- **在线接口文档（knife4j）**：启动后访问 <http://localhost:8080/api/doc.html>，
+  按「用户端接口 / 管理端接口」两个分组，可在页面上填 token 直接调接口。
+  分组 OpenAPI JSON：`/api/v3/api-docs?group=用户端接口`；分组列表：`/api/swagger-resources`。
+  打开文档本身不需要登录；不带 `group` 参数访问 `/api/v3/api-docs` 会 404（只有中文命名分组，没有 `default`）。
+- 完整接口清单另见 [`docs/技术方案.md`](docs/技术方案.md) 第 6 章（作为不依赖运行时的手册）。
 
 核心接口速览：
 
