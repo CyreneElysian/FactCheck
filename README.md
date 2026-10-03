@@ -488,6 +488,12 @@ Agent 与 Java 的**内部令牌由同一个 compose 变量提供**，不会出�
   但本机只装了 Docker CLI（引擎未启动、零镜像），起整套需联网拉约 2–3GB 基础镜像。
 - **CI 已接入但未在 GitHub 上运行过**：[`.github/workflows/ci.yml`](.github/workflows/ci.yml) 五个作业
   （java / python / web / mini / secret-scan），命令全部与本机验证过的一致；push 后在 Actions 页可见。
+- **开发依赖有若干已知公告（不影响产物）**：`npm audit` 报 18 条（含 1 critical），但 **`npm audit --omit=dev`
+  的结果是 `found 0 vulnerabilities`** —— 说明没有任何一条落在会随 `dist/` 发布的生产依赖上，
+  它们全在 eslint / @typescript-eslint / vue-tsc / vitest 这条开发工具链里，且多为 DoS 类
+  （需要攻击者控制你的 glob 模式）。其中 `brace-expansion` 上游标注 `No fix available`
+  （需等 @typescript-eslint 与 @vue/language-core 升级 minimatch）。因此 CI 只对**生产依赖**把关
+  （`npm audit --omit=dev --audit-level=high`），开发链的公告保持可见但不阻断流水线。
 - **分享卡片不含二维码（已决策不做）**：记录详情仅归属者可见，扫码的人打开仍是登录页，与直接收到链接相比没有增量价值；
   小程序端已有微信原生分享。产品文档 §4.13 已同步修订，理由与"将来要补做"的方案见
   [`docs/决策-分享卡片不生成二维码.md`](docs/决策-分享卡片不生成二维码.md)。

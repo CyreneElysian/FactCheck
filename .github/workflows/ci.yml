@@ -91,6 +91,13 @@ jobs:
         working-directory: fact-check-web
         run: npm run type-check
 
+      - name: 依赖审计（只看生产依赖）
+        working-directory: fact-check-web
+        # 只对**会随 dist 发布**的依赖把关。开发依赖（eslint / @typescript-eslint / vue-tsc / vitest 链）
+        # 目前有若干 DoS 类公告，且上游尚未升级依赖（brace-expansion 显示 No fix available），
+        # 它们不进产物、攻击面为零，因此不阻断流水线，但会在 `npm audit` 里可见。
+        run: npm audit --omit=dev --audit-level=high
+
       - name: 代码规范（eslint）
         working-directory: fact-check-web
         run: npm run lint
