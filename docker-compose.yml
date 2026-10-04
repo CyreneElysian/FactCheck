@@ -144,17 +144,20 @@ services:
       FACTCHECK_AGENT_INTERNAL_TOKEN: ${INTERNAL_TOKEN:-dev-internal-token-change-me}
       # 密钥类配置一律从宿主机环境注入，不写进镜像。
       #
-      # ⚠️ 这里用 `${VAR:?提示}` 而不是 `${VAR:-}`：后者在变量未设置时会传入**空字符串**，
-      #    而 Spring 对"已定义但为空"的环境变量取空值、**不会**回落到 application.yml 里的默认密钥
-      #    → jjwt 0.12.x 强制 HMAC 密钥 ≥256 位 → 登录在"签发 token"这一步抛异常，
-      #    前端只看到一句「未知错误」（密码校验、写 last_login_time 都已成功，所以极难定位）。
-      #    用 `:?` 后，未设置时 compose 会直接报错并说明要设哪个变量，避免这个静默失败。
+      # ⚠️ 这里用 `${VAR:-}`（未设置时传空串）而**不是** `${VAR:?}`：
+      #    `:?` 会让 compose **解析整个文件时**就报错，于是连 `docker compose ps` /
+      #    `config` 这类只读命令都没法用（实测踩到：想查容器状态却先被密钥报错挡住）。
+      #    因此"必须设置密钥"改由**应用启动时**强制：
+      #      - application.yml 里这两个键**不再提供默认值**，未设置时 Spring 直接启动失败；
+      #      - FactCheckApplication.validateJwtSecrets() 再校验长度 ≥32 字节（空串/过短都拦）。
+      #    这样只读命令随时可用，而真正启动服务时仍然"配置不对就起不来"。
       #
       #    生成方式（任选）：
       #      PowerShell : $env:FACTCHECK_JWT_USER_SECRET = -join ((1..64) | ForEach-Object { '{0:x}' -f (Get-Random -Max 16) })
       #      Linux/macOS: export FACTCHECK_JWT_USER_SECRET=$(openssl rand -hex 32)
-      FACTCHECK_JWT_USER_SECRET: ${FACTCHECK_JWT_USER_SECRET:?必须设置用户端 JWT 密钥（≥32 字节），见 docker-compose.yml 注释}
-      FACTCHECK_JWT_ADMIN_SECRET: ${FACTCHECK_JWT_ADMIN_SECRET:?必须设置管理端 JWT 密钥（≥32 字节），见 docker-compose.yml 注释}
+      #    本地裸机跑（不走容器）时把这两个键写进 application-local.yml 即可，无需环境变量。
+      FACTCHECK_JWT_USER_SECRET: ${FACTCHECK_JWT_USER_SECRET:-}
+      FACTCHECK_JWT_ADMIN_SECRET: ${FACTCHECK_JWT_ADMIN_SECRET:-}
       # ⚠️ 变量名必须与 application.yml / application-dev.yml 里**实际读取**的占位符逐字一致。
       #    这里曾写错两组（同一个"名字对不上但 compose config 不报错"的坑）：
       #      compose 旧写法                    → 代码实际读取

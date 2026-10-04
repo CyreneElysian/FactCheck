@@ -49,11 +49,27 @@ logging:
 
 fact-check:
   jwt:
-    # 密钥支持环境变量覆盖；此处仅为本地开发用的随机默认值，生产环境必须通过环境变量注入
-    user-secret-key: ${FACTCHECK_JWT_USER_SECRET:bb2db55ab568443cad7e2b90ac27df2da28470d56153496fbcdf1234a557e573}
+    # ⚠️ 这两个键**刻意不提供默认值**。
+    #
+    # 为什么要去掉默认值（踩过的坑）：
+    #   原先写的是 `${FACTCHECK_JWT_USER_SECRET:bb2db55...}`，看起来"有兜底"很安全，
+    #   实际却造成一类极难定位的静默失败 —— 容器化时 compose 用 `${VAR:-}` 注入，
+    #   变量未设置就传了**空字符串**；Spring 对"已定义但为空"的环境变量取空值、
+    #   **不会**回落到这里的默认值 → jjwt 0.12.x 要求 HMAC 密钥 ≥256 位 → 登录在
+    #   "签发 token"这一步抛异常，前端只看到一句「未知错误」
+    #   （而密码校验、写 last_login_time 都已成功，所以完全看不出是密钥问题）。
+    #
+    #   去掉默认值后：未设置 = 占位符无法解析 → **启动即失败**，且报错直接指向这个键。
+    #   另有 FactCheckApplication.validateJwtSecrets() 兜住"设了但过短/为空"的情况。
+    #
+    # 各环境的注入方式：
+    #   容器     ：docker-compose.yml 从宿主机环境变量传入（见那里的注释，含生成命令）
+    #   本地裸机 ：写进 application-local.yml（该文件已 gitignore）
+    #   生产     ：一律用环境变量，不要落到任何文件里
+    user-secret-key: ${FACTCHECK_JWT_USER_SECRET}
     user-ttl: 7200000
     user-token-name: authentication
-    admin-secret-key: ${FACTCHECK_JWT_ADMIN_SECRET:82262ed0b16642118251477ffc75771129e689ae31e240fc9ca3c83481a93973}
+    admin-secret-key: ${FACTCHECK_JWT_ADMIN_SECRET}
     admin-ttl: 7200000
     admin-token-name: token
   agent:
