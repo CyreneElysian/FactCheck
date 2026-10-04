@@ -5,6 +5,7 @@ server:
 
 spring:
   profiles:
+
     # 默认同时激活 dev 与 local（后者的值覆盖前者）：
     #   - 本地存在 application-local.yml → 自动使用真实密钥，无需任何额外设置
     #   - 新克隆的仓库没有该文件 → 自动跳过，回落到 dev 的安全默认值，仍能正常启动
