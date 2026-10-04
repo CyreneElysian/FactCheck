@@ -212,6 +212,53 @@ def _decode_response(resp: "requests.Response") -> str:
     return raw.decode("utf-8", errors="replace")
 
 
+def _repair_mojibake(value: str, where: str) -> str:
+    """
+    尝试修复"中文被按单字节编码误读"造成的乱码；修不了就原样返回。
+
+    典型可修复形态（搜索引擎/上游接口偶尔会返回这种）：
+        "专家" 的 UTF-8 字节 E4 B8 93 E5 AE B6 被 latin-1 逐字节读成 "ä¸\x93å®¶"
+    判据：文本里**几乎没有汉字**，却有一堆 U+0080–U+00FF 区间的字符。
+
+    修复方式：把它按 latin-1 编回字节，再依次尝试常见中文编码解码，
+    取汉字最多的结果（要求确实变好才采纳）。
+
+    ⚠️ 注意**不能**指望它救回所有乱码。实测 recordId=27 那条
+    `t_evidence.title` 是"双重损坏"（原始 GBK 字节里混进了被 UTF-8 化的单字节，
+    如 C2 B0 / C2 A0），信息已不可逆。所以这只是兜底：
+    真正的修复必须在**产生乱码的那一环之前**，而这里同时打 WARN 便于定位来源。
+    """
+    if not value:
+        return value
+    cjk = sum(1 for ch in value if "\u4e00" <= ch <= "\u9fff")
+    high_latin = sum(1 for ch in value if "\u0080" <= ch <= "\u00ff")
+    # 有明显汉字、或没有可疑高位字符 → 认为正常
+    if cjk > 0 or high_latin < 3:
+        return value
+
+    try:
+        raw = value.encode("latin-1")
+    except UnicodeEncodeError:
+        return value
+
+    best, best_cjk = None, cjk
+    for enc in ("utf-8", "gb18030", "gbk", "big5"):
+        try:
+            candidate = raw.decode(enc)
+        except (UnicodeDecodeError, LookupError):
+            continue
+        got = sum(1 for ch in candidate if "\u4e00" <= ch <= "\u9fff")
+        if got > best_cjk:
+            best, best_cjk = candidate, got
+
+    if best is None:
+        logger.warning("疑似乱码但无法修复（where=%s）：%s", where, value[:60])
+        return value
+
+    logger.warning("已修复乱码（where=%s）：%r -> %r", where, value[:40], best[:40])
+    return best
+
+
 class DetectService:
     """LLM 事实检测服务"""
 
@@ -541,9 +588,9 @@ class DetectService:
                 if not isinstance(item, dict):
                     logger.warning("跳过非法证据条目（非对象）：%s", type(item).__name__)
                     continue
-                title = str(item.get("title") or "").strip()
+                title = _repair_mojibake(str(item.get("title") or "").strip(), "模型证据.title")
                 url = str(item.get("url") or "").strip()
-                snippet = str(item.get("snippet") or "").strip()
+                snippet = _repair_mojibake(str(item.get("snippet") or "").strip(), "模型证据.snippet")
                 if not (title or url or snippet):
                     logger.warning("跳过空证据条目（title/url/snippet 均为空）")
                     continue
@@ -584,9 +631,9 @@ class DetectService:
                 seen_urls.add(key)
             body = r.content or r.snippet or ""
             merged.append(Evidence(
-                title=r.title,
+                title=_repair_mojibake(r.title, "检索结果.title"),
                 url=r.url,
-                snippet=r.snippet,
+                snippet=_repair_mojibake(r.snippet, "检索结果.snippet"),
                 source=r.source,
                 source_credibility=score_source(r.url),
                 relevance_score=self._estimate_relevance(claim_text, r.title, body, rank),
@@ -610,9 +657,9 @@ class DetectService:
         for rank, r in enumerate(results[:10]):
             body = r.content or r.snippet or ""
             evidence.append(Evidence(
-                title=r.title,
+                title=_repair_mojibake(r.title, "兜底证据.title"),
                 url=r.url,
-                snippet=r.snippet,
+                snippet=_repair_mojibake(r.snippet, "兜底证据.snippet"),
                 source=r.source,
                 source_credibility=score_source(r.url),
                 relevance_score=self._estimate_relevance(claim_text, r.title, body, rank),

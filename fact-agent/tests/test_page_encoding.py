@@ -33,6 +33,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.services.detect_service import (  # noqa: E402
     _FALLBACK_ENCODINGS,
     _decode_response,
+    _repair_mojibake,
 )
 
 # 一段同时含中文与英文的页面正文，用来判断解码是否正确
@@ -132,6 +133,64 @@ class DecodeResponseTest(unittest.TestCase):
         """
         for enc in ["ISO-8859-1", "iso-8859-1", "latin-1", "ascii", "cp1252"]:
             self.assertIn(enc.lower(), _FALLBACK_ENCODINGS, f"{enc} 必须在兜底集合里")
+
+
+class RepairMojibakeTest(unittest.TestCase):
+    """
+    兜底：模型/上游接口给出的标题若已被单字节编码误读，尝试修回来。
+
+    与 _decode_response 的分工：
+      * `_decode_response` 管**我们自己抓的响应字节**——这是主防线；
+      * `_repair_mojibake` 管**别人已经解码错的字符串**（LLM 输出、搜索接口返回）——只是兜底。
+
+    最后一条用例记录**修不了**的形态，避免以后误以为这个兜底能救所有乱码。
+    """
+
+    def test_typical_latin1_misread_is_repaired(self):
+        """最典型形态：UTF-8 字节被 latin-1 逐字节读 → 可还原"""
+        correct = "专家：熬夜属于2A类致癌物 睡眠是必需品不是奢侈品"
+        broken = correct.encode("utf-8").decode("latin-1")
+
+        self.assertNotIn("专", broken)          # 确认确实是乱码
+        self.assertEqual(_repair_mojibake(broken, "test"), correct)
+
+    def test_normal_chinese_is_left_alone(self):
+        """本来就正常的中文不能被乱改"""
+        for s in ["熬夜属于2A类致癌物", "健康·生活--人民网", "plain ascii text"]:
+            self.assertEqual(_repair_mojibake(s, "test"), s)
+
+    def test_empty_and_none_safe(self):
+        self.assertEqual(_repair_mojibake("", "test"), "")
+        self.assertIsNone(_repair_mojibake(None, "test"))
+
+    def test_gbk_misread_as_latin1_is_repaired(self):
+        """GBK 页面被当 latin-1 读：字节本身还在，用 gb18030 能救回"""
+        correct = "熬夜属于2A类致癌物"
+        broken = correct.encode("gbk").decode("latin-1")
+
+        self.assertEqual(_repair_mojibake(broken, "test"), correct)
+
+    def test_double_corrupted_string_is_returned_unchanged(self):
+        """
+        ⚠️ 记录能力边界：**双重损坏**修不回来。
+
+        这是 recordId=27 那条 t_evidence.title 的真实字节：
+            D7 A8 D2 A3 D2 B9 32 41 C2 B0 C2 A0 CB AF C7 B1 C6 B7 DD B3 C6 B7 2D 2D 2D 2D
+        其中 D7A8/D2A3/D2B9 是原始 GBK 字节，而 C2B0/C2A0 却是单字节 B0/A0 被 UTF-8 化的
+        产物 —— 同一条串里混了两种损坏层级，不存在统一还原路径。
+
+        所以这个兜底**不能**替代"在产生乱码的那一环之前修好"，
+        它只能处理单一层级的误读，并在修不了时打 WARN 留下线索。
+        """
+        corrupt = bytes.fromhex(
+            "D7A8D2A3D2B93241C2B0C2A0CBAFC7B1C6B7DDB3C6B72D2D2D2D"
+        ).decode("utf-8")
+
+        out = _repair_mojibake(corrupt, "test")
+
+        # 不能崩，也不能把数据改得更糟；但必须承认救不回来
+        self.assertIsInstance(out, str)
+        self.assertEqual(out, corrupt)
 
 
 class FetchPageTextEncodingTest(unittest.TestCase):
