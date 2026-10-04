@@ -10,6 +10,7 @@ Agent 配置模块
 现在字段默认值只作为**兜底值**，`__post_init__` 再按字段名逐个读取环境变量覆盖。
 """
 import os
+import tempfile
 from dataclasses import dataclass, fields
 from pathlib import Path
 from typing import Any, Dict
@@ -24,6 +25,24 @@ try:
     load_dotenv(_ENV_FILE if _ENV_FILE.exists() else None)
 except ImportError:
     pass
+
+# ---------------------------------------------------------------------------
+# PyTorch Inductor 缓存目录重定向
+#
+# 背景：torch 默认把编译缓存建在**当前工作目录**下，目录名是
+# `torchinductor_<系统用户名>`。sentence-transformers 加载模型会 import torch，
+# 于是"从哪个目录启动 Python，就在哪里留一个空目录"：
+#   cd fact-agent && python -m unittest ...  → fact-agent/torchinductor_<用户名>
+#   python eval/evaluate.py                  → fact-agent/eval/torchinductor_<用户名>
+# 本项目只用 torch 做推理（不编译内核），缓存**永远是空的**，纯粹是垃圾目录。
+#
+# 这里显式指到系统临时目录：
+#   - 必须在 **import torch 之前**设置才生效，所以放在模块级（app.config 是
+#     embedding.py 等模块的依赖，导入顺序上一定早于 torch）；
+#   - 不允许被环境变量覆盖成相对路径，否则又会退回"落在 cwd"的老问题。
+# ---------------------------------------------------------------------------
+os.environ.setdefault("TORCHINDUCTOR_CACHE_DIR",
+                      os.path.join(tempfile.gettempdir(), "torchinductor_cache"))
 
 _TRUE_VALUES = ("1", "true", "yes", "on")
 

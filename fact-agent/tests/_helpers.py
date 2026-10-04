@@ -146,9 +146,12 @@ class FakeSearchTool(SearchTool):
 
 class FakeLLM:
     """
-    假 LLM：带 api_key 属性与 chat(messages, timeout=None) 方法。
+    假 LLM：带 api_key 属性与 chat(messages, timeout=None, deadline=None) 方法。
 
     responses 按调用顺序弹出；不足时重复使用最后一条。
+
+    deadline 是第 4 批为"重试不得突破整体预算"新增的参数，
+    桩必须一并接收并记录，否则生产代码传参会直接 TypeError。
     """
 
     def __init__(self, responses: Optional[List[object]] = None,
@@ -161,10 +164,13 @@ class FakeLLM:
         self.raise_error = raise_error or RuntimeError("假的 LLM 故障")
         self.seen_messages: List[List[dict]] = []
         self.seen_timeouts: List[Optional[int]] = []
+        self.seen_deadlines: List[Optional[float]] = []
 
-    def chat(self, messages: List[dict], timeout: Optional[int] = None) -> str:
+    def chat(self, messages: List[dict], timeout: Optional[int] = None,
+             deadline: Optional[float] = None) -> str:
         self.seen_messages.append(messages)
         self.seen_timeouts.append(timeout)
+        self.seen_deadlines.append(deadline)
         call_index = len(self.seen_messages)
         if self.raise_after is not None and call_index >= self.raise_after:
             raise self.raise_error
@@ -235,6 +241,3 @@ class FakeEmbeddingService:
             raise self.raise_error
         return self._raw(text)
 
-    @property
-    def dim(self) -> int:
-        return self.dim_value

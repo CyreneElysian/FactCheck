@@ -4,7 +4,7 @@ FactCheck AI 能力评测脚本
 两种模式：
 
 1) 离线去重评测（不需要任何 API Key，只用到本地 embedding 模型）
-     py -3.10 fact-agent/eval/evaluate.py --mode dedup
+     fact-agent\.venv\Scripts\python.exe fact-agent/eval/evaluate.py --mode dedup
 
    评测方法（注意：不能拿"已入库的原文"当查询，否则每次都会命中自己）：
    - 索引：用 60 条标注样本的**原文**构建 FAISS 索引；
@@ -18,7 +18,7 @@ FactCheck AI 能力评测脚本
    - 对阈值 0.80 ~ 0.96 做扫描，输出命中率 / 误配率 / 误报率曲线与报告。
 
 2) 联网判定评测（需要 LLM_API_KEY 与可用的搜索源）
-     py -3.10 fact-agent/eval/evaluate.py --mode live --subset 10
+     fact-agent\.venv\Scripts\python.exe fact-agent/eval/evaluate.py --mode live --subset 10
    对分层抽样出的样本真实调用检测链路，比较模型结论与标注标签，
    统计准确率、拒答率、失败率、平均耗时与平均证据数。
 
@@ -579,16 +579,16 @@ def write_report(dedup=None, live=None):
         "",
         "```bash",
         "# 离线去重评测（不需要任何 Key）",
-        "py -3.10 fact-agent/eval/evaluate.py --mode dedup",
+        "fact-agent\.venv\Scripts\python.exe fact-agent/eval/evaluate.py --mode dedup",
         "",
         "# 联网判定评测（需要 LLM_API_KEY 与 SEARCH_TOOL/SEARCH_API_KEY）",
-        "py -3.10 fact-agent/eval/evaluate.py --mode live --subset 10",
+        "fact-agent\.venv\Scripts\python.exe fact-agent/eval/evaluate.py --mode live --subset 10",
         "",
         "# 两者都跑并刷新本报告",
-        "py -3.10 fact-agent/eval/evaluate.py --mode all --subset 10",
+        "fact-agent\.venv\Scripts\python.exe fact-agent/eval/evaluate.py --mode all --subset 10",
         "",
         "# 不跑评测，仅用 eval/results/ 里已保存的结果重新合成本报告",
-        "py -3.10 fact-agent/eval/evaluate.py --mode report",
+        "fact-agent\.venv\Scripts\python.exe fact-agent/eval/evaluate.py --mode report",
         "```",
         "",
         "> 报告由 `eval/results/dedup.json` 与 `eval/results/live.json` **两份缓存合成**：",

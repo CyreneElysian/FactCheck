@@ -80,6 +80,10 @@ else:
                  "请在 .env 中设置 INTERNAL_TOKEN，并让 Java 侧 fact-check.agent.internal-token 取相同值")
 logger.info("可信度规则：%s", current_rules().describe())
 logger.info("检测时间预算：%ds（Java 侧读超时应大于该值）", settings.DETECT_TOTAL_BUDGET)
+# 配置告警必须打出来：settings 收集到的非法值/回退信息此前从未被任何地方消费，
+# 结果是"运维把 .env 写错了，运行时完全静默地按默认值跑"，排查成本极高。
+for _warning in getattr(settings, "warnings", []) or []:
+    logger.warning("配置告警：%s", _warning)
 
 
 def _check_token(x_internal_token: str = Header("", alias="X-Internal-Token")):

@@ -229,7 +229,8 @@ class DetectService:
                 error=True,
             )
         try:
-            llm_text = self.llm.chat(messages, timeout=min(settings.LLM_TIMEOUT, remaining))
+            llm_text = self.llm.chat(messages, timeout=min(settings.LLM_TIMEOUT, remaining),
+                                     deadline=deadline)
         except _EXPECTED_LLM_ERRORS as exc:
             logger.error("LLM 检测调用失败：%s", exc)
             return DetectResponse(
@@ -266,6 +267,7 @@ class DetectService:
                     {"role": "user", "content": prompt},
                 ],
                 timeout=min(settings.LLM_TIMEOUT, remaining),
+                deadline=deadline,
             )
             lines = [line.strip() for line in (raw or "").splitlines() if line.strip()]
             # 只去掉明显的编号前缀，避免把"3·15晚会"这类合法查询词误删
@@ -284,7 +286,10 @@ class DetectService:
         seen_urls = set()
         merged: List[SearchResult] = []
         for query in queries:
-            timeout = self._remaining(deadline)
+            # 单次搜索超时取三者的最小值：配置上限（SEARCH_TIMEOUT，运维真正想调的那个）、
+            # 整体预算剩余时间。此前 SEARCH_TIMEOUT 只是"定义了但从不读取"的配置项，
+            # 按 README 调它完全不生效且没有任何提示 —— 现在接上。
+            timeout = min(settings.SEARCH_TIMEOUT, self._remaining(deadline))
             if timeout <= 1:
                 logger.warning("预算不足，提前结束搜索（已完成 %d 个查询）", len(merged))
                 break
@@ -307,12 +312,13 @@ class DetectService:
         for item in results[:fetch_top]:
             if not item.url:
                 continue
-            timeout = self._remaining(deadline)
+            # 单次抓取超时同样受配置上限 SEARCH_PAGE_TIMEOUT 约束，且不超过剩余预算
+            timeout = min(settings.SEARCH_PAGE_TIMEOUT, self._remaining(deadline))
             if timeout <= 2:
                 logger.info("预算不足，停止抓取网页正文")
                 break
             try:
-                text = self._fetch_page_text(item.url, timeout=min(settings.SEARCH_PAGE_TIMEOUT, timeout))
+                text = self._fetch_page_text(item.url, timeout=timeout)
                 if text:
                     item.content = text[: settings.SEARCH_PAGE_MAX_CHARS]
                     logger.info("已抓取网页正文：url=%s, length=%d", item.url, len(item.content))

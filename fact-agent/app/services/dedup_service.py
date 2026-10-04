@@ -125,7 +125,17 @@ class DedupService:
         if missing:
             logger.warning("元数据中有 %d 条没有对应向量（写入中途崩溃残留），尝试补齐：%s",
                            len(missing), sorted(missing)[:10])
+            # 先探活：embedding 整体不可用（模型缺失/离线无法下载）时必须**整体放弃**，
+            # 否则下面会逐条失败、逐条 pop 元数据，把整个知识库清空后落盘 ——
+            # 这是本服务唯一可能造成不可恢复数据丢失的路径。
+            try:
+                self.embedding_service.embed("__probe__")
+            except Exception as exc:
+                logger.error("embedding 服务不可用，本次跳过向量补齐并**完整保留**元数据"
+                             "（避免把整个去重索引的元数据清空）：%s", exc)
+                return
             recovered = 0
+            dropped = 0
             for record_id in sorted(missing):
                 text = self._meta.get(record_id) or ""
                 try:
@@ -136,8 +146,11 @@ class DedupService:
                 except Exception as exc:
                     logger.error("补齐向量失败，丢弃该条元数据：recordId=%s, error=%s", record_id, exc)
                     self._meta.pop(record_id, None)
-            if recovered:
-                logger.warning("已补齐 %d 条向量并重新落盘", recovered)
+                    dropped += 1
+            # 只要有变更就落盘：原先只在 recovered>0 时落盘，导致"全部补齐失败"的场景
+            # 每次启动都重复失败一遍（磁盘上仍留着那些无向量的元数据）。
+            if recovered or dropped:
+                logger.warning("向量补齐完成：成功 %d 条，丢弃 %d 条，准备重新落盘", recovered, dropped)
                 self._save()
 
     def _quarantine_files(self):

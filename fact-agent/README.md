@@ -26,7 +26,9 @@ python -m pip install -r requirements.txt
 cp .env.example .env
 # 编辑 .env：填入 LLM_API_KEY；要联网核查请设置 SEARCH_TOOL=tavily|bocha|serpapi 与 SEARCH_API_KEY
 
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8001
+# 默认只监听回环（AGENT_HOST=127.0.0.1）：Agent 只需被同机 Java 调用。
+# 跨机部署才显式绑 0.0.0.0，且必须同时把 INTERNAL_TOKEN 换成随机值。
+python -m uvicorn app.main:app --port 8001
 
 # 等价方式：直接以模块方式启动（监听地址与端口取自 .env 的 AGENT_HOST / AGENT_PORT）
 python -m app.main
@@ -105,7 +107,7 @@ Java 通过 HTTP 调用，默认地址 `http://127.0.0.1:8001`。
 
 ```bash
 cd fact-agent
-python -m unittest discover -s tests -t . -v     # 63 个用例
+python -m unittest discover -s tests -t . -v     # 117 个用例
 ```
 
 测试**完全离线**（标准库 `unittest`，零第三方依赖），并有三道防线保证不会误连网络：
@@ -116,9 +118,9 @@ python -m unittest discover -s tests -t . -v     # 63 个用例
 ## 能力评测
 
 ```bash
-py -3.10 eval/evaluate.py --mode dedup              # 离线去重评测（无需任何 Key）
-py -3.10 eval/evaluate.py --mode live --subset 10   # 联网判定评测（需要 LLM 与搜索源）
-py -3.10 eval/evaluate.py --mode all --subset 10    # 两者都跑并刷新报告
+.venv\Scripts\python.exe eval/evaluate.py --mode dedup              # 离线去重评测（无需任何 Key）
+.venv\Scripts\python.exe eval/evaluate.py --mode live --subset 10   # 联网判定评测（需要 LLM 与搜索源）
+.venv\Scripts\python.exe eval/evaluate.py --mode all --subset 10    # 两者都跑并刷新报告
 ```
 
 评测集为 `eval/dataset.jsonl`（60 条作者标注样本，含同义改写；**非公开基准**）。
