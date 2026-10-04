@@ -14,6 +14,7 @@
 - [目录结构](#目录结构)
 - [快速开始](#快速开始)
 - [端口与账号](#端口与账号)
+- [部署文档](docs/部署文档.md)
 - [配置说明](#配置说明)
 - [接口约定](#接口约定)
 - [项目状态与已知不足](#项目状态与已知不足)
@@ -113,10 +114,12 @@ fact-check/
 ├── docs/                     设计与过程文档
 │   ├── 产品文档.md            需求、角色权限、页面清单、验收标准（14 条）
 │   ├── 技术方案.md            架构、数据库、Redis、接口、Python Agent、部署
-│   └── 项目改进清单.md        代码审计结果与按优先级排序的待办（60 项）
+│   ├── 部署文档.md            两条部署路线（容器 / 裸机）、迁移、验收与故障排查
+│   └── 项目改进清单.md        代码审计结果与按优先级排序的待办（75 项）
 ├── sql/
-│   ├── fact_check_schema.sql  建库建表（12 张表，可重复执行，会清空数据）
-│   └── fact_check_init.sql    初始化数据（创建第一个管理员，可重复执行）
+│   ├── 01_fact_check_schema.sql  建库建表（12 张表，可重复执行，会清空数据）
+│   ├── 02_fact_check_init.sql    初始化数据（创建第一个管理员，可重复执行）
+│   └── migrations/               已建库的结构变更脚本（新装不需要跑）
 ├── fact-check/                Java 后端（Maven 多模块）
 │   ├── pom.xml
 │   ├── fact-check-common/     公共模块：Result/PageResult、常量、异常、工具、属性类
@@ -156,16 +159,21 @@ fact-check/
 | MySQL | 8.0+ | |
 | Redis | 7.x | |
 | Python | 3.10（推荐） | Agent 服务；模型首次运行需联网下载 |
-| Node.js | 18+ | Vite 5 要求 |
+| Node.js | 18+ | Vite 5 要求；但 `npm run test:offline` 用了 `--experimental-strip-types`，需要 **Node ≥ 22.6**（`npm run test:run` 走 vitest，18+ 即可） |
 | Nginx | 1.20.2 | 仓库内已附带，仅保留了配置文件 |
 | 微信开发者工具 | 最新 | 仅小程序端需要 |
 
 ### 1. 初始化数据库
 
 ```bash
-mysql -u root -p < sql/fact_check_schema.sql   # 建库建表（会先 DROP，谨慎）
-mysql -u root -p < sql/fact_check_init.sql     # 创建第一个管理员 admin / Admin@123456
+mysql -u root -p < sql/01_fact_check_schema.sql   # 建库建表（会先 DROP，谨慎）
+mysql -u root -p < sql/02_fact_check_init.sql     # 创建第一个管理员 admin / 123456
 ```
+
+> **文件名前缀 01/02 是有意的**：`docker compose up` 会把整个 `sql/` 目录挂给 MySQL 的
+> `docker-entrypoint-initdb.d`，该入口脚本**按文件名字典序**逐个执行。若不加前缀，
+> `fact_check_init.sql` 会排在 `fact_check_schema.sql` 之前，导致初始化先于建表执行而失败。
+> 已经建好库的环境不需要重跑这两个脚本；**结构变更**（如新增列）请执行 `sql/migrations/` 下的脚本。
 
 ### 2. 配置本地密钥（Java 侧）
 
@@ -268,13 +276,14 @@ cd nginx-1.20.2
 ### 8. 演示数据（可选）
 
 ```bash
-py -3.10 -m pip install -r fact-check/scripts/requirements.txt
+# 用 fact-agent 的虚拟环境执行（若不想复用，把 python.exe 换成本机任意 Python 3.10+ 亦可）
+fact-agent\.venv\Scripts\python.exe -m pip install -r fact-check/scripts/requirements.txt
 
 # 先预览将要执行的 SQL（不连数据库、不需要任何依赖）
-py -3.10 fact-check/scripts/generate_test_data.py --dry-run
+fact-agent\.venv\Scripts\python.exe fact-check/scripts/generate_test_data.py --dry-run
 
 # 实际写入（幂等，可反复执行）
-py -3.10 fact-check/scripts/generate_test_data.py
+fact-agent\.venv\Scripts\python.exe fact-check/scripts/generate_test_data.py
 ```
 
 生成演示用户、权威信息、检测记录（含 1 条图片记录）、证据、站内信、收藏/评分/申诉、
@@ -287,10 +296,10 @@ Agent 未启动时加 `--skip-index` 跳过该步。
 全部测试**离线可跑**（不需要 MySQL / Redis / 网络）：
 
 ```bash
-# Java：224 个用例（JUnit 5 + Mockito，无 Spring 上下文）
+# Java：268 个测试方法（含 13 个参数化，展开后共 299 个用例；JUnit 5 + Mockito，无 Spring 上下文）
 cd fact-check && mvn test
 
-# Python：111 个用例（标准库 unittest，零第三方依赖）
+# Python：117 个用例（标准库 unittest，零第三方依赖）
 cd fact-agent && python -m unittest discover -s tests -t .
 
 # 小程序静态自检：110 项（JS 语法 / JSON / 页面齐套 / 跳转目标 / 事件绑定）
@@ -303,6 +312,18 @@ cd fact-check-web && npm run type-check    # vue-tsc（含模板类型检查）
 cd fact-check-web && npm run lint          # eslint（当前 0 error 0 warning）
 ```
 
+### 需要真实依赖的集成测试（默认跳过，不进 CI）
+
+有两条语义**只能在真实依赖上验证**（Mockito 没有 Spring 代理与真实连接，证明不了）：
+
+| 测试类 | 验证内容 | 前置 | 命令 |
+| --- | --- | --- | --- |
+| `DetectResultWriterTransactionIT` | `@Transactional` 真的提交/回滚：写证据失败时记录状态一并回滚；条件更新"第二次必须影响 0 行"；版本号恰好 +1 | 真实 MySQL（`fact_check` 库已建表） | `cd fact-check && mvn -o test -Dtest=DetectResultWriterTransactionIT -Dfactcheck.it.db=true` |
+| `HotRankRedisIT` | 热度衰减 Lua（分数 ×0.85 且清理低于阈值者）；`HotRankService.remove` 只删指定成员 | 真实 Redis | `cd fact-check && mvn -o test -Dtest=HotRankRedisIT -Dfactcheck.it.redis=true` |
+
+两者都不传对应 `-Dfactcheck.it.*` 参数时**整类跳过**，因此离线 CI 不受影响。
+（数据库密码用 `FACTCHECK_DB_PASSWORD` 环境变量传入。）两个类都会清理自己造的数据，可反复执行。
+
 **一条命令跑完全部检查**（等价于 CI 流水线，可直接当提交前钩子）：
 
 ```powershell
@@ -314,22 +335,23 @@ cd fact-check
 
 > 本项目的 CI 文件是 GitHub Actions（[`.github/workflows/ci.yml`](.github/workflows/ci.yml)），
 > 而仓库托管在 **Gitee**——Gitee 不执行 GitHub Actions，因此日常用 `run-checks.ps1` 在本地跑同样这七项
-> （实机验证：7 项全 PASS、退出码 0）。想在 Gitee 上跑托管流水线需改用 Gitee Go，
+> （实机验证：8 项全 PASS、退出码 0）。想在 Gitee 上跑托管流水线需改用 Gitee Go，
 > 具体步骤见 [`docs/环境限制与联网后待办.md`](docs/环境限制与联网后待办.md) 第三节。
 
 AI 能力评测（离线去重评测不需要任何 Key）：
 
 ```bash
-py -3.10 fact-agent/eval/evaluate.py --mode dedup
+fact-agent\.venv\Scripts\python.exe fact-agent/eval/evaluate.py --mode dedup
 # 联网判定评测需要 LLM_API_KEY 与搜索源配置
-py -3.10 fact-agent/eval/evaluate.py --mode live --subset 10
+fact-agent\.venv\Scripts\python.exe fact-agent/eval/evaluate.py --mode live --subset 10
 ```
 
-> **关于 `test:offline`**：本机处于离线环境（npm registry 不可达、缓存里也没有 vitest），
-> 于是写了一个约 60 行的零依赖运行器（`scripts/vitest-shim.mjs` + `spec-loader.mjs`），
+> **关于 `test:offline`**：它是为"npm registry 不可达、缓存里也没有 vitest"的离线环境准备的，
+> 约 60 行（`scripts/vitest-shim.mjs` + `spec-loader.mjs`），
 > 把 spec 里的 `vitest` 与 `@/` 解析到本地实现——**同一批 spec 两种方式都能跑**，不存在两份断言。
 > 它的价值是真实的：写完后立刻跑出过一个 `ws:////host`（四斜杠）的拼接 bug。
-> 装好 vitest 后请用 `npm run test:run`（支持组件渲染、覆盖率、watch）。
+> **现已装上 vitest，日常请用 `npm run test:run`**（支持组件渲染、覆盖率、watch）；
+> `test:offline` 保留为 npm 不可用时的兜底。
 
 评测结果见 [`docs/评测报告.md`](docs/评测报告.md)（含阈值敏感性图表与真实联网判定结果）。
 
@@ -346,6 +368,19 @@ py -3.10 fact-agent/eval/evaluate.py --mode live --subset 10
 
 ### 11. 容器化部署（可选，推荐）
 
+> 📖 **完整的部署说明（两条路线、变量清单、迁移、验收清单、故障排查）见 [`docs/部署文档.md`](docs/部署文档.md)。**
+
+**一键启动脚本（推荐）**：
+
+```powershell
+.\start-docker.ps1 check      # 环境自检：docker / compose 插件 / 引擎 / 端口 / dist / compose 解析
+.\start-docker.ps1            # 自动生成 JWT 密钥 → 构建镜像（需要时）→ 起容器 → 健康检查 + 冒烟验收
+.\start-docker.ps1 down       # 停止容器（保留数据卷）
+```
+
+脚本会自动处理三个容易踩的点：**生成并复用 JWT 密钥**（避免"登录返回未知错误"）、
+**80 端口被零信任/VPN 客户端占用时自动改用 8081**、**密钥与运行中容器不一致时给出明确提示**。
+
 ```bash
 docker compose up -d --build     # MySQL + Redis + Agent + Java + nginx 五个服务
 docker compose logs -f server
@@ -355,6 +390,10 @@ docker compose down              # 停止（加 -v 会同时清空数据卷）
 首次启动需要网络（拉基础镜像、容器内装 Maven/pip 依赖、下载 embedding 模型）；
 之后可完全离线。密钥通过宿主机环境变量注入（见 `docker-compose.yml` 里的 `FACTCHECK_*`），
 Agent 与 Java 的**内部令牌由同一个 compose 变量提供**，不会出现两侧不一致导致全量 401 的情况。
+
+> ⚠️ 两个容易踩的点（详见部署文档 §3.2）：
+> ① 容器里**只激活 `dev` profile**（`application-local.yml` 里写死 `localhost`，会把服务名覆盖掉）；
+> ② 后端数据源变量名是 `FACTCHECK_DB_HOST/PORT/NAME/USERNAME/PASSWORD`，**没有** `FACTCHECK_DATASOURCE_URL`。
 
 ---
 
@@ -368,12 +407,19 @@ Agent 与 Java 的**内部令牌由同一个 compose 变量提供**，不会出�
 | MySQL | 3306 | |
 | Redis | 6379 | |
 
-| 账号 | 密码 | 角色 | 来源 |
-| --- | --- | --- | --- |
-| `admin` | `Admin@123456` | 管理员 | `sql/fact_check_init.sql` |
-| `demo_user` | `demo123` | 普通用户 | `scripts/generate_test_data.py` |
+| 账号 | 密码 | 角色 | 状态 | 来源 |
+| --- | --- | --- | --- | --- |
+| `admin` | `123456` | 管理员 | 正常 | `sql/02_fact_check_init.sql` |
+| `admin1` | `123456` | 管理员 | 正常 | 演示数据 |
+| `user` | `123456` | 普通用户 | 正常 | 演示数据（**9 条检测记录的归属账号**） |
+| `user1` | `123456` | 普通用户 | 已注销(status=2) | 演示数据（保留用于验证「注销后不可登录」） |
+| `demo_user` | `123456` | 普通用户 | 正常 | `scripts/generate_test_data.py` |
+| `demo_admin` | `123456` | 管理员 | 正常 | `scripts/generate_test_data.py` |
 
-> ⚠️ 均为演示用弱口令，首次登录后请立即修改。管理员账号不能自行注册，只能由已有管理员在“账号管理”中创建。
+> ⚠️ **所有账号统一为弱口令 `123456`**，仅用于本地开发/演示，首次登录后请立即修改。
+> 项目目前**没有密码强度校验**（见 `docs/项目改进清单.md` 的「弱口令策略」待办），
+> 因此弱口令不会被系统拦下，只能靠部署时自觉更换。
+> 管理员账号不能自行注册，只能由已有管理员在「账号管理」中创建。
 
 ---
 
@@ -394,7 +440,7 @@ Agent 与 Java 的**内部令牌由同一个 compose 变量提供**，不会出�
 | 配置 | 默认值 | 说明 |
 | --- | --- | --- |
 | `fact-check.agent.base-url` | `http://127.0.0.1:8001` | Python Agent 地址 |
-| `fact-check.agent.semantic-threshold` | `0.92` | 语义去重相似度阈值（S10，可配） |
+| `fact-check.agent.semantic-threshold` | `0.92` | ⚠️ **占位配置，改了不生效**：语义去重阈值的真正生效点是 Python 侧 `DEDUP_THRESHOLD`（见《技术方案》§5.4） |
 | `fact-check.agent.exact-enabled` | `true` | 精确去重开关 |
 | `fact-check.agent.semantic-enabled` | `true` | 语义去重开关 |
 | `fact-check.agent.min-text-length` | `8` | 低于此长度只做精确去重 |
@@ -478,11 +524,11 @@ Agent 与 Java 的**内部令牌由同一个 compose 变量提供**，不会出�
 
 作为作品集项目，原本的短板已逐项处理完毕：**[`docs/项目改进清单.md`](docs/项目改进清单.md) 中的 75 项全部处理完毕（74 项实现 + 1 项经决策明确不做）**。当前仍有以下限制与取舍，如实列出；每项的**具体补做步骤**见 [`docs/环境限制与联网后待办.md`](docs/环境限制与联网后待办.md)：
 
-- **前端工具链已全部跑通**：`npm i` 之后 `npm run test:run`（vitest）**2 个文件 / 12 个用例全通过**、
+- **前端工具链已全部跑通**：`npm i` 之后 `npm run test:run`（vitest）**3 个文件 / 12 个用例全通过**、
   `npm run lint`（eslint）**0 error 0 warning**、`npm run type-check`、`npm run build` 均通过，
   全仓已按 prettier 统一格式。接工具链时真抓到两个只在实跑时才暴露的问题：eslint 配置被写成 `.cjs`
   扩展名（会按 JavaScript 执行而直接语法报错）、以及一处全角空格触发 `no-irregular-whitespace`——都已修复。
-  Java（224 用例）、Python（111 用例）、小程序静态自检 [`check_mini.py`](fact-check-mini/check_mini.py)（110 项）同样在本机实跑通过。
+  Java（299 用例）、Python（117 用例）、小程序静态自检 [`check_mini.py`](fact-check-mini/check_mini.py)（110 项）同样在本机实跑通过。
 - **Docker Compose 未做过真实构建与启动**：编排文件、两个 Dockerfile 与容器版 nginx 已就位，
   `docker compose config` 校验通过、所有构建上下文/挂载源逐项校验存在、两侧内部令牌由同一变量提供；
   但本机只装了 Docker CLI（引擎未启动、零镜像），起整套需联网拉约 2–3GB 基础镜像。
@@ -497,9 +543,11 @@ Agent 与 Java 的**内部令牌由同一个 compose 变量提供**，不会出�
 - **分享卡片不含二维码（已决策不做）**：记录详情仅归属者可见，扫码的人打开仍是登录页，与直接收到链接相比没有增量价值；
   小程序端已有微信原生分享。产品文档 §4.13 已同步修订，理由与"将来要补做"的方案见
   [`docs/决策-分享卡片不生成二维码.md`](docs/决策-分享卡片不生成二维码.md)。
-- **前端主包偏大（已知优化点）**：`vite build` 已在本机验证成功（4.14s，35 个 assets），
-  但 `index-*.js` 达 1,117 kB（gzip 370 kB）——element-plus 与 vue 全进主包。
-  按 `docs/环境限制与联网后待办.md` 第四节的 `manualChunks` 片段拆包即可显著改善首屏。
+- **前端主包体积已优化（2026-10-04 完成）**：`vite.config.ts` 加了 `manualChunks`，
+  把 element-plus 与 vue 拆成独立 chunk。实测业务主包 `index-*.js` 从 **1,093 kB 降到 67.2 kB**
+  （gzip 26.2 kB），`element-*.js` 938.9 kB 与 `vue-*.js` 110.9 kB 各自长期缓存。
+  注意这**不减小总体积**，只是把"改一行业务代码要重下多少"从约 1 MB 缩到 67 kB；
+  要真正瘦身首屏还需按需引入（`unplugin-vue-components`），属另一件事。
 - **来源可信度域名库覆盖仍偏窄**：规则已外置为 `config/credibility_rules.json`（改词表不用改代码），
   但内容仍是起步版——省级疾控等权威机构的自建域名会落到兜底值 0.3（语义是"未收录"而非"不可信"），需要持续补充。
 - **参数校验未使用 Bean Validation**：因离线仓库只有 `jakarta` 版 hibernate-validator（与 Boot 2.7 的
@@ -517,7 +565,7 @@ Agent 与 Java 的**内部令牌由同一个 compose 变量提供**，不会出�
 | --- | --- |
 | [`docs/产品文档.md`](docs/产品文档.md) | 产品定位、角色权限矩阵、功能需求、核心流程、页面清单、验收标准 |
 | [`docs/技术方案.md`](docs/技术方案.md) | 架构、技术选型、数据库设计（12 张表）、Redis 设计、接口清单、Python Agent 设计、安全设计、部署架构 |
-| [`docs/项目改进清单.md`](docs/项目改进清单.md) | 代码审计结果、按优先级排序的待办（P0–P5，60 项）、执行批次、面试问答准备 |
+| [`docs/项目改进清单.md`](docs/项目改进清单.md) | 已收口的审计记录：原始现状基线、75 项优先级总览、仍未采纳的备选方案、环境约束与无法验证的项 |
 | [`fact-agent/README.md`](fact-agent/README.md) | Python Agent 的接口、环境变量与启动说明 |
 
 ---

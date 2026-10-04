@@ -64,6 +64,22 @@ fact-agent/models/
 fact-agent/data/
 
 # ---------------------------------------------------------------------------
+# PyTorch Inductor 编译缓存
+#
+# torch 默认把编译缓存建在**进程的当前工作目录**下，目录名规则是
+# `torchinductor_<当前系统用户名>`（例如 `torchinductor_陈伟博`）。
+# 于是从哪个目录启动 Python，就会在哪个目录留下一个空目录：
+#   cd fact-agent && python -m unittest ...   → fact-agent/torchinductor_<用户名>
+#   python eval/evaluate.py                   → fact-agent/eval/torchinductor_<用户名>
+#
+# 本项目只用 torch 做推理（sentence-transformers 编码文本），不编译内核，
+# 实际缓存永远是空的。这里按目录名加两条兜底忽略；另外 settings 里已把
+# TORCHINDUCTOR_CACHE_DIR 指向系统临时目录，正常情况下不会再生成在项目内。
+# ---------------------------------------------------------------------------
+torchinductor_*/
+**/torchinductor_*/
+
+# ---------------------------------------------------------------------------
 # 微信开发者工具：私有配置（个人设置，官方建议不入库）
 # ---------------------------------------------------------------------------
 project.private.config.json
@@ -79,6 +95,12 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 .eslintcache
+
+# 前端构建的临时目录与缓存：由 fact-check-web/.npmrc 指向项目内，
+# 目的是规避 Windows 上"安全软件/同步盘锁住 %TEMP% 里 esbuild 临时文件"导致的
+# `Access is denied`（见 .npmrc 注释）。这些目录是构建副产物，不入库。
+fact-check-web/.tmp/
+fact-check-web/.npm-cache/
 
 # ---------------------------------------------------------------------------
 # Nginx：只保留 conf/（本项目实际修改过的配置）与占位页面

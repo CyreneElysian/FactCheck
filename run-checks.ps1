@@ -5,7 +5,7 @@
 .DESCRIPTION
     为什么需要它：本项目的 CI 文件是 GitHub Actions（.github/workflows/ci.yml），
     而实际托管在 Gitee 上——Gitee 不会执行 GitHub Actions。在配好 Gitee Go 之前，
-    这个脚本提供等价能力：把流水线里的六套检查按同样顺序在本地跑一遍。
+    这个脚本提供等价能力：把流水线里的八套检查按同样顺序在本地跑一遍。
 
     用法：
       .\run-checks.ps1              跑全部检查
@@ -91,10 +91,10 @@ Write-Host '事实检测平台 —— 本地全量检查' -ForegroundColor White
 Write-Host "项目根：$root"
 Write-Host "Maven 模式：$mvnHint"
 
-# 1) Java：224 用例，离线、不需要 MySQL/Redis
+# 1) Java：299 个用例（268 个测试方法，含 13 个参数化；离线、不需要 MySQL/Redis）
 Invoke-Check -Name 'java' -WorkDir 'fact-check' -Action { mvn @mvnArgs }
 
-# 2) Python：111 用例，标准库 unittest，零第三方依赖
+# 2) Python：117 用例，标准库 unittest，零第三方依赖
 Invoke-Check -Name 'python' -WorkDir 'fact-agent' -Action {
     & (Join-Path $PWD '.venv\Scripts\python.exe') -m unittest discover -s tests -t .
 }
@@ -112,10 +112,96 @@ Invoke-Check -Name 'web-type' -WorkDir 'fact-check-web' -Action { npm run type-c
 Invoke-Check -Name 'web-test' -WorkDir 'fact-check-web' -Action { npm run test:offline }
 
 # 6) Docker Compose 配置校验（不需要 daemon 与网络）
+#
+#    分两层，缺一不可：
+#      a) `compose config` —— 语法、变量插值、必填项（${VAR:?}）
+#      b) **语义交叉验证** —— compose 注入的环境变量名，必须真的被 application*.yml 引用
+#
+#    为什么需要 (b)：容器化时踩过一个坑 —— compose 里写的是
+#    `FACTCHECK_DATASOURCE_URL`，而 application.yml 读的是 `${FACTCHECK_DB_HOST/PORT/NAME}`，
+#    变量名对不上，`compose config` **依然返回 0**（它只关心语法），
+#    到运行时才发现后端一直连 localhost。这一层专门拦这类"名字写错但不报错"的问题。
+Write-Head 'compose'
 if (Get-Command docker -ErrorAction SilentlyContinue) {
-    Invoke-Check -Name 'compose' -WorkDir '.' -Action { docker compose config }
+    # ${VAR:?} 是必填项（见 docker-compose.yml 注释：密钥为空会导致登录静默失败）。
+    # 但**配置校验**不该要求用户先准备真实密钥，否则干净环境/CI 上这一项永远 FAIL。
+    # 因此只在本次校验期间注入占位密钥，跑完立即还原。
+    $savedUserSecret = $env:FACTCHECK_JWT_USER_SECRET
+    $savedAdminSecret = $env:FACTCHECK_JWT_ADMIN_SECRET
+    if (-not $env:FACTCHECK_JWT_USER_SECRET) { $env:FACTCHECK_JWT_USER_SECRET = 'x' * 64 }
+    if (-not $env:FACTCHECK_JWT_ADMIN_SECRET) { $env:FACTCHECK_JWT_ADMIN_SECRET = 'x' * 64 }
+    try {
+        Invoke-Check -Name 'compose' -WorkDir '.' -Action { docker compose config --quiet }
+    } finally {
+        $env:FACTCHECK_JWT_USER_SECRET = $savedUserSecret
+        $env:FACTCHECK_JWT_ADMIN_SECRET = $savedAdminSecret
+    }
 } else {
     Write-Skip 'compose（未安装 docker CLI）'
+}
+
+Write-Head 'compose-env'
+$composeEnvOk = $true
+$composeEnvDetail = ''
+try {
+    $composeFile = Join-Path $root 'docker-compose.yml'
+    $appYml = Join-Path $root 'fact-check\fact-check-server\src\main\resources\application.yml'
+    $devYml = Join-Path $root 'fact-check\fact-check-server\src\main\resources\application-dev.yml'
+
+    if ((Test-Path $composeFile) -and (Test-Path $appYml)) {
+        # 1. 收集 compose 里 server 服务注入的 FACTCHECK_* 变量名
+        #    先剔除注释行：本文件的注释里为了说明历史缺陷，会提到 FACTCHECK_DATASOURCE_URL
+        #    这类"错误示例"变量名，若不排除会被当成真的注入项（踩过）。
+        $composeLines = @(Get-Content -LiteralPath $composeFile | Where-Object { $_ -notmatch '^\s*#' })
+        $composeText = $composeLines -join "`n"
+        $injected = [regex]::Matches($composeText, '(?m)^\s+(FACTCHECK_[A-Z0-9_]+)\s*:') |
+            ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
+
+        # 2. 收集 Spring 配置里引用的占位符名与自定义占位（fact-check.* → FACTCHECK_*）
+        $ymlText = ''
+        foreach ($f in @($appYml, $devYml)) {
+            if (Test-Path $f) { $ymlText += (Get-Content -LiteralPath $f -Raw) }
+        }
+        $referenced = [regex]::Matches($ymlText, '\$\{(FACTCHECK_[A-Z0-9_]+)') |
+            ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
+
+        # 3. 例外白名单：compose 传给**其它服务**或仅供 compose 自身使用的变量
+        $allowed = @(
+            'FACTCHECK_DB_HOST', 'FACTCHECK_DB_PORT', 'FACTCHECK_DB_NAME',
+            'FACTCHECK_DB_USERNAME', 'FACTCHECK_DB_PASSWORD'   # 由 application-dev.yml 引用
+        )
+
+        $unknown = @($injected | Where-Object { $referenced -notcontains $_ -and $allowed -notcontains $_ })
+
+        # 4. 反向检查：FACTCHECK_DB_* 这类关键变量是否真被 dev 配置引用（防止改错名字）
+        $dbKeysAllReferenced = $true
+        foreach ($k in @('FACTCHECK_DB_HOST', 'FACTCHECK_DB_PORT', 'FACTCHECK_DB_NAME')) {
+            if ($injected -contains $k -and $referenced -notcontains $k) { $dbKeysAllReferenced = $false }
+        }
+
+        if ($unknown.Count -gt 0) {
+            $composeEnvOk = $false
+            $composeEnvDetail = "compose 注入了配置里不存在的变量：$($unknown -join ', ')"
+            Write-Fail $composeEnvDetail
+            Write-Host '  —— 这类问题 compose config 不会报错，但运行时会连错地址/用错密钥' -ForegroundColor DarkGray
+        } elseif (-not $dbKeysAllReferenced) {
+            $composeEnvOk = $false
+            $composeEnvDetail = 'FACTCHECK_DB_* 未被 application-dev.yml 引用（数据源变量名对不上）'
+            Write-Fail $composeEnvDetail
+        } else {
+            $composeEnvDetail = "compose 注入 $($injected.Count) 个变量，均被配置引用"
+            Write-Pass $composeEnvDetail
+        }
+    } else {
+        Write-Skip 'compose-env（缺少 docker-compose.yml 或 application.yml）'
+    }
+} catch {
+    $composeEnvOk = $false
+    $composeEnvDetail = "校验异常：$($_.Exception.Message)"
+    Write-Fail $composeEnvDetail
+}
+if ($OnlyList.Count -eq 0 -or $OnlyList -contains 'compose-env') {
+    [void]$results.Add([pscustomobject]@{ Check = 'compose-env'; Ok = $composeEnvOk; Detail = $composeEnvDetail })
 }
 
 # 7) 密钥泄露扫描（与 CI 的 secret-scan 作业同一段正则）
@@ -123,7 +209,7 @@ Write-Head 'secret-scan'
 $pattern = 'LTAI[A-Za-z0-9]{8,}|tvly-[A-Za-z0-9]{10,}|sk-[A-Za-z0-9]{20,}|AKID[A-Za-z0-9]{10,}'
 Push-Location $root
 try {
-    $hits = git grep -I -n -E $pattern -- . 2>$null | Where-Object { $_ -notmatch 'sk-xxxx' }
+    $hits = @(git grep -I -n -E $pattern -- . 2>$null | Where-Object { $_ -notmatch 'sk-xxxx' })
 } finally {
     Pop-Location
 }
@@ -145,8 +231,31 @@ $results | ForEach-Object {
     Write-Host ("  {0,-14} {1,-5} {2}" -f $_.Check, $mark, $_.Detail) -ForegroundColor $color
 }
 
-$failed = ($results | Where-Object { -not $_.Ok }).Count
+$ARG_NOT_REGISTERED = $false
+if ($OnlyList.Count -gt 0) {
+    $names = @($results | ForEach-Object { $_.Check })
+    $unknown = @($OnlyList | Where-Object { $names -notcontains $_ })
+    if ($unknown.Count -gt 0) {
+        Write-Host ""
+        Write-Host ("!! -Only 中存在未注册的检查名：" + ($unknown -join ', ')) -ForegroundColor Red
+        Write-Host ("   可用名称：" + ($names -join ', ')) -ForegroundColor DarkGray
+        Write-Host "   （旧版本会静默跳过并报“全部检查通过”，这是一个假绿路径，已修正）" -ForegroundColor DarkGray
+        $ARG_NOT_REGISTERED = $true
+    }
+}
+
+# ⚠️ 必须用 @() 包裹：
+#    PowerShell 5.1 **不会**给管道输出的"单个对象"自动加 .Count 属性
+#    （PS 7 才会），因此 `(... | Where-Object).Count` 在只有 1 个结果时返回 $null，
+#    于是 `$null -gt 0` 为 false —— 表现为"明明 FAIL 了却 exit 0"。
+#    这个坑在本脚本里潜伏已久（$hits / $unknown / $failed 都是这个写法），
+#    直到 compose-env 这项检查第一次产出"恰好 1 条失败"才暴露出来。
+$failed = @($results | Where-Object { -not $_.Ok }).Count
 Write-Host ""
+if ($ARG_NOT_REGISTERED) {
+    Write-Host "存在未注册的检查名，已判定为失败（避免把“静默跳过”当成“通过”）。" -ForegroundColor Red
+    exit 1
+}
 if ($failed -gt 0) {
     Write-Host "$failed 项检查未通过。" -ForegroundColor Red
     exit 1
