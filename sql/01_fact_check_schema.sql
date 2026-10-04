@@ -93,8 +93,13 @@ CREATE TABLE t_evidence (
     url                 VARCHAR(500)    DEFAULT NULL COMMENT '链接',
     snippet             TEXT            DEFAULT NULL COMMENT '摘要',
     source              VARCHAR(100)    DEFAULT NULL COMMENT '来源站点/媒体',
-    source_credibility  DECIMAL(3,2)    NOT NULL DEFAULT 0.00 COMMENT '来源可信度 0-1（S13，内置域名规则 + 管理员可改）',
-    relevance_score     DECIMAL(5,4)    NOT NULL DEFAULT 0.0000 COMMENT '相关度 0-1',
+    -- 允许 NULL 是刻意的：管理员人工补充的证据**不臆造**可信度/相关度分值，
+    -- 存 NULL 表示"无此数据"，前端显示 "-"；存 0.00 会被误读成"0 分（极不可信）"。
+    -- 早前这里写的是 NOT NULL DEFAULT 0.00，导致 AdminRecordServiceImpl.addEvidence
+    -- 显式写入 null 时被 MySQL 拒绝（Column 'source_credibility' cannot be null），
+    -- "补充证据"功能实际不可用。已建库请执行 sql/migrations/ 下的迁移脚本。
+    source_credibility  DECIMAL(3,2)    DEFAULT NULL COMMENT '来源可信度 0-1（S13）；NULL=未评分',
+    relevance_score     DECIMAL(5,4)    DEFAULT NULL COMMENT '相关度 0-1；NULL=未评分',
     source_type         TINYINT         NOT NULL DEFAULT 1 COMMENT '1 AI 搜索，2 管理员添加',
     create_time         DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (id),
