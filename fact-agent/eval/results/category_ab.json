@@ -1,0 +1,216 @@
+{
+ "mode": "category_ab",
+ "target_category": "健康",
+ "dataset_size": 33,
+ "started_at": "2026-10-05 00:19:20",
+ "generated_at": "2026-10-05 00:22:15",
+ "summary": {
+  "n_usable": 4,
+  "n_skipped": 0,
+  "baseline_hits": 4,
+  "guided_hits": 4,
+  "baseline_acc": 1.0,
+  "guided_acc": 1.0,
+  "delta": 0.0,
+  "baseline_ci": [
+   0.5100999795960008,
+   1.0
+  ],
+  "guided_ci": [
+   0.5100999795960008,
+   1.0
+  ],
+  "mcnemar": {
+   "both_hit": 4,
+   "only_baseline": 0,
+   "only_guided": 0,
+   "neither": 0,
+   "p_value": 1.0
+  },
+  "verdict_disagreement": 0,
+  "criteria": {
+   "风险等级(2A/2B/1类)": {
+    "baseline": 0,
+    "guided": 0
+   },
+   "因果vs相关": {
+    "baseline": 3,
+    "guided": 3
+   },
+   "相对vs绝对风险": {
+    "baseline": 0,
+    "guided": 0
+   }
+  },
+  "avg_seconds": {
+   "baseline": 22.55,
+   "guided": 21.15
+  },
+  "avg_evidence": {
+   "baseline": 10,
+   "guided": 10
+  },
+  "avg_reasoning_chars": {
+   "baseline": 486.75,
+   "guided": 572.75
+  }
+ },
+ "paired": [
+  {
+   "id": 1,
+   "label": "FALSE",
+   "text": "微波炉加热的食物会产生致癌物，欧洲已全面禁止使用微波炉",
+   "baseline": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.95,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 559,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": false
+    },
+    "seconds": 19.2
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 684,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": false
+    },
+    "seconds": 16.9
+   }
+  },
+  {
+   "id": 13,
+   "label": "FALSE",
+   "text": "吃碘盐可以防核辐射，赶紧囤盐",
+   "baseline": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 538,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 12.6
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 737,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 15.5
+   }
+  },
+  {
+   "id": 21,
+   "label": "FALSE",
+   "text": "晚上吃姜等于吃砒霜",
+   "baseline": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 480,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": false
+    },
+    "seconds": 14.7
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 606,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": false
+    },
+    "seconds": 14.2
+   }
+  },
+  {
+   "id": 35,
+   "label": "TRUE",
+   "text": "新型冠状病毒可以通过呼吸道飞沫传播",
+   "baseline": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.98,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 370,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": false
+    },
+    "seconds": 43.7
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.98,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 264,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": false
+    },
+    "seconds": 38.0
+   }
+  }
+ ]
+}
