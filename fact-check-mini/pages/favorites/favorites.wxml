@@ -9,7 +9,7 @@
     </view>
     <view class="row">
       <text class="muted">详情 ›</text>
-      <button class="btn-plain small-btn" size="mini" bindtap="onRemove" data-id="{{item.recordId}}">取消收藏</button>
+      <button class="btn-plain small-btn" size="mini" catchtap="onRemove" data-id="{{item.recordId}}">取消收藏</button>
     </view>
   </view>
 

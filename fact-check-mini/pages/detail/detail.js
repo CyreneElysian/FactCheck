@@ -16,6 +16,20 @@ const REASON_OPTIONS = [
 /** 检测中的轮询间隔（与首页一致） */
 const POLL_INTERVAL = 2000
 
+/**
+ * 把后端返回的 0~1 比例安全地转成数字；**无数据返回 null**
+ *
+ * 为什么不能用 Number()：`Number(null)` 与 `Number('')` 都等于 0，
+ * 会把"没有这个数据"误判成"比值就是 0"（显示成 0%）。管理员补充的证据
+ * 刻意留空可信度/相关度，必须显示 '-' 而不是 0%。
+ */
+function toRatio(value) {
+  if (value === null || value === undefined) return null
+  if (typeof value === 'string' && value.trim() === '') return null
+  const num = Number(value)
+  return Number.isFinite(num) ? num : null
+}
+
 Page({
   data: {
     id: null,
@@ -79,7 +93,23 @@ Page({
       this.apply(res.data || {}, false)
       return
     } catch (e) {
-      // 详情接口只允许查看自己的记录；热度榜里别人的记录会走到这里
+      // 只有"后端明确应答但这条记录不可读"才回落到公开接口；
+      // 网络异常 / 服务端 5xx 原样报错，避免把真实故障伪装成"该消息因热度公开"。
+      //
+      // 说明 request.js 的 reject 载荷有两种形态：
+      //   - 网络层失败：wx.request 的 err（无 statusCode）→ 提示网络异常
+      //   - 后端业务失败：body{code,msg}（无 statusCode）→ 可以回落
+      //   - 401/非 200：res{statusCode,...} → 5xx 直接报错，其余回落
+      if (e && e.statusCode && e.statusCode >= 500) {
+        this.setData({ loading: false })
+        wx.showToast({ title: '服务暂时不可用，请稍后重试', icon: 'none' })
+        return
+      }
+      if (e && !e.statusCode && e.errMsg !== undefined && e.code === undefined) {
+        this.setData({ loading: false })
+        wx.showToast({ title: '网络异常，请检查网络后重试', icon: 'none' })
+        return
+      }
     }
     try {
       const res = await get(`/hot/${this.data.id}`)
@@ -95,8 +125,8 @@ Page({
   /** 把后端返回的记录整理成可直接渲染的数据 */
   apply(record, readonly) {
     const evidenceList = (record.evidenceList || []).map(item => {
-      const credibility = Number(item.sourceCredibility)
-      const relevance = Number(item.relevanceScore)
+      const credibility = toRatio(item.sourceCredibility)
+      const relevance = toRatio(item.relevanceScore)
       return {
         id: item.id,
         title: item.title || '(无标题)',
@@ -104,11 +134,13 @@ Page({
         snippet: item.snippet || '',
         source: item.source || '',
         sourceType: item.sourceType,
-        // 可信度 / 相关度格式化为百分比；缺失时显示 '-'
-        credibilityText: isNaN(credibility) ? '-' : Math.round(credibility * 100) + '%',
-        relevanceText: isNaN(relevance) ? '-' : Math.round(relevance * 100) + '%',
+        // 可信度 / 相关度格式化为百分比；**缺失时显示 '-'**。
+        // 注意不能用 isNaN(Number(x)) 判空：Number(null) 与 Number('') 都是 0，
+        // 会把"无数据"显示成 '0%' —— 管理员补充的证据刻意留空这两项，显示 0% 是误导。
+        credibilityText: credibility === null ? '-' : Math.round(credibility * 100) + '%',
+        relevanceText: relevance === null ? '-' : Math.round(relevance * 100) + '%',
         // 高可信来源（≥0.9）给个"权威"标记，便于一眼区分
-        isAuthoritative: !isNaN(credibility) && credibility >= 0.9
+        isAuthoritative: credibility !== null && credibility >= 0.9
       }
     })
 
@@ -119,7 +151,7 @@ Page({
       verdictText: VERDICT_TEXT[record.verdict] || '待诊断',
       verdictClass: VERDICT_CLASS[record.verdict] || 'verdict-unknown',
       verdictSourceText: VERDICT_SOURCE_TEXT[record.verdictSource] || '',
-      confidenceText: record.confidence === null || record.confidence === undefined
+      confidenceText: toRatio(record.confidence) === null
         ? ''
         : Math.round(Number(record.confidence) * 100) + '%',
       evidenceList,
@@ -127,7 +159,10 @@ Page({
       myRating: record.myRating === undefined ? null : record.myRating
     })
 
-    // 检测中（status=0）时自行轮询，出结果后自动停止
+    // 检测中（status=0）时自行轮询，出结果后自动停止。
+    // 记录只读（从热度榜进来的他人记录）时必须轮询 /hot/{id}：
+    // 详情接口只允许归属者查看，打过去必然 403，轮询会首次就自我终止、页面永不更新。
+    this._readonly = !!readonly
     if (record.status === 0) {
       this.startPolling()
     } else {
@@ -139,8 +174,9 @@ Page({
     if (this._timer) return
     this._timer = setInterval(async () => {
       try {
-        const res = await get(`/detect/record/${this.data.id}`)
-        this.apply(res.data || {})
+        const path = this._readonly ? `/hot/${this.data.id}` : `/detect/record/${this.data.id}`
+        const res = await get(path)
+        this.apply(res.data || {}, this._readonly)
       } catch (e) {
         this.stopPolling()
       }

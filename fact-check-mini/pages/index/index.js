@@ -54,16 +54,34 @@ Page({
     }
   },
 
+  onUnload() {
+    // 页面销毁必须停掉轮询，否则返回/切 tab 后仍会每 2 秒打一次后端
+    this.stopPolling()
+  },
+
+  onHide() {
+    this.stopPolling()
+  },
+
   pollRecord(recordId) {
-    const timer = setInterval(async () => {
+    this.stopPolling()
+    // 定时器挂在页面实例上（不能是局部变量），否则 onUnload 拿不到、无法清理
+    this._timer = setInterval(async () => {
       try {
         const res = await get(`/detect/record/${recordId}`)
         this.applyResult(res.data)
-        if (res.data.status !== 0) clearInterval(timer)
+        if (res.data.status !== 0) this.stopPolling()
       } catch (e) {
-        clearInterval(timer)
+        this.stopPolling()
       }
     }, 2000)
+  },
+
+  stopPolling() {
+    if (this._timer) {
+      clearInterval(this._timer)
+      this._timer = null
+    }
   },
 
   applyResult(result) {

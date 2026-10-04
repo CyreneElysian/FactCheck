@@ -5,7 +5,9 @@ function getAuthHeader() {
   const role = wx.getStorageSync('role')
   const header = {}
   if (token) {
-    if (role === '1') {
+    // 与 Web 端 authHeader.ts 的做法对齐：统一 String() 后比较。
+    // 只认字符串 '1' 时，任何一处写入数字 1 都会让管理员被判成普通用户 → 发错鉴权头 → 401。
+    if (String(role) === '1') {
       header.token = token
     } else {
       header.authentication = token
