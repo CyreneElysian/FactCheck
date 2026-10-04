@@ -2,57 +2,57 @@
  "mode": "category_ab",
  "target_category": "健康",
  "dataset_size": 33,
- "started_at": "2026-10-05 00:19:20",
- "generated_at": "2026-10-05 00:22:15",
+ "started_at": "2026-10-05 00:30:25",
+ "generated_at": "2026-10-05 00:51:49",
  "summary": {
-  "n_usable": 4,
+  "n_usable": 33,
   "n_skipped": 0,
-  "baseline_hits": 4,
-  "guided_hits": 4,
-  "baseline_acc": 1.0,
-  "guided_acc": 1.0,
-  "delta": 0.0,
+  "baseline_hits": 30,
+  "guided_hits": 29,
+  "baseline_acc": 0.9091,
+  "guided_acc": 0.8788,
+  "delta": -0.0303,
   "baseline_ci": [
-   0.5100999795960008,
-   1.0
+   0.7642705646564897,
+   0.968596628950737
   ],
   "guided_ci": [
-   0.5100999795960008,
-   1.0
+   0.7267415674973484,
+   0.9518391673241576
   ],
   "mcnemar": {
-   "both_hit": 4,
-   "only_baseline": 0,
+   "both_hit": 29,
+   "only_baseline": 1,
    "only_guided": 0,
-   "neither": 0,
+   "neither": 3,
    "p_value": 1.0
   },
-  "verdict_disagreement": 0,
+  "verdict_disagreement": 1,
   "criteria": {
    "风险等级(2A/2B/1类)": {
     "baseline": 0,
-    "guided": 0
+    "guided": 5
    },
    "因果vs相关": {
-    "baseline": 3,
-    "guided": 3
+    "baseline": 12,
+    "guided": 20
    },
    "相对vs绝对风险": {
-    "baseline": 0,
-    "guided": 0
+    "baseline": 1,
+    "guided": 5
    }
   },
   "avg_seconds": {
-   "baseline": 22.55,
-   "guided": 21.15
+   "baseline": 20.75,
+   "guided": 23.46
   },
   "avg_evidence": {
    "baseline": 10,
    "guided": 10
   },
   "avg_reasoning_chars": {
-   "baseline": 486.75,
-   "guided": 572.75
+   "baseline": 512.15,
+   "guided": 561.18
   }
  },
  "paired": [
@@ -96,6 +96,279 @@
    }
   },
   {
+   "id": 2,
+   "label": "FALSE",
+   "text": "喝醋可以预防感冒",
+   "baseline": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.9,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 354,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 17.0
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.9,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 279,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": false
+    },
+    "seconds": 24.9
+   }
+  },
+  {
+   "id": 3,
+   "label": "FALSE",
+   "text": "味精加热后会致癌，炒菜不能放味精",
+   "baseline": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 605,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 14.5
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 410,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 13.4
+   }
+  },
+  {
+   "id": 4,
+   "label": "FALSE",
+   "text": "隔夜水会产生亚硝酸盐致癌，不能喝",
+   "baseline": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.95,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 699,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": false
+    },
+    "seconds": 18.4
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.93,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 562,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": true,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 36.8
+   }
+  },
+  {
+   "id": 6,
+   "label": "FALSE",
+   "text": "接种疫苗会导致儿童自闭症",
+   "baseline": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.98,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 545,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": false
+    },
+    "seconds": 19.4
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 653,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": false
+    },
+    "seconds": 36.0
+   }
+  },
+  {
+   "id": 7,
+   "label": "FALSE",
+   "text": "酸性体质是万病之源，需要吃碱性食物调理",
+   "baseline": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 692,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 15.4
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 844,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": false
+    },
+    "seconds": 16.2
+   }
+  },
+  {
+   "id": 8,
+   "label": "FALSE",
+   "text": "电脑和手机的辐射会导致不孕不育",
+   "baseline": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.92,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 308,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 16.5
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.88,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 638,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": true,
+     "因果vs相关": true,
+     "相对vs绝对风险": false
+    },
+    "seconds": 15.5
+   }
+  },
+  {
+   "id": 9,
+   "label": "FALSE",
+   "text": "吃酱油会让伤口变黑留疤",
+   "baseline": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 461,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 12.0
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.95,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 602,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": false
+    },
+    "seconds": 13.4
+   }
+  },
+  {
    "id": 13,
    "label": "FALSE",
    "text": "吃碘盐可以防核辐射，赶紧囤盐",
@@ -132,6 +405,279 @@
      "相对vs绝对风险": false
     },
     "seconds": 15.5
+   }
+  },
+  {
+   "id": 14,
+   "label": "FALSE",
+   "text": "喝可乐会杀死精子导致不育",
+   "baseline": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 382,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": false
+    },
+    "seconds": 15.8
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.95,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 410,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": false
+    },
+    "seconds": 18.2
+   }
+  },
+  {
+   "id": 15,
+   "label": "FALSE",
+   "text": "板蓝根可以预防新冠肺炎",
+   "baseline": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 560,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": false
+    },
+    "seconds": 27.1
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.94,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 568,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": false
+    },
+    "seconds": 44.8
+   }
+  },
+  {
+   "id": 16,
+   "label": "FALSE",
+   "text": "空腹不能吃香蕉，会对身体有害",
+   "baseline": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.91,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 525,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 15.5
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.9,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 659,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 15.9
+   }
+  },
+  {
+   "id": 17,
+   "label": "FALSE",
+   "text": "糖尿病患者完全不能吃水果",
+   "baseline": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 614,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 13.6
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.95,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 516,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 28.8
+   }
+  },
+  {
+   "id": 18,
+   "label": "FALSE",
+   "text": "长痘是因为吃辣，必须完全忌辣",
+   "baseline": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.95,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 467,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 33.4
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.94,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 680,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": false
+    },
+    "seconds": 22.9
+   }
+  },
+  {
+   "id": 19,
+   "label": "FALSE",
+   "text": "洗完头不吹干就睡觉会得面瘫",
+   "baseline": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.68,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 513,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": false
+    },
+    "seconds": 18.8
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.74,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 843,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": true,
+     "因果vs相关": true,
+     "相对vs绝对风险": false
+    },
+    "seconds": 18.9
+   }
+  },
+  {
+   "id": 20,
+   "label": "FALSE",
+   "text": "隐形眼镜会滑到眼球后面再也取不出来",
+   "baseline": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 247,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 17.9
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 555,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 12.7
    }
   },
   {
@@ -174,6 +720,279 @@
    }
   },
   {
+   "id": 23,
+   "label": "FALSE",
+   "text": "感冒药可以治好感冒，吃了就能立刻痊愈",
+   "baseline": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 358,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 19.5
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 458,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": false
+    },
+    "seconds": 17.2
+   }
+  },
+  {
+   "id": 25,
+   "label": "FALSE",
+   "text": "血压高的人喝醋能软化血管，可以代替降压药",
+   "baseline": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 616,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 16.2
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.95,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 351,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 18.0
+   }
+  },
+  {
+   "id": 29,
+   "label": "TRUE",
+   "text": "人的正常体温大约在 36 到 37 摄氏度之间",
+   "baseline": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 401,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 28.0
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.9,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 599,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 24.2
+   }
+  },
+  {
+   "id": 30,
+   "label": "TRUE",
+   "text": "吸烟会显著增加患肺癌的风险",
+   "baseline": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.98,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 327,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 21.1
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 779,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": true
+    },
+    "seconds": 16.8
+   }
+  },
+  {
+   "id": 31,
+   "label": "TRUE",
+   "text": "长期高盐饮食与高血压发病风险升高相关",
+   "baseline": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 739,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": true
+    },
+    "seconds": 16.6
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 625,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": true
+    },
+    "seconds": 26.2
+   }
+  },
+  {
+   "id": 32,
+   "label": "TRUE",
+   "text": "勤洗手可以降低呼吸道传染病的传播风险",
+   "baseline": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 584,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 13.4
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.95,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 641,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": true,
+     "因果vs相关": true,
+     "相对vs绝对风险": true
+    },
+    "seconds": 15.2
+   }
+  },
+  {
+   "id": 33,
+   "label": "TRUE",
+   "text": "接种疫苗可以显著降低相应传染病的发病率",
+   "baseline": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 652,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": false
+    },
+    "seconds": 29.2
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 713,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": true
+    },
+    "seconds": 20.7
+   }
+  },
+  {
    "id": 35,
    "label": "TRUE",
    "text": "新型冠状病毒可以通过呼吸道飞沫传播",
@@ -210,6 +1029,318 @@
      "相对vs绝对风险": false
     },
     "seconds": 38.0
+   }
+  },
+  {
+   "id": 36,
+   "label": "TRUE",
+   "text": "长期睡眠不足会影响认知功能",
+   "baseline": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 655,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 16.6
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 397,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": false
+    },
+    "seconds": 20.0
+   }
+  },
+  {
+   "id": 37,
+   "label": "TRUE",
+   "text": "适量运动有助于控制体重",
+   "baseline": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 558,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": false
+    },
+    "seconds": 21.1
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 431,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 25.4
+   }
+  },
+  {
+   "id": 39,
+   "label": "TRUE",
+   "text": "血液在人体内是循环流动的",
+   "baseline": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.98,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 418,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 33.1
+   },
+   "guided": {
+    "ok": true,
+    "verdict": null,
+    "can_judge": false,
+    "confidence": null,
+    "error": true,
+    "human_reason": "LLM 调用失败：LLM 调用失败：HTTPSConnectionPool(host='api.deepseek.com', port=443): Read timed out. (read timeout=5)",
+    "reasoning_chars": 0,
+    "evidence_count": 10,
+    "hit": false,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 48.6
+   }
+  },
+  {
+   "id": 40,
+   "label": "TRUE",
+   "text": "把水煮沸可以杀灭大多数病原微生物",
+   "baseline": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.93,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 539,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 32.7
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.93,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 601,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 36.2
+   }
+  },
+  {
+   "id": 45,
+   "label": "TRUE",
+   "text": "长期过量饮酒会损害肝脏",
+   "baseline": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.98,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 577,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 18.5
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 531,
+    "evidence_count": 10,
+    "hit": true,
+    "criteria": {
+     "风险等级(2A/2B/1类)": true,
+     "因果vs相关": true,
+     "相对vs绝对风险": true
+    },
+    "seconds": 20.8
+   }
+  },
+  {
+   "id": 49,
+   "label": "UNVERIFIED",
+   "text": "某款新药可以彻底治愈阿尔茨海默病",
+   "baseline": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 544,
+    "evidence_count": 10,
+    "hit": false,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 27.2
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 776,
+    "evidence_count": 10,
+    "hit": false,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 28.7
+   }
+  },
+  {
+   "id": 54,
+   "label": "UNVERIFIED",
+   "text": "民间偏方称吃某种野生菌可以延寿十年",
+   "baseline": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.87,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 505,
+    "evidence_count": 10,
+    "hit": false,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": false
+    },
+    "seconds": 26.7
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.9,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 672,
+    "evidence_count": 10,
+    "hit": false,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": true,
+     "相对vs绝对风险": false
+    },
+    "seconds": 31.1
+   }
+  },
+  {
+   "id": 59,
+   "label": "UNVERIFIED",
+   "text": "网传某种常见蔬菜生吃可以杀死体内寄生虫",
+   "baseline": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.8,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 509,
+    "evidence_count": 10,
+    "hit": false,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 19.4
+   },
+   "guided": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.86,
+    "error": false,
+    "human_reason": null,
+    "reasoning_chars": 435,
+    "evidence_count": 10,
+    "hit": false,
+    "criteria": {
+     "风险等级(2A/2B/1类)": false,
+     "因果vs相关": false,
+     "相对vs绝对风险": false
+    },
+    "seconds": 22.2
    }
   }
  ]
