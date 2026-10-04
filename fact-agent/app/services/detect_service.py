@@ -81,6 +81,10 @@ _ALLOWED_SCHEMES = ("http", "https")
 # 最多跟随的重定向次数（每一跳都要重新校验）
 _MAX_REDIRECTS = 3
 
+# requests 在响应头没有 charset 时按 RFC 2616 塞的兜底编码。
+# 它们不代表页面真实编码，不能当作"显式声明"采信（否则中文站点会乱码）。
+_FALLBACK_ENCODINGS = {"iso-8859-1", "latin-1", "latin1", "ascii", "cp1252", "us-ascii"}
+
 # 明确禁止的内网主机名
 _BLOCKED_HOSTNAMES = {
     "localhost", "localhost.localdomain", "ip6-localhost", "ip6-loopback",
@@ -152,6 +156,60 @@ def _assert_url_allowed(url: str) -> None:
     if _host_is_blocked(parsed.hostname):
         raise ValueError(f"禁止抓取内网/回环/保留地址：{parsed.hostname}")
 
+
+
+def _decode_response(resp: "requests.Response") -> str:
+    """
+    按网页**实际编码**解码响应体
+
+    为什么不能直接用 `resp.text`（真实踩到的缺陷）：
+        `requests` 在响应头没有明确 charset 时，对 text/* 会按 **ISO-8859-1** 兜底
+        （RFC 2616 的历史遗留）。而国内不少站点 —— 例如人民网的部分页面 ——
+        是 **GBK** 编码且未在头部声明 charset，于是中文全部变成乱码，
+        再被当成"网页正文"写进证据、喂给 LLM。
+        后果很隐蔽：**评分最高的权威源（health.people.com.cn 命中 0.95 域名规则）
+        反而以乱码形式出现在提示词里**，模型完全读不到那篇权威报道说了什么。
+
+    判定顺序：
+        1. 仅当响应头**显式声明**了非兜底 charset 时才采信（明示优先于猜测）；
+        2. 否则交给 `charset_normalizer` 做统计推断（中文页面识别率很高）；
+        3. 该库缺失时退回 `requests` 自带的 `apparent_encoding`；
+        4. 全部失败则按 UTF-8 容错解码（`errors="replace"`）——**永不抛异常**，
+           拿不准编码不该让整次检测失败。
+    """
+    raw = resp.content or b""
+    try:
+        declared = resp.encoding
+    except Exception:
+        declared = None
+
+    # 1) 头部显式声明（requests 无声明时会塞这些兜底值，不能当"明示"）
+    if declared and declared.lower().replace("_", "-") not in _FALLBACK_ENCODINGS:
+        try:
+            return raw.decode(declared, errors="replace")
+        except (LookupError, TypeError):
+            pass
+
+    # 2) 统计推断
+    try:
+        from charset_normalizer import from_bytes
+
+        best = from_bytes(raw).best()
+        if best and best.encoding:
+            return str(best)
+    except Exception:
+        pass
+
+    # 3) requests 的兜底推断
+    try:
+        apparent = resp.apparent_encoding
+        if apparent:
+            return raw.decode(apparent, errors="replace")
+    except Exception:
+        pass
+
+    # 4) 最终兜底
+    return raw.decode("utf-8", errors="replace")
 
 
 class DetectService:
@@ -356,7 +414,7 @@ class DetectService:
         else:
             raise ValueError(f"重定向次数过多（超过 {_MAX_REDIRECTS} 次）：{url}")
 
-        html = resp.text
+        html = _decode_response(resp)
         # 去掉 script/style/noscript 等标签及其内容
         html = re.sub(r"(?is)<(script|style|noscript|header|footer|nav)\b[^>]*>.*?</(script|style|noscript|header|footer|nav)>", " ", html)
         # 去掉所有 HTML 标签

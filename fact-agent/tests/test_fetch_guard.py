@@ -89,12 +89,28 @@ class AllowedUrlTest(unittest.TestCase):
 
 
 class FakeResponse:
-    """极简的假响应，避免依赖 requests 的真实网络栈"""
+    """极简的假响应，避免依赖 requests 的真实网络栈
 
-    def __init__(self, status_code=200, headers=None, text="<html><body>正文内容</body></html>"):
+    说明：`_fetch_page_text` 现在按**响应字节**（`content`）自行探测编码解码，
+    不再用 `resp.text`（后者在响应头无 charset 时会被 requests 兜底成 ISO-8859-1，
+    导致 GBK 页面中文乱码，见 tests/test_page_encoding.py）。
+    因此这个假响应必须像真实 `requests.Response` 一样同时提供 `content` 与 `encoding`。
+    """
+
+    def __init__(self, status_code=200, headers=None,
+                 text="<html><body>正文内容</body></html>",
+                 content: bytes = None, encoding="utf-8"):
         self.status_code = status_code
         self.headers = headers or {}
         self.text = text
+        # 可显式给字节；不传则用 text 的 UTF-8 编码，保持与旧用例等价
+        self.content = content if content is not None else text.encode("utf-8")
+        self.encoding = encoding
+
+    @property
+    def apparent_encoding(self):
+        # 复刻 requests 在缺少 chardet 时的真实行为（本项目 venv 就没装 chardet）
+        return "utf-8"
 
     def raise_for_status(self):
         if self.status_code >= 400:
