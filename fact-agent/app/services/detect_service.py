@@ -81,6 +81,14 @@ _ALLOWED_SCHEMES = ("http", "https")
 # 最多跟随的重定向次数（每一跳都要重新校验）
 _MAX_REDIRECTS = 3
 
+# 排名之外、因"标题疑似乱码"而额外抓取的条数上限。
+# 乱码标题靠排名是抓不到的（实测它在第 10 位），所以必须有这条通道；
+# 但也不能无限抓——每个抓取都是一次真实网络请求，会吃掉检测预算。
+_EXTRA_FETCH_FOR_BAD_TITLE = 3
+
+# 单次检测里抓取网页的总数硬上限（排名内 + 额外），防止预算被耗尽
+_MAX_TOTAL_FETCH = 6
+
 # requests 在响应头没有 charset 时按 RFC 2616 塞的兜底编码。
 # 它们不代表页面真实编码，不能当作"显式声明"采信（否则中文站点会乱码）。
 _FALLBACK_ENCODINGS = {"iso-8859-1", "latin-1", "latin1", "ascii", "cp1252", "us-ascii"}
@@ -210,6 +218,76 @@ def _decode_response(resp: "requests.Response") -> str:
 
     # 4) 最终兜底
     return raw.decode("utf-8", errors="replace")
+
+
+def _is_unusual_letter(ch: str) -> bool:
+    """
+    该字符是否属于"中文文本里不该出现的字母系统"。
+
+    实测教训：乱码 `רңҹ2A° ˯ǱƷݳƷ----` 里是**希伯来字母 ר(U+05E8)** 与
+    **西里尔字母 ң(U+04A3)**，它们都**不在** U+0080–U+00FF 区间
+    （那是 latin-1 补充区）。所以"高位 latin 字符数"这个判据会漏判——
+    识别乱码必须看**更宽的 Unicode 区块**。
+    """
+    code = ord(ch)
+    return (
+        0x0400 <= code <= 0x052F        # 西里尔文 / 西里尔补充
+        or 0x0530 <= code <= 0x058F     # 亚美尼亚文
+        or 0x0590 <= code <= 0x05FF     # 希伯来文
+        or 0x0600 <= code <= 0x06FF     # 阿拉伯文
+        or 0x0700 <= code <= 0x074F     # 叙利亚文
+        or 0x0780 <= code <= 0x07BF     # 塔纳文
+        or 0x0080 <= code <= 0x024F     # latin-1 补充 + 拉丁扩展 A/B
+    )
+
+
+def _looks_mojibake(value: str) -> bool:
+    """
+    判断字符串是否疑似"中文被误读"的乱码。
+
+    <h3>判据为什么是"比例"而不是"有没有汉字"</h3>
+    最初写成"有汉字就算正常"，实测**直接漏判**：Tavily 返回的那段坏摘要
+    `ݡ桷2022й̬ݿ⣬о2022ڵ˯״ʾ...` 里恰好混进了 2 个形似汉字的字符
+    （`桷` U+6877），于是被判成"正常中文"。
+
+    正确的判据是**非 ASCII 字符里汉字的占比**：
+    <ul>
+      <li>正常中文：非 ASCII 字符几乎都是汉字，占比 &gt; 0.7；</li>
+      <li>误读乱码：非 ASCII 字符散落在西里尔/希伯来/阿拉伯补充/盲文等区块，
+          汉字占比极低（实测那段是 2/50 ≈ 0.04）。</li>
+    </ul>
+
+    <h3>真实来源</h3>
+    实测 Tavily 对 `health.people.com.cn`（gb2312 页面）返回的 title/snippet
+    本身就是乱码，而我们**自己抓同一个页面是干净的**（`_decode_response` 已修好）。
+    所以正确做法不是"还原"这个坏字符串——它已双重损坏、不可逆
+    （混着被 UTF-8 化的单字节，无法编回 latin-1）——而是**换成我们抓到的真实标题**，
+    见 `_enrich_results`。
+    """
+    if not value:
+        return False
+    # 纯 ASCII（英文/数字标题）没有可判据的非 ASCII 字符，不算乱码
+    non_ascii = [ch for ch in value if ord(ch) > 127]
+    if len(non_ascii) < 3:
+        return False
+
+    cjk = sum(1 for ch in non_ascii if "\u4e00" <= ch <= "\u9fff")
+    ratio = cjk / len(non_ascii)
+    if ratio < 0.5:
+        return True
+    # 中文占比够高，但仍夹杂异常字母系统的字符 → 也视为可疑
+    unusual = sum(1 for ch in non_ascii if _is_unusual_letter(ch))
+    return unusual >= 2 and ratio < 0.9
+
+
+def _extract_html_title(html: str) -> str:
+    """从 HTML 中提取 `<title>` 文本（找不到返回空串）"""
+    match = re.search(r"(?is)<title[^>]*>(.*?)</title>", html)
+    if not match:
+        return ""
+    title = re.sub(r"\s+", " ", match.group(1)).strip()
+    return (title.replace("&nbsp;", " ").replace("&amp;", "&")
+            .replace("&lt;", "<").replace("&gt;", ">"))
 
 
 def _repair_mojibake(value: str, where: str) -> str:
@@ -410,11 +488,40 @@ class DetectService:
         return merged
 
     def _enrich_results(self, results: List[SearchResult], deadline: float) -> List[SearchResult]:
-        """抓取前 N 条结果的网页正文，写入 content（不覆盖原始 snippet）"""
+        """抓取网页正文写入 content（不覆盖原始 snippet），并修掉搜索接口给出的乱码标题
+
+        <h3>为什么要抓"排名靠后但标题可疑"的条目</h3>
+        原先只抓前 {@code SEARCH_FETCH_TOP}（默认 3）条。但实测发现乱码标题恰好出现在
+        **第 10 位**（Tavily 对 `health.people.com.cn` 这种 gb2312 站点返回的标题本身就是乱码），
+        于是它从未被抓取，也就无从替换 —— 只按排名决定抓谁，救不了这种情况。
+        现在额外抓取"标题疑似乱码"的条目（受 {@code _EXTRA_FETCH_FOR_BAD_TITLE} 上限约束）。
+
+        <p>总抓取量的硬上限（{@code _MAX_TOTAL_FETCH}）保证不会因为一次搜索命中太多坏标题
+        而把时间预算耗光。</p>
+        """
         fetch_top = settings.SEARCH_FETCH_TOP
+        # fetch_top <= 0 表示"关闭抓取"这一整体开关（既有测试与离线环境依赖该语义），
+        # 此时连"标题可疑"的额外抓取也要一起关掉。
         if fetch_top <= 0:
             return results
-        for item in results[:fetch_top]:
+        # 排名内的照常抓；排名外但标题可疑的也要抓（否则永远修不了）
+        indexes = set(range(min(fetch_top, len(results))))
+        extra = 0
+        for i, item in enumerate(results):
+            if i in indexes or not item.url:
+                continue
+            if _looks_mojibake(item.title) and extra < _EXTRA_FETCH_FOR_BAD_TITLE:
+                indexes.add(i)
+                extra += 1
+        if extra:
+            logger.info("额外抓取 %d 条标题疑似乱码的结果（不受 SEARCH_FETCH_TOP 限制）", extra)
+
+        fetched_count = 0
+        for index in sorted(indexes):
+            if fetched_count >= _MAX_TOTAL_FETCH:
+                logger.info("抓取数量达到上限 %d，停止抓取", _MAX_TOTAL_FETCH)
+                break
+            item = results[index]
             if not item.url:
                 continue
             # 单次抓取超时同样受配置上限 SEARCH_PAGE_TIMEOUT 约束，且不超过剩余预算
@@ -422,24 +529,44 @@ class DetectService:
             if timeout <= 2:
                 logger.info("预算不足，停止抓取网页正文")
                 break
+            fetched_count += 1
             try:
-                text = self._fetch_page_text(item.url, timeout=timeout)
+                page_title, text = self._fetch_page_text(item.url, timeout=timeout)
                 if text:
                     item.content = text[: settings.SEARCH_PAGE_MAX_CHARS]
                     logger.info("已抓取网页正文：url=%s, length=%d", item.url, len(item.content))
+                # 搜索接口给的标题是乱码时，用**我们抓到的真实标题**替换它。
+                #
+                # 为什么走"替换"而不是"还原乱码"：实测 Tavily 对 gb2312 站点
+                # （如 health.people.com.cn）返回的 title/snippet 双重损坏、
+                # 不可逆；而我们自己抓同一页面是干净的（编码已在 _decode_response 修好）。
+                # 这条路径同时惠及 snippet：LLM 看到干净标题后就不会把乱码抄进证据。
+                if page_title and _looks_mojibake(item.title):
+                    logger.warning("搜索结果的标题疑似乱码，改用抓取到的页面标题：url=%s, 原=%r, 新=%r",
+                                   item.url, item.title[:40], page_title[:60])
+                    item.title = page_title
+                if _looks_mojibake(item.snippet) and text:
+                    # 摘要坏了就整段丢弃——留着乱码只会被模型抄进证据；
+                    # 正文（item.content）已经可供模型阅读，摘要并非必需
+                    logger.warning("搜索结果的摘要疑似乱码，已丢弃：url=%s", item.url)
+                    item.snippet = ""
             except _EXPECTED_FETCH_ERRORS as exc:
                 logger.warning("网页抓取失败，使用搜索摘要：url=%s, error=%s", item.url, exc)
         return results
 
     @staticmethod
-    def _fetch_page_text(url: str, timeout: int = 10) -> str:
-        """抓取网页并提取纯文本
+    def _fetch_page_text(url: str, timeout: int = 10):
+        """抓取网页，返回 (页面标题, 纯文本正文)
 
         安全约束（SSRF 防护）：
         - 只允许 http/https；
         - 拒绝内网/回环/链路本地/保留地址（含域名解析到这些地址的情况）；
         - **不自动跟随重定向**，每一跳都重新校验，避免"公网地址 302 到内网"绕过；
         - 主机解析失败按不可访问处理（fail-closed）。
+
+        返回标题是为了在搜索接口给出乱码标题时能用**真实标题**替换它
+        （见 `_enrich_results`）；标题从解码后的 HTML 里取，因此同样受益于
+        `_decode_response` 的编码修复。
         """
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -462,6 +589,8 @@ class DetectService:
             raise ValueError(f"重定向次数过多（超过 {_MAX_REDIRECTS} 次）：{url}")
 
         html = _decode_response(resp)
+        # 标题要在剥标签**之前**取，否则 <title> 内容会混进正文或被当成标签删掉
+        page_title = _extract_html_title(html)
         # 去掉 script/style/noscript 等标签及其内容
         html = re.sub(r"(?is)<(script|style|noscript|header|footer|nav)\b[^>]*>.*?</(script|style|noscript|header|footer|nav)>", " ", html)
         # 去掉所有 HTML 标签
@@ -470,7 +599,7 @@ class DetectService:
         text = text.replace("&nbsp;", " ").replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
         # 压缩空白
         text = re.sub(r"\s+", " ", text).strip()
-        return text
+        return page_title, text
 
     # ------------------------------------------------------------------
     # 提示词组装

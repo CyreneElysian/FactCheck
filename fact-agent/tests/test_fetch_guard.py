@@ -145,8 +145,10 @@ class FetchPageTextTest(unittest.TestCase):
                                          "<body>事实核查正文&nbsp;内容</body></html>")
 
         with patch.object(requests, "get", new=fake_get):
-            text = DetectService._fetch_page_text(f"https://{PUBLIC_IP}/a")
+            # 返回 (页面标题, 正文) —— 标题用于在搜索接口给出乱码标题时替换它
+            title, text = DetectService._fetch_page_text(f"https://{PUBLIC_IP}/a")
 
+        self.assertEqual(title, "", "该 HTML 没有 title，应返回空串")
         self.assertIn("事实核查正文", text)
         self.assertIn("内容", text)
         self.assertNotIn("<body>", text, "HTML 标签应被剔除")

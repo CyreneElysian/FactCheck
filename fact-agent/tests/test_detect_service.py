@@ -455,7 +455,7 @@ class TestDetectFetchAndBudget(DetectServiceTestCase):
             can_judge=True, verdict="FALSE", confidence=0.9, evidence=[])]))
 
         with patch.object(DetectService, "_fetch_page_text",
-                          new=MagicMock(return_value=fetched)) as mocked_fetch:
+                          new=MagicMock(return_value=("抓取到的页面标题", fetched))) as mocked_fetch:
             orig_snippet = self.search_tool.results[0].snippet
             resp = service.detect("武汉又出现新型病毒了")
             first = self.search_tool.results[0]
