@@ -1,0 +1,1640 @@
+{
+ "mode": "unverified_ab",
+ "generated_at": "2026-10-05 02:01:21",
+ "started_at": "2026-10-05 01:15:16",
+ "summary": {
+  "n_usable": 60,
+  "n_skipped": 0,
+  "before_hits": 52,
+  "after_hits": 52,
+  "before_acc": 0.8667,
+  "after_acc": 0.8667,
+  "delta": 0.0,
+  "target_label": "UNVERIFIED",
+  "target_before": 9,
+  "target_after": 8,
+  "target_total": 15,
+  "wrongly_unverified_before": 1,
+  "wrongly_unverified_after": 1,
+  "only_before": 3,
+  "only_after": 3,
+  "mcnemar_p": 1.0,
+  "avg_seconds": {
+   "before": 23.59,
+   "after": 22.49
+  },
+  "avg_reasoning": {
+   "before": 459.43,
+   "after": 434.63
+  },
+  "label_confusion": {
+   "TRUE": {
+    "before": {
+     "TRUE": 20,
+     "FALSE": 0,
+     "UNVERIFIED": 0,
+     "null": 0
+    },
+    "after": {
+     "TRUE": 20,
+     "FALSE": 0,
+     "UNVERIFIED": 0,
+     "null": 0
+    },
+    "total": 20
+   },
+   "FALSE": {
+    "before": {
+     "TRUE": 0,
+     "FALSE": 23,
+     "UNVERIFIED": 1,
+     "null": 1
+    },
+    "after": {
+     "TRUE": 0,
+     "FALSE": 24,
+     "UNVERIFIED": 1,
+     "null": 0
+    },
+    "total": 25
+   },
+   "UNVERIFIED": {
+    "before": {
+     "TRUE": 3,
+     "FALSE": 2,
+     "UNVERIFIED": 9,
+     "null": 1
+    },
+    "after": {
+     "TRUE": 2,
+     "FALSE": 2,
+     "UNVERIFIED": 8,
+     "null": 3
+    },
+    "total": 15
+   }
+  }
+ },
+ "paired": [
+  {
+   "id": 1,
+   "label": "FALSE",
+   "category": "健康",
+   "text": "微波炉加热的食物会产生致癌物，欧洲已全面禁止使用微波炉",
+   "before": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.92,
+    "reasoning_chars": 668,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 21.3
+   },
+   "after": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.95,
+    "reasoning_chars": 540,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 18.8
+   }
+  },
+  {
+   "id": 2,
+   "label": "FALSE",
+   "category": "健康",
+   "text": "喝醋可以预防感冒",
+   "before": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.87,
+    "reasoning_chars": 622,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 17.9
+   },
+   "after": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.91,
+    "reasoning_chars": 424,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 13.0
+   }
+  },
+  {
+   "id": 3,
+   "label": "FALSE",
+   "category": "健康",
+   "text": "味精加热后会致癌，炒菜不能放味精",
+   "before": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "reasoning_chars": 411,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 13.3
+   },
+   "after": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "reasoning_chars": 459,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 14.5
+   }
+  },
+  {
+   "id": 4,
+   "label": "FALSE",
+   "category": "健康",
+   "text": "隔夜水会产生亚硝酸盐致癌，不能喝",
+   "before": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.95,
+    "reasoning_chars": 516,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 27.0
+   },
+   "after": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.95,
+    "reasoning_chars": 485,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 13.4
+   }
+  },
+  {
+   "id": 5,
+   "label": "FALSE",
+   "category": "科技",
+   "text": "5G 基站辐射会致癌，应拆除居民区附近的基站",
+   "before": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.94,
+    "reasoning_chars": 432,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 19.4
+   },
+   "after": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.9,
+    "reasoning_chars": 586,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 14.4
+   }
+  },
+  {
+   "id": 6,
+   "label": "FALSE",
+   "category": "健康",
+   "text": "接种疫苗会导致儿童自闭症",
+   "before": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "reasoning_chars": 557,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 33.8
+   },
+   "after": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "reasoning_chars": 520,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 21.6
+   }
+  },
+  {
+   "id": 7,
+   "label": "FALSE",
+   "category": "健康",
+   "text": "酸性体质是万病之源，需要吃碱性食物调理",
+   "before": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "reasoning_chars": 707,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 19.3
+   },
+   "after": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "reasoning_chars": 747,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 15.2
+   }
+  },
+  {
+   "id": 8,
+   "label": "FALSE",
+   "category": "健康",
+   "text": "电脑和手机的辐射会导致不孕不育",
+   "before": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.86,
+    "reasoning_chars": 468,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 23.6
+   },
+   "after": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.9,
+    "reasoning_chars": 411,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 26.5
+   }
+  },
+  {
+   "id": 9,
+   "label": "FALSE",
+   "category": "健康",
+   "text": "吃酱油会让伤口变黑留疤",
+   "before": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "reasoning_chars": 504,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 16.0
+   },
+   "after": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "reasoning_chars": 658,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 25.1
+   }
+  },
+  {
+   "id": 10,
+   "label": "FALSE",
+   "category": "科技",
+   "text": "手机充电时接电话会触电身亡",
+   "before": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.95,
+    "reasoning_chars": 268,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 18.6
+   },
+   "after": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.86,
+    "reasoning_chars": 392,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 37.3
+   }
+  },
+  {
+   "id": 11,
+   "label": "FALSE",
+   "category": "社会",
+   "text": "市面上有塑料大米，大米是塑料做的",
+   "before": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "reasoning_chars": 664,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 25.2
+   },
+   "after": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.95,
+    "reasoning_chars": 518,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 24.4
+   }
+  },
+  {
+   "id": 12,
+   "label": "FALSE",
+   "category": "社会",
+   "text": "肉松是棉花做的，不能吃",
+   "before": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "reasoning_chars": 420,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 12.6
+   },
+   "after": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "reasoning_chars": 428,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 12.8
+   }
+  },
+  {
+   "id": 13,
+   "label": "FALSE",
+   "category": "健康",
+   "text": "吃碘盐可以防核辐射，赶紧囤盐",
+   "before": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "reasoning_chars": 632,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 16.3
+   },
+   "after": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "reasoning_chars": 540,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 23.8
+   }
+  },
+  {
+   "id": 14,
+   "label": "FALSE",
+   "category": "健康",
+   "text": "喝可乐会杀死精子导致不育",
+   "before": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.93,
+    "reasoning_chars": 456,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 13.7
+   },
+   "after": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.95,
+    "reasoning_chars": 611,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 15.4
+   }
+  },
+  {
+   "id": 15,
+   "label": "FALSE",
+   "category": "健康",
+   "text": "板蓝根可以预防新冠肺炎",
+   "before": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.95,
+    "reasoning_chars": 376,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 23.8
+   },
+   "after": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "reasoning_chars": 365,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 28.8
+   }
+  },
+  {
+   "id": 16,
+   "label": "FALSE",
+   "category": "健康",
+   "text": "空腹不能吃香蕉，会对身体有害",
+   "before": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.92,
+    "reasoning_chars": 591,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 13.9
+   },
+   "after": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.93,
+    "reasoning_chars": 570,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 15.8
+   }
+  },
+  {
+   "id": 17,
+   "label": "FALSE",
+   "category": "健康",
+   "text": "糖尿病患者完全不能吃水果",
+   "before": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "reasoning_chars": 410,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 13.2
+   },
+   "after": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "reasoning_chars": 532,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 17.4
+   }
+  },
+  {
+   "id": 18,
+   "label": "FALSE",
+   "category": "健康",
+   "text": "长痘是因为吃辣，必须完全忌辣",
+   "before": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.9,
+    "reasoning_chars": 539,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 14.0
+   },
+   "after": {
+    "ok": true,
+    "verdict": "UNVERIFIED",
+    "can_judge": true,
+    "confidence": 0.55,
+    "reasoning_chars": 519,
+    "evidence_count": 10,
+    "hit": false,
+    "seconds": 24.2
+   }
+  },
+  {
+   "id": 19,
+   "label": "FALSE",
+   "category": "健康",
+   "text": "洗完头不吹干就睡觉会得面瘫",
+   "before": {
+    "ok": true,
+    "verdict": null,
+    "can_judge": false,
+    "confidence": null,
+    "reasoning_chars": 0,
+    "evidence_count": 10,
+    "hit": false,
+    "seconds": 46.2
+   },
+   "after": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.7,
+    "reasoning_chars": 551,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 18.3
+   }
+  },
+  {
+   "id": 20,
+   "label": "FALSE",
+   "category": "健康",
+   "text": "隐形眼镜会滑到眼球后面再也取不出来",
+   "before": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "reasoning_chars": 395,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 33.8
+   },
+   "after": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "reasoning_chars": 326,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 27.1
+   }
+  },
+  {
+   "id": 21,
+   "label": "FALSE",
+   "category": "健康",
+   "text": "晚上吃姜等于吃砒霜",
+   "before": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "reasoning_chars": 418,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 13.3
+   },
+   "after": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "reasoning_chars": 465,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 13.7
+   }
+  },
+  {
+   "id": 22,
+   "label": "FALSE",
+   "category": "社会",
+   "text": "转发这条消息到五个群可以领取红包奖励",
+   "before": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.93,
+    "reasoning_chars": 453,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 15.9
+   },
+   "after": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.95,
+    "reasoning_chars": 373,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 14.0
+   }
+  },
+  {
+   "id": 23,
+   "label": "FALSE",
+   "category": "健康",
+   "text": "感冒药可以治好感冒，吃了就能立刻痊愈",
+   "before": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "reasoning_chars": 389,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 16.2
+   },
+   "after": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.98,
+    "reasoning_chars": 285,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 16.5
+   }
+  },
+  {
+   "id": 24,
+   "label": "FALSE",
+   "category": "科技",
+   "text": "手机信号越差，辐射就越大，对人体伤害越高",
+   "before": {
+    "ok": true,
+    "verdict": "UNVERIFIED",
+    "can_judge": true,
+    "confidence": 0.62,
+    "reasoning_chars": 580,
+    "evidence_count": 10,
+    "hit": false,
+    "seconds": 44.0
+   },
+   "after": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.85,
+    "reasoning_chars": 268,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 27.0
+   }
+  },
+  {
+   "id": 25,
+   "label": "FALSE",
+   "category": "健康",
+   "text": "血压高的人喝醋能软化血管，可以代替降压药",
+   "before": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "reasoning_chars": 505,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 13.7
+   },
+   "after": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "reasoning_chars": 508,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 14.0
+   }
+  },
+  {
+   "id": 26,
+   "label": "TRUE",
+   "category": "科技",
+   "text": "地球围绕太阳公转",
+   "before": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.99,
+    "reasoning_chars": 262,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 32.4
+   },
+   "after": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.99,
+    "reasoning_chars": 344,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 32.0
+   }
+  },
+  {
+   "id": 27,
+   "label": "TRUE",
+   "category": "科技",
+   "text": "在标准大气压下水的沸点是 100 摄氏度",
+   "before": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.92,
+    "reasoning_chars": 381,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 14.0
+   },
+   "after": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.95,
+    "reasoning_chars": 431,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 14.3
+   }
+  },
+  {
+   "id": 28,
+   "label": "TRUE",
+   "category": "科技",
+   "text": "真空中的光速约为每秒 30 万公里",
+   "before": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.98,
+    "reasoning_chars": 436,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 15.9
+   },
+   "after": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.98,
+    "reasoning_chars": 313,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 12.3
+   }
+  },
+  {
+   "id": 29,
+   "label": "TRUE",
+   "category": "健康",
+   "text": "人的正常体温大约在 36 到 37 摄氏度之间",
+   "before": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.88,
+    "reasoning_chars": 428,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 22.5
+   },
+   "after": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "reasoning_chars": 194,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 24.5
+   }
+  },
+  {
+   "id": 30,
+   "label": "TRUE",
+   "category": "健康",
+   "text": "吸烟会显著增加患肺癌的风险",
+   "before": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.98,
+    "reasoning_chars": 477,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 19.5
+   },
+   "after": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.98,
+    "reasoning_chars": 423,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 19.7
+   }
+  },
+  {
+   "id": 31,
+   "label": "TRUE",
+   "category": "健康",
+   "text": "长期高盐饮食与高血压发病风险升高相关",
+   "before": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "reasoning_chars": 618,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 16.0
+   },
+   "after": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "reasoning_chars": 666,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 14.4
+   }
+  },
+  {
+   "id": 32,
+   "label": "TRUE",
+   "category": "健康",
+   "text": "勤洗手可以降低呼吸道传染病的传播风险",
+   "before": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "reasoning_chars": 502,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 12.0
+   },
+   "after": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.95,
+    "reasoning_chars": 499,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 15.0
+   }
+  },
+  {
+   "id": 33,
+   "label": "TRUE",
+   "category": "健康",
+   "text": "接种疫苗可以显著降低相应传染病的发病率",
+   "before": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "reasoning_chars": 586,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 30.4
+   },
+   "after": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "reasoning_chars": 554,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 14.2
+   }
+  },
+  {
+   "id": 34,
+   "label": "TRUE",
+   "category": "政策",
+   "text": "中国是联合国安理会常任理事国",
+   "before": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.99,
+    "reasoning_chars": 331,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 35.5
+   },
+   "after": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.99,
+    "reasoning_chars": 393,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 33.1
+   }
+  },
+  {
+   "id": 35,
+   "label": "TRUE",
+   "category": "健康",
+   "text": "新型冠状病毒可以通过呼吸道飞沫传播",
+   "before": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.98,
+    "reasoning_chars": 213,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 28.7
+   },
+   "after": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.98,
+    "reasoning_chars": 318,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 23.8
+   }
+  },
+  {
+   "id": 36,
+   "label": "TRUE",
+   "category": "健康",
+   "text": "长期睡眠不足会影响认知功能",
+   "before": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "reasoning_chars": 575,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 14.7
+   },
+   "after": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "reasoning_chars": 506,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 13.0
+   }
+  },
+  {
+   "id": 37,
+   "label": "TRUE",
+   "category": "健康",
+   "text": "适量运动有助于控制体重",
+   "before": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "reasoning_chars": 571,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 24.0
+   },
+   "after": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "reasoning_chars": 468,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 14.2
+   }
+  },
+  {
+   "id": 38,
+   "label": "TRUE",
+   "category": "科技",
+   "text": "太阳是一颗恒星",
+   "before": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.99,
+    "reasoning_chars": 297,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 31.7
+   },
+   "after": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.99,
+    "reasoning_chars": 337,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 32.2
+   }
+  },
+  {
+   "id": 39,
+   "label": "TRUE",
+   "category": "健康",
+   "text": "血液在人体内是循环流动的",
+   "before": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.98,
+    "reasoning_chars": 368,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 26.0
+   },
+   "after": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.98,
+    "reasoning_chars": 464,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 32.7
+   }
+  },
+  {
+   "id": 40,
+   "label": "TRUE",
+   "category": "健康",
+   "text": "把水煮沸可以杀灭大多数病原微生物",
+   "before": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.96,
+    "reasoning_chars": 405,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 43.7
+   },
+   "after": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.92,
+    "reasoning_chars": 444,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 33.2
+   }
+  },
+  {
+   "id": 41,
+   "label": "TRUE",
+   "category": "科技",
+   "text": "温室气体排放与全球变暖有关",
+   "before": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "reasoning_chars": 468,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 34.4
+   },
+   "after": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "reasoning_chars": 469,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 19.9
+   }
+  },
+  {
+   "id": 42,
+   "label": "TRUE",
+   "category": "政策",
+   "text": "中国实行九年义务教育制度",
+   "before": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.98,
+    "reasoning_chars": 467,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 23.1
+   },
+   "after": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.99,
+    "reasoning_chars": 382,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 23.8
+   }
+  },
+  {
+   "id": 43,
+   "label": "TRUE",
+   "category": "科技",
+   "text": "全球划分为多个时区",
+   "before": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.98,
+    "reasoning_chars": 314,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 11.4
+   },
+   "after": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.98,
+    "reasoning_chars": 265,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 13.0
+   }
+  },
+  {
+   "id": 44,
+   "label": "TRUE",
+   "category": "科技",
+   "text": "月球围绕地球公转",
+   "before": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.97,
+    "reasoning_chars": 520,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 34.3
+   },
+   "after": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.99,
+    "reasoning_chars": 245,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 31.3
+   }
+  },
+  {
+   "id": 45,
+   "label": "TRUE",
+   "category": "健康",
+   "text": "长期过量饮酒会损害肝脏",
+   "before": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.98,
+    "reasoning_chars": 439,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 14.5
+   },
+   "after": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.98,
+    "reasoning_chars": 506,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 30.4
+   }
+  },
+  {
+   "id": 46,
+   "label": "UNVERIFIED",
+   "category": "社会",
+   "text": "某地居民拍到不明飞行物，官方尚未回应",
+   "before": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.85,
+    "reasoning_chars": 434,
+    "evidence_count": 10,
+    "hit": false,
+    "seconds": 44.7
+   },
+   "after": {
+    "ok": true,
+    "verdict": "UNVERIFIED",
+    "can_judge": true,
+    "confidence": 0.3,
+    "reasoning_chars": 422,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 37.4
+   }
+  },
+  {
+   "id": 47,
+   "label": "UNVERIFIED",
+   "category": "社会",
+   "text": "网传某位明星已秘密结婚",
+   "before": {
+    "ok": true,
+    "verdict": "UNVERIFIED",
+    "can_judge": true,
+    "confidence": 0.55,
+    "reasoning_chars": 444,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 36.2
+   },
+   "after": {
+    "ok": true,
+    "verdict": "UNVERIFIED",
+    "can_judge": true,
+    "confidence": 0.55,
+    "reasoning_chars": 425,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 17.4
+   }
+  },
+  {
+   "id": 48,
+   "label": "UNVERIFIED",
+   "category": "科技",
+   "text": "有研究称太阳系可能存在第九大行星",
+   "before": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.95,
+    "reasoning_chars": 523,
+    "evidence_count": 10,
+    "hit": false,
+    "seconds": 20.0
+   },
+   "after": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.95,
+    "reasoning_chars": 525,
+    "evidence_count": 10,
+    "hit": false,
+    "seconds": 17.6
+   }
+  },
+  {
+   "id": 49,
+   "label": "UNVERIFIED",
+   "category": "健康",
+   "text": "某款新药可以彻底治愈阿尔茨海默病",
+   "before": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.87,
+    "reasoning_chars": 536,
+    "evidence_count": 10,
+    "hit": false,
+    "seconds": 29.3
+   },
+   "after": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.95,
+    "reasoning_chars": 491,
+    "evidence_count": 10,
+    "hit": false,
+    "seconds": 26.6
+   }
+  },
+  {
+   "id": 50,
+   "label": "UNVERIFIED",
+   "category": "社会",
+   "text": "某村的一口井水能治百病",
+   "before": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.83,
+    "reasoning_chars": 417,
+    "evidence_count": 10,
+    "hit": false,
+    "seconds": 18.5
+   },
+   "after": {
+    "ok": true,
+    "verdict": "FALSE",
+    "can_judge": true,
+    "confidence": 0.88,
+    "reasoning_chars": 497,
+    "evidence_count": 10,
+    "hit": false,
+    "seconds": 16.5
+   }
+  },
+  {
+   "id": 51,
+   "label": "UNVERIFIED",
+   "category": "社会",
+   "text": "传言下周本地将出现特大暴雨",
+   "before": {
+    "ok": true,
+    "verdict": "UNVERIFIED",
+    "can_judge": true,
+    "confidence": 0.72,
+    "reasoning_chars": 470,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 17.2
+   },
+   "after": {
+    "ok": true,
+    "verdict": "UNVERIFIED",
+    "can_judge": true,
+    "confidence": 0.6,
+    "reasoning_chars": 397,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 15.2
+   }
+  },
+  {
+   "id": 52,
+   "label": "UNVERIFIED",
+   "category": "财经",
+   "text": "网传某互联网公司即将破产清算",
+   "before": {
+    "ok": true,
+    "verdict": "UNVERIFIED",
+    "can_judge": true,
+    "confidence": 0.42,
+    "reasoning_chars": 426,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 16.3
+   },
+   "after": {
+    "ok": true,
+    "verdict": "UNVERIFIED",
+    "can_judge": true,
+    "confidence": 0.5,
+    "reasoning_chars": 456,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 15.6
+   }
+  },
+  {
+   "id": 53,
+   "label": "UNVERIFIED",
+   "category": "社会",
+   "text": "有自媒体称某国已在外星建立秘密基地",
+   "before": {
+    "ok": true,
+    "verdict": "UNVERIFIED",
+    "can_judge": true,
+    "confidence": 0.72,
+    "reasoning_chars": 523,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 42.9
+   },
+   "after": {
+    "ok": true,
+    "verdict": null,
+    "can_judge": false,
+    "confidence": null,
+    "reasoning_chars": 0,
+    "evidence_count": 10,
+    "hit": false,
+    "seconds": 45.9
+   }
+  },
+  {
+   "id": 54,
+   "label": "UNVERIFIED",
+   "category": "健康",
+   "text": "民间偏方称吃某种野生菌可以延寿十年",
+   "before": {
+    "ok": true,
+    "verdict": "UNVERIFIED",
+    "can_judge": true,
+    "confidence": 0.78,
+    "reasoning_chars": 479,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 28.9
+   },
+   "after": {
+    "ok": true,
+    "verdict": "UNVERIFIED",
+    "can_judge": true,
+    "confidence": 0.72,
+    "reasoning_chars": 587,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 38.3
+   }
+  },
+  {
+   "id": 55,
+   "label": "UNVERIFIED",
+   "category": "科技",
+   "text": "某山区传闻发现未知物种",
+   "before": {
+    "ok": true,
+    "verdict": "UNVERIFIED",
+    "can_judge": true,
+    "confidence": 0.35,
+    "reasoning_chars": 512,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 15.6
+   },
+   "after": {
+    "ok": true,
+    "verdict": "UNVERIFIED",
+    "can_judge": true,
+    "confidence": 0.42,
+    "reasoning_chars": 594,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 36.4
+   }
+  },
+  {
+   "id": 56,
+   "label": "UNVERIFIED",
+   "category": "科技",
+   "text": "某款手机电池存在爆炸风险，网传需立即停用",
+   "before": {
+    "ok": true,
+    "verdict": "UNVERIFIED",
+    "can_judge": true,
+    "confidence": 0.55,
+    "reasoning_chars": 523,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 21.5
+   },
+   "after": {
+    "ok": true,
+    "verdict": null,
+    "can_judge": false,
+    "confidence": null,
+    "reasoning_chars": 0,
+    "evidence_count": 10,
+    "hit": false,
+    "seconds": 45.9
+   }
+  },
+  {
+   "id": 57,
+   "label": "UNVERIFIED",
+   "category": "政策",
+   "text": "网传某城市将大幅调整落户政策",
+   "before": {
+    "ok": true,
+    "verdict": "UNVERIFIED",
+    "can_judge": true,
+    "confidence": 0.58,
+    "reasoning_chars": 334,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 29.2
+   },
+   "after": {
+    "ok": true,
+    "verdict": "UNVERIFIED",
+    "can_judge": true,
+    "confidence": 0.55,
+    "reasoning_chars": 491,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 17.3
+   }
+  },
+  {
+   "id": 58,
+   "label": "UNVERIFIED",
+   "category": "社会",
+   "text": "有帖子称某地一处湖水夜间会自行发光",
+   "before": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.9,
+    "reasoning_chars": 373,
+    "evidence_count": 10,
+    "hit": false,
+    "seconds": 30.7
+   },
+   "after": {
+    "ok": true,
+    "verdict": "TRUE",
+    "can_judge": true,
+    "confidence": 0.9,
+    "reasoning_chars": 265,
+    "evidence_count": 10,
+    "hit": false,
+    "seconds": 15.1
+   }
+  },
+  {
+   "id": 59,
+   "label": "UNVERIFIED",
+   "category": "健康",
+   "text": "网传某种常见蔬菜生吃可以杀死体内寄生虫",
+   "before": {
+    "ok": true,
+    "verdict": "UNVERIFIED",
+    "can_judge": true,
+    "confidence": 0.62,
+    "reasoning_chars": 577,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 17.5
+   },
+   "after": {
+    "ok": true,
+    "verdict": "UNVERIFIED",
+    "can_judge": true,
+    "confidence": 0.72,
+    "reasoning_chars": 626,
+    "evidence_count": 10,
+    "hit": true,
+    "seconds": 19.1
+   }
+  },
+  {
+   "id": 60,
+   "label": "UNVERIFIED",
+   "category": "社会",
+   "text": "有传闻称某历史事件的起因与官方记载不同",
+   "before": {
+    "ok": true,
+    "verdict": null,
+    "can_judge": false,
+    "confidence": null,
+    "reasoning_chars": 356,
+    "evidence_count": 10,
+    "hit": false,
+    "seconds": 35.9
+   },
+   "after": {
+    "ok": true,
+    "verdict": null,
+    "can_judge": false,
+    "confidence": null,
+    "reasoning_chars": 0,
+    "evidence_count": 10,
+    "hit": false,
+    "seconds": 45.3
+   }
+  }
+ ]
+}

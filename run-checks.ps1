@@ -94,7 +94,7 @@ Write-Host "Maven 模式：$mvnHint"
 # 1) Java：324 个用例（293 个测试方法，含 13 个参数化；离线、不需要 MySQL/Redis）
 Invoke-Check -Name 'java' -WorkDir 'fact-check' -Action { mvn @mvnArgs }
 
-# 2) Python：157 用例，标准库 unittest，零第三方依赖
+# 2) Python：164 用例，标准库 unittest，零第三方依赖
 Invoke-Check -Name 'python' -WorkDir 'fact-agent' -Action {
     & (Join-Path $PWD '.venv\Scripts\python.exe') -m unittest discover -s tests -t .
 }
