@@ -364,7 +364,10 @@ public class DetectServiceImpl implements DetectService {
         try {
             // Agent 调用（读超时 90s）在**事务之外**执行：原先该方法同时标了 @Async 与 @Transactional，
             // 整个 HTTP 往返期间都占着数据库连接（20 并发即可占满连接池），见 DetectResultWriter 的类注释。
-            AgentClient.DetectResult result = agentClient.detect(content);
+            //
+            // 分类取自记录本身（而不是方法入参）：这样**重试路径**（handleExactHit / 管理端 redetect）
+            // 也自然带上分类，无需给每个调用点加参数。分类为空时 Agent 会退回通用提示词。
+            AgentClient.DetectResult result = agentClient.detect(content, record.getCategory());
             log.info("Agent 检测返回：recordId={}, error={}, canJudge={}, verdict={}",
                     recordId, result.isError(), result.isCanJudge(), result.getVerdict());
 

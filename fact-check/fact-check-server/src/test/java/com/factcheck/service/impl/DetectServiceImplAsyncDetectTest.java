@@ -121,7 +121,7 @@ class DetectServiceImplAsyncDetectTest {
         when(factCheckRecordMapper.getById(RECORD_ID)).thenReturn(existingRecord());
         AgentClient.DetectResult result = agentResult(true, false, null);
         result.setHumanReason("LLM 调用超时");
-        when(agentClient.detect(CONTENT)).thenReturn(result);
+        when(agentClient.detect(eq(CONTENT), any())).thenReturn(result);
 
         detectServiceImpl.asyncDetect(RECORD_ID, CONTENT);
 
@@ -140,7 +140,7 @@ class DetectServiceImplAsyncDetectTest {
     @DisplayName("Agent error=true 优先于 canJudge=true → 仍然走 writeFailed，不写结论")
     void shouldTreatErrorAsFailureEvenWhenCanJudgeIsTrue() {
         when(factCheckRecordMapper.getById(RECORD_ID)).thenReturn(existingRecord());
-        when(agentClient.detect(CONTENT)).thenReturn(agentResult(true, true, "TRUE"));
+        when(agentClient.detect(eq(CONTENT), any())).thenReturn(agentResult(true, true, "TRUE"));
 
         detectServiceImpl.asyncDetect(RECORD_ID, CONTENT);
 
@@ -161,7 +161,7 @@ class DetectServiceImplAsyncDetectTest {
         AgentClient.DetectResult result = agentResult(false, true, "TRUE");
         result.setConfidence(0.93D);
         result.setReasoningChain("依据官方通报，确认为真");
-        when(agentClient.detect(CONTENT)).thenReturn(result);
+        when(agentClient.detect(eq(CONTENT), any())).thenReturn(result);
 
         detectServiceImpl.asyncDetect(RECORD_ID, CONTENT);
 
@@ -179,11 +179,11 @@ class DetectServiceImplAsyncDetectTest {
     @DisplayName("verdict=FALSE → 传 2；verdict=UNVERIFIED → 传 3")
     void shouldMapFalseAndUnverifiedVerdicts() {
         when(factCheckRecordMapper.getById(RECORD_ID)).thenReturn(existingRecord());
-        when(agentClient.detect(CONTENT)).thenReturn(agentResult(false, true, "FALSE"));
+        when(agentClient.detect(eq(CONTENT), any())).thenReturn(agentResult(false, true, "FALSE"));
 
         detectServiceImpl.asyncDetect(RECORD_ID, CONTENT);
 
-        when(agentClient.detect(CONTENT)).thenReturn(agentResult(false, true, "UNVERIFIED"));
+        when(agentClient.detect(eq(CONTENT), any())).thenReturn(agentResult(false, true, "UNVERIFIED"));
         detectServiceImpl.asyncDetect(RECORD_ID, CONTENT);
 
         ArgumentCaptor<Integer> verdicts = ArgumentCaptor.forClass(Integer.class);
@@ -202,7 +202,7 @@ class DetectServiceImplAsyncDetectTest {
         when(factCheckRecordMapper.getById(RECORD_ID)).thenReturn(existingRecord());
         AgentClient.DetectResult result = agentResult(false, false, null);
         result.setHumanReason("公开信息不足，无法判断");
-        when(agentClient.detect(CONTENT)).thenReturn(result);
+        when(agentClient.detect(eq(CONTENT), any())).thenReturn(result);
 
         detectServiceImpl.asyncDetect(RECORD_ID, CONTENT);
 
@@ -221,7 +221,7 @@ class DetectServiceImplAsyncDetectTest {
     @DisplayName("canJudge=true 但 verdict 无法映射 → 走 writeFailed，原因含 MAYBE，不进人工队列")
     void shouldMarkFailedWhenVerdictIsNotMappable() {
         when(factCheckRecordMapper.getById(RECORD_ID)).thenReturn(existingRecord());
-        when(agentClient.detect(CONTENT)).thenReturn(agentResult(false, true, "MAYBE"));
+        when(agentClient.detect(eq(CONTENT), any())).thenReturn(agentResult(false, true, "MAYBE"));
 
         detectServiceImpl.asyncDetect(RECORD_ID, CONTENT);
 
@@ -244,7 +244,7 @@ class DetectServiceImplAsyncDetectTest {
 
         detectServiceImpl.asyncDetect(RECORD_ID, CONTENT);
 
-        verify(agentClient, never()).detect(anyString());
+        verify(agentClient, never()).detect(anyString(), any());
         verify(resultWriter, never()).writeJudged(anyLong(), anyLong(), any(), any(), anyString(), any());
         verify(resultWriter, never()).writeFailed(anyLong(), anyLong(), anyString());
         verify(resultWriter, never()).writePendingHuman(anyLong(), anyLong(), anyString());
@@ -259,7 +259,7 @@ class DetectServiceImplAsyncDetectTest {
     @DisplayName("Agent 抛异常 → 走 writeFailed，记录不停留在 status=0")
     void shouldWriteFailedWhenAgentThrows() {
         when(factCheckRecordMapper.getById(RECORD_ID)).thenReturn(existingRecord());
-        when(agentClient.detect(CONTENT)).thenThrow(new RuntimeException("connect timed out"));
+        when(agentClient.detect(eq(CONTENT), any())).thenThrow(new RuntimeException("connect timed out"));
 
         detectServiceImpl.asyncDetect(RECORD_ID, CONTENT);
 
@@ -275,7 +275,7 @@ class DetectServiceImplAsyncDetectTest {
     @DisplayName("writeFailed 自身失败 → 继续兜底调用 markFailedQuietly")
     void shouldFallBackToQuietMarkWhenWriteFailedThrows() {
         when(factCheckRecordMapper.getById(RECORD_ID)).thenReturn(existingRecord());
-        when(agentClient.detect(CONTENT)).thenThrow(new RuntimeException("connect timed out"));
+        when(agentClient.detect(eq(CONTENT), any())).thenThrow(new RuntimeException("connect timed out"));
         when(resultWriter.writeFailed(anyLong(), anyLong(), anyString()))
                 .thenThrow(new RuntimeException("db down"));
 

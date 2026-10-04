@@ -25,7 +25,7 @@ from urllib.parse import urljoin, urlparse
 import requests
 
 from ..config import settings
-from ..prompts.detect_prompt import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
+from ..prompts.detect_prompt import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE, build_system_prompt
 from ..schemas import DetectResponse, Evidence
 from .credibility import score_source
 from .llm import OpenAICompatibleLLM
@@ -348,9 +348,15 @@ class DetectService:
     # 主流程
     # ------------------------------------------------------------------
 
-    def detect(self, text: str) -> DetectResponse:
+    def detect(self, text: str, category: str | None = None) -> DetectResponse:
         """
         对文本进行事实检测
+
+        Args:
+            text: 待核查原文
+            category: 消息分类（前端"消息分类"：其他/健康/社会/财经/科技/政策）。
+                **可选**；有对应指导时会在系统提示词末尾追加该分类的核查注意事项。
+                未知分类/为空一律退回通用提示词，不影响检测能否进行。
 
         Returns:
             DetectResponse；error=True 表示服务侧故障（应标记为"检测失败"而非转人工）
@@ -398,8 +404,20 @@ class DetectService:
         )
 
         # 5. 调用 LLM
+        # 系统提示词 = 通用提示词 + （若有）分类专属注意事项。
+        # 分类指导必须放在 system message 里：它是**我们的指令**，不是不可信数据；
+        # 混进 user 消息会破坏"不可信内容一律包在 <untrusted_*> 标签内"的边界约定。
+        system_prompt = build_system_prompt(category)
+        if category and system_prompt != SYSTEM_PROMPT:
+            logger.info("已追加分类专属核查注意事项：category=%s（系统提示词 %d -> %d 字）",
+                        category, len(SYSTEM_PROMPT), len(system_prompt))
+        elif category:
+            # 前端传了分类但我们没有对应指导：记一条日志，
+            # 便于发现"前后端分类清单不一致"，而不是静默忽略
+            logger.info("分类无专属提示，使用通用提示词：category=%s", category)
+
         messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt},
         ]
         remaining = self._remaining(deadline)

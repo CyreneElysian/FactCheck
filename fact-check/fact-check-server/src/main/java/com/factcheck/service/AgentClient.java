@@ -68,10 +68,19 @@ public class AgentClient {
 
     /**
      * 调用 /detect 事实检测
+     *
+     * @param text     待核查原文
+     * @param category 消息分类（前端"消息分类"下拉框的取值：其他/健康/社会/财经/科技/政策）。
+     *                 Agent 侧据此追加**分类专属的核查注意事项**（目前只对"健康"生效）。
+     *                 允许为空 —— 为空或未知取值时 Agent 会退回通用提示词，
+     *                 因此这里不做校验，避免"分类写错"变成"检测做不了"。
      */
-    public DetectResult detect(String text) {
+    public DetectResult detect(String text, String category) {
         Map<String, Object> body = new HashMap<>();
         body.put("text", text);
+        if (category != null && !category.isBlank()) {
+            body.put("category", category);
+        }
         JSONObject json = post("/detect", body);
         DetectResult result = new DetectResult();
         result.setCanJudge(json.getBooleanValue("can_judge"));

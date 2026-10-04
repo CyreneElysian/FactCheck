@@ -156,10 +156,13 @@ def detect(req: DetectRequest, x_internal_token: str = Header("", alias="X-Inter
 
     任何内部异常都转换成 error=true 的正常响应，
     便于 Java 侧区分"检测失败"（可重试）与"AI 无法判断"（转人工）。
+
+    req.category 为可选的消息分类，用于追加分类专属的核查注意事项
+    （目前只有"健康"有专属提示；未知/为空一律退回通用提示词）。
     """
     _check_token(x_internal_token)
     try:
-        return detect_service.detect(req.text)
+        return detect_service.detect(req.text, req.category)
     except Exception as exc:
         logger.exception("事实检测异常：%s", exc)
         return DetectResponse(

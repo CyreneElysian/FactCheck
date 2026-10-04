@@ -25,8 +25,16 @@ class IndexAddRequest(BaseModel):
 
 
 class DetectRequest(BaseModel):
-    """LLM 事实检测请求"""
+    """LLM 事实检测请求
+
+    category 为**可选**：它是前端"消息分类"下拉框的取值
+    （其他/健康/社会/财经/科技/政策），Agent 据此追加分类专属的核查注意事项。
+    刻意不校验取值集合——分类写错、旧版 Java 不带该字段，
+    都应退回通用提示词照常检测，而不是让检测失败。
+    """
+
     text: str = Field(..., description="待检测文本")
+    category: Optional[str] = Field(None, description="消息分类（可选，用于追加分类专属提示）")
 
 
 class Evidence(BaseModel):
