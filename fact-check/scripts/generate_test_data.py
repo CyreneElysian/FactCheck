@@ -2,21 +2,21 @@
 生成联调测试数据脚本（可重复执行 / 幂等）
 
 前置条件：
-    - 已执行 sql/fact_check_schema.sql 与 sql/fact_check_init.sql
+    - 已执行 sql/01_fact_check_schema.sql 与 sql/02_fact_check_init.sql
     - MySQL 与 Redis 已启动，且本文件顶部的连接配置与实际一致
 
 依赖（仅实际写入时需要；--dry-run 不需要任何第三方库）：
-    py -3.10 -m pip install -r fact-check/scripts/requirements.txt
+    fact-agent\.venv\Scripts\python.exe -m pip install -r fact-check/scripts/requirements.txt
 
 用法：
     # 预览将要执行的 SQL（不连数据库、不需要装依赖）
-    py -3.10 fact-check/scripts/generate_test_data.py --dry-run
+    fact-agent\.venv\Scripts\python.exe fact-check/scripts/generate_test_data.py --dry-run
 
     # 实际写入
-    py -3.10 fact-check/scripts/generate_test_data.py
+    fact-agent\.venv\Scripts\python.exe fact-check/scripts/generate_test_data.py
 
     # 不把记录同步到 Python Agent 的向量索引
-    py -3.10 fact-check/scripts/generate_test_data.py --skip-index
+    fact-agent\.venv\Scripts\python.exe fact-check/scripts/generate_test_data.py --skip-index
 
 生成内容：
     用户（普通用户 + 复用 init.sql 的管理员）、权威信息、检测记录（含 1 条图片记录）、
@@ -417,17 +417,17 @@ def main():
         conn = _DryRunConnection()
     else:
         if pymysql is None:
-            log("缺少 pymysql，请先安装依赖：py -3.10 -m pip install -r fact-check/scripts/requirements.txt")
+            log("缺少 pymysql，请先安装依赖：fact-agent\.venv\Scripts\python.exe -m pip install -r fact-check/scripts/requirements.txt")
             sys.exit(1)
         conn = pymysql.connect(**DB_CONFIG)
 
     try:
         with conn.cursor(pymysql.cursors.DictCursor if pymysql else None) as cursor:
             log("=== 1. 用户 ===")
-            uid = ensure_user(cursor, "demo_user", "demo123", "演示用户", 0)
-            # 管理员由 sql/fact_check_init.sql 创建（admin / Admin@123456），此处保持一致，
+            uid = ensure_user(cursor, "demo_user", "123456", "演示用户", 0)
+            # 管理员由 sql/02_fact_check_init.sql 创建（admin / 123456），此处保持一致，
             # 避免出现两个密码不同的管理员账号；已存在时 ensure_user 会直接复用
-            admin_id = ensure_user(cursor, "admin", "Admin@123456", "系统管理员", 1)
+            admin_id = ensure_user(cursor, "admin", "123456", "系统管理员", 1)
 
             log("\n=== 2. 权威信息 ===")
             ensure_authority(cursor, "央行宣布降低存款准备金率",
@@ -532,8 +532,8 @@ def main():
         else:
             conn.commit()
             log("\nTest data generated OK")
-            log("普通用户：demo_user / demo123")
-            log("管理员：admin / Admin@123456（由 sql/fact_check_init.sql 创建）")
+            log("普通用户：demo_user / 123456")
+            log("管理员：admin / 123456（由 sql/02_fact_check_init.sql 创建）")
     except Exception as e:
         conn.rollback()
         log(f"Generate failed: {e}")

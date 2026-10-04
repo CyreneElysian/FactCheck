@@ -1,5 +1,5 @@
 # generate_test_data.py 的依赖（仅实际写入数据库时需要）
-# 安装：py -3.10 -m pip install -r fact-check/scripts/requirements.txt
+# 安装：fact-agent\.venv\Scripts\python.exe -m pip install -r fact-check/scripts/requirements.txt
 #
 # 注意：--dry-run 模式不需要任何第三方库，可用于在没有 MySQL 的环境下预览脚本会执行的 SQL。
 pymysql>=1.0
