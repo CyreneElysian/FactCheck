@@ -27,6 +27,7 @@ import com.factcheck.service.HotRankService;
 import com.factcheck.util.ValidationUtils;
 import com.factcheck.service.AdminRecordService;
 import com.factcheck.service.AgentClient;
+import com.factcheck.service.DetectService;
 import com.factcheck.vo.AuthorityInfoVO;
 import com.factcheck.vo.ConclusionRevisionVO;
 import com.factcheck.vo.DetectRecordVO;
@@ -67,6 +68,15 @@ public class AdminRecordServiceImpl implements AdminRecordService {
     private HotRankService hotRankService;
     @Autowired
     private DetectWebSocketHandler detectWebSocketHandler;
+    /**
+     * 用于"强制重新检测"重跑 Agent。
+     *
+     * <p>注入的是 {@code DetectService} 接口（{@code DetectServiceImpl} 上有 {@code @Async}），
+     * 与 {@code DetectServiceImpl.handleExactHit} 的重试路径调用的是同一个方法，
+     * 避免出现第二套重跑逻辑。</p>
+     */
+    @Autowired
+    private DetectService detectService;
 
     /**
      * 分页查询全部检测记录
@@ -446,5 +456,49 @@ public class AdminRecordServiceImpl implements AdminRecordService {
                         + ", title=" + evidence.getTitle())
                 .createTime(LocalDateTime.now())
                 .build());
+    }
+
+    /**
+     * 强制重新检测（管理端）
+     *
+     * <p>复用与"失败重试"完全相同的路径：重置为 status=0 → 异步重跑 Agent。
+     * 不另起一套状态流转，避免两处逻辑漂移。</p>
+     *
+     * <p>适用场景见接口注释：上游缺陷修复后旧证据无法刷新、或结论存疑需要重跑。
+     * 注意本操作**不**要求记录处于某个特定状态——管理员显式点击即视为意图明确，
+     * 但会记入操作日志以便追责。</p>
+     */
+    @Override
+    public void redetect(Long recordId) {
+        Long adminId = BaseContext.getCurrentId();
+        log.info("管理员强制重新检测：adminId={}, recordId={}", adminId, recordId);
+        if (adminId == null) {
+            throw new BaseException(MessageConstant.ADMIN_NOT_LOGIN);
+        }
+        if (recordId == null) {
+            throw new BaseException("记录 ID 不能为空");
+        }
+        FactCheckRecord record = factCheckRecordMapper.getById(recordId);
+        if (record == null) {
+            throw new BaseException("检测记录不存在");
+        }
+        // 已是"检测中"就不要再插一次：重复触发会让同一个记录被两个线程同时写结论
+        if (record.getStatus() != null && record.getStatus() == 0) {
+            throw new BaseException("该记录正在检测中，请等待当前检测完成");
+        }
+
+        factCheckRecordMapper.resetToDetecting(recordId);
+        operationLogMapper.insert(OperationLog.builder()
+                .adminId(adminId)
+                .operation("强制重新检测")
+                .method("AdminRecordServiceImpl.redetect")
+                .params("recordId=" + recordId + ", 原状态=" + record.getStatus()
+                        + ", 原结论=" + record.getVerdict())
+                .createTime(LocalDateTime.now())
+                .build());
+
+        // 重跑要放在状态重置之后，且用记录里的原始内容（不是管理员输入的内容）
+        detectService.asyncDetect(recordId, record.getContent());
+        log.info("已触发重新检测：recordId={}", recordId);
     }
 }

@@ -84,4 +84,18 @@ public class AdminRecordController {
         adminRecordService.removeEvidence(id, evidenceId);
         return Result.success();
     }
+
+    /**
+     * 强制重新检测（P5-70）
+     *
+     * <p>检测结果会被去重缓存：同一内容再次提交直接返回旧记录，不再调 Agent。
+     * 这在正常情况下是特性，但会让"上游缺陷修复后的旧结论/旧证据"永远无法刷新。
+     * 本接口提供显式重跑入口，与"失败自动重试"共用同一套状态流转。</p>
+     */
+    @PostMapping("/{id}/redetect")
+    public Result redetect(@PathVariable Long id) {
+        log.info("管理员强制重新检测：recordId={}", id);
+        adminRecordService.redetect(id);
+        return Result.success();
+    }
 }

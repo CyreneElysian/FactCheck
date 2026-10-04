@@ -77,6 +77,10 @@ fact-check:
     # 读超时（秒）。必须大于 Python 侧 DETECT_TOTAL_BUDGET（默认 45s），
     # 否则 Java 会先判失败，而 Agent 仍在执行（可能已写入向量索引），造成两侧状态不一致
     timeout: ${FACTCHECK_AGENT_TIMEOUT:90}
+    # "检测中"卡死多久之后允许被重新认领（分钟）。异步任务只在内存里，
+    # 后端崩溃/重启会让记录永远停在 status=0；超过该阈值后，重新提交同一内容会原子认领并重跑。
+    # 不要取太小：正常检测可达数十秒，阈值过短会让"连点两次提交"变成两次真实 Agent 调用。
+    detecting-stale-minutes: ${FACTCHECK_AGENT_DETECTING_STALE_MINUTES:10}
     # ⚠️ semantic-threshold 是**占位配置，改了不生效也不会有任何告警**：
     # 语义去重阈值的真正生效点是 Python 侧 fact-agent/.env 的 DEDUP_THRESHOLD
     # （见《技术方案》§5.4）。保留它是为了与配置清单一致。

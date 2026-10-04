@@ -95,6 +95,20 @@
         where id = #{id}
     </update>
 
+    <!--
+      原子认领卡死的"检测中"记录。
+      条件里的 status = 0 与 update_time < #{staleBefore} 让这条 UPDATE 天然并发安全：
+      并发的多次提交里只有一次能影响 1 行，其余影响 0 行，因此只会真正调一次 Agent。
+      update_time 一并刷新，作为"本次认领时刻"，避免刚认领就被下一个请求再抢一次。
+    -->
+    <update id="resetStaleDetecting">
+        update t_fact_check_record
+        set update_time = now()
+        where id = #{id}
+          and status = 0
+          and update_time &lt; #{staleBefore}
+    </update>
+
     <select id="listByStatus" resultType="com.factcheck.entity.FactCheckRecord">
         select id, user_id, content, content_hash, category, source_type, image_url, status,
                verdict, verdict_source, confidence, reasoning_chain, ai_summary, version,

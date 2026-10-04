@@ -41,4 +41,22 @@ public class AgentProperties {
      * 必须与 Python 侧 .env 的 INTERNAL_TOKEN 一致；生产环境通过环境变量注入。
      */
     private String internalToken;
+
+    /**
+     * "检测中"卡死多久之后允许被重新认领（分钟），默认 10。
+     *
+     * <h3>为什么需要它</h3>
+     * 检测是异步跑的（{@code @Async}），任务只存在于内存里。后端崩溃/重启时，
+     * 正在检测的记录会**永远留在 status=0（检测中）**：
+     * <ul>
+     *   <li>用户看到"检测中"一直不动；</li>
+     *   <li>重新提交同一句 → 精确去重命中同一行 → 但 {@code handleExactHit} 只对
+     *       {@code status==3}（失败）重试，status=0 会直接返回 → **卡死无法自救**。</li>
+     * </ul>
+     * 加上这个阈值后，卡住够久的记录可以在下次提交同一内容时被**原子认领**并重跑。
+     *
+     * <p>不能取太小：正常检测耗时可达数十秒，阈值过短会让"用户连续点两次提交"
+     * 变成两次真实 Agent 调用。10 分钟远大于任何正常检测耗时，足够安全。</p>
+     */
+    private int detectingStaleMinutes = 10;
 }

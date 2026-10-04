@@ -79,6 +79,19 @@ public interface FactCheckRecordMapper {
     void resetToDetecting(@Param("id") Long id);
 
     /**
+     * 原子"认领"一个卡死的检测中记录（compare-and-set），用于从"检测中"状态救回记录。
+     *
+     * <p>条件里带 {@code status = 0} 与 {@code update_time < 阈值} 是**并发安全的关键**：
+     * 只有第一条满足条件的 UPDATE 会影响 1 行，其余并发的提交影响 0 行，
+     * 于是只有一次会真正去调 Agent —— 不会因为重复提交而重复调用。</p>
+     *
+     * @param id         记录ID
+     * @param staleBefore 只有 update_time 早于该时刻（即卡住够久）才认领
+     * @return 影响行数：1 表示认领成功，0 表示没抢到（已被别人认领或还没超时）
+     */
+    int resetStaleDetecting(@Param("id") Long id, @Param("staleBefore") LocalDateTime staleBefore);
+
+    /**
      * 分页查询用户检测记录
      * @param userId 用户ID
      * @param category 分类

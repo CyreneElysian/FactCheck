@@ -222,13 +222,33 @@ public class DetectServiceImpl implements DetectService {
     private Long handleExactHit(FactCheckRecord exist, Long userId, String category, Integer sourceType,
                                 String imageUrl, String content, String contentHash) {
         log.info("精确去重命中：recordId={}, status={}", exist.getId(), exist.getStatus());
+
+        // ① 失败记录（status=3）：直接重跑
         if (exist.getStatus() != null && exist.getStatus() == 3) {
-            // 失败记录重新检测
             factCheckRecordMapper.resetToDetecting(exist.getId());
             saveLog(userId, content, contentHash, category, sourceType, 0, null, exist.getId());
             detectService.asyncDetect(exist.getId(), content);
             return exist.getId();
         }
+
+        // ② 卡死在"检测中"的记录（status=0）：异步任务只在内存里，后端崩溃/重启会让记录永远
+        //    停在 0。此前这种记录**无法自救**——重提同一句会命中精确去重，而上面那个分支只认
+        //    status=3，于是直接返回，用户永远看到"检测中"。
+        //    这里用条件更新**原子认领**：并发提交时只有一次能影响 1 行，不会重复调 Agent。
+        if (exist.getStatus() != null && exist.getStatus() == 0) {
+            LocalDateTime staleBefore = LocalDateTime.now()
+                    .minusMinutes(agentProperties.getDetectingStaleMinutes());
+            if (factCheckRecordMapper.resetStaleDetecting(exist.getId(), staleBefore) == 1) {
+                log.warn("检测中记录已卡死超过 {} 分钟，重新认领并重跑：recordId={}",
+                        agentProperties.getDetectingStaleMinutes(), exist.getId());
+                saveLog(userId, content, contentHash, category, sourceType, 0, null, exist.getId());
+                detectService.asyncDetect(exist.getId(), content);
+                return exist.getId();
+            }
+            // 没抢到：要么还没到阈值（正常的检测中），要么已被并发请求认领
+            log.info("检测中记录未达到重跑条件（未超时或已被认领）：recordId={}", exist.getId());
+        }
+
         factCheckRecordMapper.updateHitCount(exist.getId());
         incrementHot(exist.getId(), HotScoreConstant.DETECT_SCORE);
         saveLog(userId, content, contentHash, category, sourceType, 1, exist.getId(), null);
