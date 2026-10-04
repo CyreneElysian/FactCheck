@@ -43,6 +43,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class DetectResultWriter {
 
+    /**
+     * 证据字段长度上限，必须与 sql/01_fact_check_schema.sql 的 t_evidence 列定义一致。
+     * 改列定义时**同时**改这里，否则又会退化成"超长 → 整批回滚"。
+     */
+    static final int MAX_TITLE_LENGTH = 500;   // title  varchar(500)
+    static final int MAX_URL_LENGTH = 500;     // url    varchar(500)
+    static final int MAX_SOURCE_LENGTH = 100;  // source varchar(100)
+
     @Autowired
     private FactCheckRecordMapper factCheckRecordMapper;
     @Autowired
@@ -71,7 +79,14 @@ public class DetectResultWriter {
                 .updateTime(LocalDateTime.now())
                 .build();
         factCheckRecordMapper.update(update);
-        saveEvidence(recordId, result);
+        // 证据落库失败**不能**拖垮结论（见 saveEvidence 的注释）：
+        // 用户要的是"这条消息是真是假"，证据只是佐证；宁可少几条证据，也不能让整次检测白跑。
+        try {
+            saveEvidence(recordId, result);
+        } catch (Exception e) {
+            log.error("保存证据失败（结论仍保留）：recordId={}, 证据数={}",
+                    recordId, result.getEvidence() == null ? 0 : result.getEvidence().size(), e);
+        }
         messageMapper.insert(Message.builder()
                 .userId(userId)
                 .type(1)
@@ -162,26 +177,95 @@ public class DetectResultWriter {
 
     /**
      * 把 Agent 返回的证据落库（先按记录清空，再批量写入）
+     *
+     * <h3>为什么必须先裁剪长度（真实缺陷，recordId=27）</h3>
+     * Agent 返回的字段直接对应 {@code t_evidence} 的列，而列有长度上限：
+     * {@code title} / {@code url} 是 {@code varchar(500)}、{@code source} 是 {@code varchar(100)}。
+     * 此前原样写入，于是碰上一条超长 URL 就整批失败：
+     * <pre>
+     * MysqlDataTruncation: Data too long for column 'url' at row 9
+     *   at DetectResultWriter.saveEvidence(DetectResultWriter.java:185)
+     * </pre>
+     * 触发它的是一条 Facebook 链接 —— **百分号编码的中文**（{@code %E9%80%99...}）
+     * 把 URL 撑到 500 字符以上。后果被放大得很严重：
+     * 批量 INSERT 是单条语句，**第 9 行超长 → 10 条证据全部回滚 → writeJudged 事务整体失败
+     * → 记录被判"检测失败" → 用户只看到"检测服务暂时不可用"**，
+     * 而 AI 的结论其实早就拿到了，纯粹因为一条 URL 太长而被丢弃。
+     *
+     * <p>裁剪策略（按字段语义区分，不是一律截断了事）：</p>
+     * <ul>
+     *   <li>{@code title} / {@code source}：**截断**。它们是展示文本，截断后仍可读、仍有信息量。</li>
+     *   <li>{@code url}：**整条置空**，不截断。截断的 URL 必然指向错误地址，而前端是
+     *       {@code <el-link :href="row.url">}（DetectView.vue）—— 一个点不开/点错地方的死链
+     *       比"没有链接"更糟糕。置空后前端会退化成纯文本标题（同文件已有 {@code v-else} 分支），
+     *       证据的标题与摘要仍然保留。</li>
+     * </ul>
      */
     private void saveEvidence(Long recordId, AgentClient.DetectResult result) {
         if (result.getEvidence() == null || result.getEvidence().isEmpty()) {
             return;
         }
-        evidenceMapper.deleteByRecordId(recordId);
         List<Evidence> evidenceList = new ArrayList<>();
         for (AgentClient.DetectEvidence e : result.getEvidence()) {
+            String title = truncate(e.getTitle(), MAX_TITLE_LENGTH, "title", recordId);
+            String source = truncate(e.getSource(), MAX_SOURCE_LENGTH, "source", recordId);
+            String url = keepUrlOrBlank(e.getUrl(), recordId);
+            if (isBlank(title) && isBlank(url)) {
+                log.warn("丢弃一条无标题且无链接的证据：recordId={}", recordId);
+                continue;
+            }
             evidenceList.add(Evidence.builder()
                     .recordId(recordId)
-                    .title(e.getTitle())
-                    .url(e.getUrl())
+                    .title(title)
+                    .url(url)
                     .snippet(e.getSnippet())
-                    .source(e.getSource())
+                    .source(source)
                     .sourceCredibility(e.getSourceCredibility())
                     .relevanceScore(e.getRelevanceScore())
                     .sourceType(1)
                     .createTime(LocalDateTime.now())
                     .build());
         }
+        if (evidenceList.isEmpty()) {
+            log.warn("证据全部被裁剪/丢弃后为空，跳过写入：recordId={}", recordId);
+            return;
+        }
+        // 先清掉该记录的旧证据，再写入本次结果（两者同一个事务，不会出现"清空但没写入"的中间态）。
+        //
+        // 这里原本考虑改成"先插后删"以防插入失败丢掉旧证据，但那样需要能区分新旧行，
+        // 而 t_evidence 没有可用的批次标识（同一批 create_time 相同），
+        // 强行按时间戳保留旧行会在同一秒内误判。保持"先删后插"更简单也更符合语义：
+        // 检测结果本就是整体替换，不是增量追加。
+        evidenceMapper.deleteByRecordId(recordId);
         evidenceMapper.insertBatch(evidenceList);
+    }
+
+    /**
+     * URL 超长时置空（而不是截断）：截断的链接一定指向错误地址，
+     * 前端会把它渲染成可点击的链接，反而误导用户。
+     */
+    private static String keepUrlOrBlank(String url, Long recordId) {
+        if (url == null || url.length() <= MAX_URL_LENGTH) {
+            return url;
+        }
+        log.warn("证据链接超长（超过 {}），已置空以留出标题与摘要：recordId={}, 原长度={}",
+                MAX_URL_LENGTH, recordId, url.length());
+        return null;
+    }
+
+    /**
+     * 按列长度上限裁剪；超长时打 WARN（含原始长度与字段名，便于回查是哪条数据）
+     */
+    private static String truncate(String value, int maxLength, String field, Long recordId) {
+        if (value == null || value.length() <= maxLength) {
+            return value;
+        }
+        log.warn("证据字段超长已裁剪：recordId={}, field={}, 原长度={}, 上限={}",
+                recordId, field, value.length(), maxLength);
+        return value.substring(0, maxLength);
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.trim().isEmpty();
     }
 }
