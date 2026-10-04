@@ -204,55 +204,72 @@ if ($OnlyList.Count -eq 0 -or $OnlyList -contains 'compose-env') {
     [void]$results.Add([pscustomobject]@{ Check = 'compose-env'; Ok = $composeEnvOk; Detail = $composeEnvDetail })
 }
 
-# 8) Java 源码里的"直引号"地雷（静态扫描，不需要编译）
+# 8) 语法预检：Java 测试代码编译 + Python 源码编译
 #
-#    为什么要有这一项：`@DisplayName("……「x」……")` 这种写法没问题，但一旦在 Java 字符串
-#    字面量里用了**直引号**，例如 @DisplayName("这就是"存了但没传出去"的回归测试")，
-#    javac 会报 `需要')'` / `需要<标识符>` —— 报错位置在注解行，与真正的问题（引号没转义）
-#    看起来关系不大，很容易反复踩。我在本会话里**连续踩了三次**，所以加一道机器检查。
+#    为什么需要它（真实动机）：字符串字面量里嵌**同种直引号**会导致语法错误，
+#    而报错信息与真正的问题（引号没转义）看起来关系不大，很难一眼定位：
+#      Java  ：@DisplayName("这就是"存了但没传出去"的回归测试")  → javac 报「需要')'」
+#      Python："……不足以支撑"有效/无效"的绝对结论"              → SyntaxError: unterminated string
+#    本会话里 Java 踩了三次、Python 踩了一次。
 #
-#    判据：单行内 `@DisplayName("` 之后出现了 ≥2 个直引号，且该行不是合法的
-#    `@DisplayName("...")` 形式 —— 即引号数量为奇数或位置不对。
-Write-Head 'java-quotes'
-$javaQuoteHits = @()
-$javaSrcRoot = Join-Path $root 'fact-check'
-if (Test-Path $javaSrcRoot) {
-    $javaFiles = Get-ChildItem -LiteralPath $javaSrcRoot -Recurse -File -Filter '*.java' -ErrorAction SilentlyContinue |
-        Where-Object { $_.FullName -notmatch '\\target\\' }
-    foreach ($file in $javaFiles) {
-        $lineNo = 0
-        foreach ($line in [System.IO.File]::ReadAllLines($file.FullName, [System.Text.Encoding]::UTF8)) {
-            $lineNo++
-            # 只看 @DisplayName 那一行里 `("` 之后的引号
-            if ($line -match '@DisplayName\s*\(\s*"') {
-                $after = $line.Substring($line.IndexOf('("') + 2)
-                # 先把**已转义**的 \" 去掉再数：`\"` 是合法写法
-                # （例如 "allowed-origins 为 \"*\""），不能算作未转义引号。
-                # 最初没做这一步，把 3 处合法写法误报成错误。
-                $unescaped = $after -replace '\\"', ''
-                $quoteCount = ($unescaped.ToCharArray() | Where-Object { $_ -eq '"' }).Count
-                # 合法写法是 `...");` —— 去掉转义引号后应恰好剩 1 个收尾引号
-                if ($quoteCount -ne 1) {
-                    $javaQuoteHits += [pscustomobject]@{
-                        File = $file.FullName.Substring($root.Length + 1)
-                        Line = $lineNo
-                        Text = $line.Trim()
-                    }
-                }
-            }
-        }
+#    ⚠️ 我最初想用**正则统计引号奇偶**来静态拦它，三轮收窄后仍在真实代码上产生
+#    66~359 处误报（三目运算符 `a ? "x" : "y"`、字符串数组字面量、三引号文档串……）。
+#    正则无法可靠区分"嵌套引号"与"合法多字符串"——继续加规则只会过拟合到我自己举的例子。
+#
+#    改用**编译器**：它本来就会报这个错，且零误报。这一项相对完整构建的增量成本很小
+#    （Java 只编译不跑测试；Python 只编译不执行），却能把"改完才发现语法错"
+#    提前到提交前。这比一个刷屏的假告警有用得多。
+Write-Head 'syntax'
+
+# 8a) Java：只编译（含测试源码），不运行测试
+$syntaxJavaOk = $true
+$syntaxJavaDetail = ''
+Push-Location (Join-Path $root 'fact-check')
+try {
+    $out = & mvn @mvnArgs -q test-compile 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        $syntaxJavaOk = $false
+        $firstErr = @($out | Where-Object { $_ -match 'ERROR.*\.java:\[' } | Select-Object -First 1)
+        $syntaxJavaDetail = if ($firstErr.Count -gt 0) { $firstErr[0].ToString().Trim() } else { 'mvn test-compile 失败' }
     }
+} finally {
+    Pop-Location
 }
-if ($javaQuoteHits.Count -gt 0) {
-    Write-Fail "发现 $($javaQuoteHits.Count) 处 @DisplayName 引号未转义（javac 会报「需要')'」）："
-    $javaQuoteHits | Select-Object -First 5 | ForEach-Object {
-        Write-Host ("    {0}:{1}  {2}" -f $_.File, $_.Line, $_.Text) -ForegroundColor DarkGray
-    }
-    Write-Host '    修法：改用中文引号「」，或把内层引号转义为 \"' -ForegroundColor DarkGray
-    [void]$results.Add([pscustomobject]@{ Check = 'java-quotes'; Ok = $false; Detail = "引号未转义 $($javaQuoteHits.Count) 处" })
+if ($syntaxJavaOk) {
+    Write-Pass 'Java 源码（含测试）编译通过'
 } else {
-    Write-Pass 'Java 源码中未发现未转义的 @DisplayName 引号'
-    [void]$results.Add([pscustomobject]@{ Check = 'java-quotes'; Ok = $true; Detail = '干净' })
+    Write-Fail "Java 编译失败：$syntaxJavaDetail"
+}
+
+# 8b) Python：编译全部源码（app/ + tests/ + eval/ + scripts/），不执行
+$syntaxPyOk = $true
+$syntaxPyDetail = ''
+Push-Location (Join-Path $root 'fact-agent')
+try {
+    $pyExe = Join-Path $PWD '.venv\Scripts\python.exe'
+    $out = & $pyExe -m compileall -q app tests eval scripts 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        $syntaxPyOk = $false
+        $firstErr = @($out | Where-Object { $_ -match 'SyntaxError|Error' } | Select-Object -First 1)
+        $syntaxPyDetail = if ($firstErr.Count -gt 0) { $firstErr[0].ToString().Trim() } else { 'compileall 失败' }
+    }
+} finally {
+    Pop-Location
+}
+if ($syntaxPyOk) {
+    Write-Pass 'Python 源码编译通过'
+} else {
+    Write-Fail "Python 编译失败：$syntaxPyDetail"
+}
+
+if ($OnlyList.Count -eq 0 -or $OnlyList -contains 'syntax') {
+    [void]$results.Add([pscustomobject]@{
+        Check = 'syntax'
+        Ok    = ($syntaxJavaOk -and $syntaxPyOk)
+        Detail = if ($syntaxJavaOk -and $syntaxPyOk) { 'Java+Python 均通过' }
+                 elseif (-not $syntaxJavaOk) { "Java: $syntaxJavaDetail" }
+                 else { "Python: $syntaxPyDetail" }
+    })
 }
 
 # 9) 密钥泄露扫描（与 CI 的 secret-scan 作业同一段正则）
