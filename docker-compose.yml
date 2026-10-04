@@ -37,7 +37,11 @@ services:
       - --wait-timeout=28800
     volumes:
       - mysql-data:/var/lib/mysql
-      # 首次启动自动建库建表（sql/ 目录下的 .sql 会按文件名顺序执行）
+      # 首次启动自动建库建表。
+      # ⚠️ MySQL 官方 entrypoint 会**按文件名字典序**执行本目录下的 *.sql，
+      #    且**不递归子目录**（所以 sql/migrations/ 里的迁移脚本不会在这里被执行，这是刻意的）。
+      #    文件名前缀 01/ 02/ 是必需的：若叫 fact_check_init.sql / fact_check_schema.sql，
+      #    字典序会把 init 排在 schema 前面，初始化先于建表执行而失败（set -e 下 MySQL 容器直接退出）。
       - ./sql:/docker-entrypoint-initdb.d:ro
     ports:
       # 只在需要从宿主机连库时暴露；生产可删掉这一行
@@ -117,23 +121,57 @@ services:
       agent:
         condition: service_started
     environment:
-      # dev,local 两个 profile：dev 提供默认配置，local 读环境变量
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
-      # 容器内用服务名访问，不能用 127.0.0.1
-      FACTCHECK_DATASOURCE_URL: jdbc:mysql://mysql:3306/fact_check?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-      FACTCHECK_DATASOURCE_USERNAME: ${MYSQL_USER:-factcheck}
-      FACTCHECK_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-factcheck_pass}
+      # ⚠️ 容器里**只激活 dev**，不要把 local 也带上。
+      # application.yml 的默认值是 `dev,local`：本机跑时 local 用 application-local.yml 覆盖 dev（方便），
+      # 但该文件里写的是 `localhost` / `root` / `1234`，在容器里会把下面这些变量全部覆盖掉，
+      # 于是后端去连 `localhost:3306`（= 它自己）而不是 `mysql` 服务 → 启动即失败。
+      # application-local.yml 默认会打进 jar（P3-36 的取舍，见 docs/项目改进清单.md §3.1），
+      # 所以必须在环境里显式排除它。
+      FACTCHECK_PROFILE: dev
+      # 变量名必须与 application-dev.yml 里 `fact-check.datasource.*` 的占位符一致：
+      # `${FACTCHECK_DB_HOST:localhost}` / `${FACTCHECK_DB_PORT:3306}` /
+      # `${FACTCHECK_DB_NAME:fact_check}` / `${FACTCHECK_DB_USERNAME:root}` / `${FACTCHECK_DB_PASSWORD:}`
+      # （早前这里写的是 FACTCHECK_DATASOURCE_URL/USERNAME/PASSWORD，那三个变量**代码里根本不存在**，
+      #   结果容器一直连 localhost:3306 而报 Communications link failure。）
+      FACTCHECK_DB_HOST: mysql
+      FACTCHECK_DB_PORT: 3306
+      FACTCHECK_DB_NAME: fact_check
+      FACTCHECK_DB_USERNAME: ${MYSQL_USER:-factcheck}
+      FACTCHECK_DB_PASSWORD: ${MYSQL_PASSWORD:-factcheck_pass}
       FACTCHECK_REDIS_HOST: redis
       FACTCHECK_REDIS_PORT: 6379
       FACTCHECK_AGENT_BASE_URL: http://agent:8001
       FACTCHECK_AGENT_INTERNAL_TOKEN: ${INTERNAL_TOKEN:-dev-internal-token-change-me}
-      # 密钥类配置一律从宿主机环境注入，不写进镜像
-      FACTCHECK_JWT_USER_SECRET: ${FACTCHECK_JWT_USER_SECRET:-}
-      FACTCHECK_JWT_ADMIN_SECRET: ${FACTCHECK_JWT_ADMIN_SECRET:-}
-      FACTCHECK_OSS_ACCESS_KEY_ID: ${FACTCHECK_OSS_ACCESS_KEY_ID:-}
-      FACTCHECK_OSS_ACCESS_KEY_SECRET: ${FACTCHECK_OSS_ACCESS_KEY_SECRET:-}
-      FACTCHECK_WECHAT_APP_ID: ${FACTCHECK_WECHAT_APP_ID:-}
-      FACTCHECK_WECHAT_APP_SECRET: ${FACTCHECK_WECHAT_APP_SECRET:-}
+      # 密钥类配置一律从宿主机环境注入，不写进镜像。
+      #
+      # ⚠️ 这里用 `${VAR:?提示}` 而不是 `${VAR:-}`：后者在变量未设置时会传入**空字符串**，
+      #    而 Spring 对"已定义但为空"的环境变量取空值、**不会**回落到 application.yml 里的默认密钥
+      #    → jjwt 0.12.x 强制 HMAC 密钥 ≥256 位 → 登录在"签发 token"这一步抛异常，
+      #    前端只看到一句「未知错误」（密码校验、写 last_login_time 都已成功，所以极难定位）。
+      #    用 `:?` 后，未设置时 compose 会直接报错并说明要设哪个变量，避免这个静默失败。
+      #
+      #    生成方式（任选）：
+      #      PowerShell : $env:FACTCHECK_JWT_USER_SECRET = -join ((1..64) | ForEach-Object { '{0:x}' -f (Get-Random -Max 16) })
+      #      Linux/macOS: export FACTCHECK_JWT_USER_SECRET=$(openssl rand -hex 32)
+      FACTCHECK_JWT_USER_SECRET: ${FACTCHECK_JWT_USER_SECRET:?必须设置用户端 JWT 密钥（≥32 字节），见 docker-compose.yml 注释}
+      FACTCHECK_JWT_ADMIN_SECRET: ${FACTCHECK_JWT_ADMIN_SECRET:?必须设置管理端 JWT 密钥（≥32 字节），见 docker-compose.yml 注释}
+      # ⚠️ 变量名必须与 application.yml / application-dev.yml 里**实际读取**的占位符逐字一致。
+      #    这里曾写错两组（同一个"名字对不上但 compose config 不报错"的坑）：
+      #      compose 旧写法                    → 代码实际读取
+      #      FACTCHECK_OSS_ACCESS_KEY_ID      → FACTCHECK_OSS_AK
+      #      FACTCHECK_OSS_ACCESS_KEY_SECRET  → FACTCHECK_OSS_SK
+      #      FACTCHECK_WECHAT_APP_ID          → FACTCHECK_WECHAT_APPID
+      #      FACTCHECK_WECHAT_APP_SECRET      → FACTCHECK_WECHAT_SECRET
+      #    后果：容器里这几个凭证恒为空，OSS 上传与小程序登录静默不可用。
+      #    `run-checks.ps1` 的 compose-env 检查会拦住这类问题。
+      FACTCHECK_OSS_AK: ${FACTCHECK_OSS_ACCESS_KEY_ID:-}
+      FACTCHECK_OSS_SK: ${FACTCHECK_OSS_ACCESS_KEY_SECRET:-}
+      FACTCHECK_WECHAT_APPID: ${FACTCHECK_WECHAT_APP_ID:-}
+      FACTCHECK_WECHAT_SECRET: ${FACTCHECK_WECHAT_APP_SECRET:-}
+      # WebSocket 允许的握手来源。默认 "*"（不限制）仅便于本地开发；
+      # 生产建议改成真实前端域名，例如 https://factcheck.example.com（多个用逗号分隔）。
+      # 注意：**设成 "*" 时不要指望它被拦** —— 该变量只做纵深防御。
+      FACTCHECK_WS_ALLOWED_ORIGINS: ${FACTCHECK_WS_ALLOWED_ORIGINS:-*}
       TZ: Asia/Shanghai
     ports:
       - "${SERVER_PORT:-8080}:8080"

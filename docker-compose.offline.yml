@@ -1,0 +1,33 @@
+# ============================================================================
+# Compose 覆盖文件：让 server 服务**不构建**，直接用宿主机已构建好的镜像
+#
+# 适用场景：容器内从 Maven Central 下载依赖/插件不稳定（传输被截断、
+# 报 "Premature end of Content-Length delimited message body"），
+# 而宿主机 `mvn -o` 能正常构建（本地仓库已预热）。
+#
+# Compose 会自动合并 docker-compose.yml 与本文件（同名键以后者为准），
+# 因此下面用 `image:` 覆盖掉原来的 `build:` —— server 服务就只拉本地镜像、不触发构建。
+#
+# 用法（两步）：
+#
+#   # 1) 在宿主机构建 jar 并直接做成镜像（零网络）
+#   cd fact-check
+#   mvn -o clean package -DskipTests
+#   cd ..
+#   docker build -f fact-check/Dockerfile.server.local -t fact-check-server:latest ./fact-check
+#
+#   # 2) 起全套（compose 自动合并本文件，server 不再构建）
+#   docker compose up -d
+#
+# 想回到"容器内构建"的常规路线时，只要不依赖本文件即可：
+#   docker compose -f docker-compose.yml up -d --build
+#
+# 说明：只覆盖 server 一个服务。mysql / redis / nginx / agent 不受影响 ——
+#      其中 agent 的镜像此前已成功构建（fact-check-agent:latest），也无需重建。
+# ============================================================================
+
+services:
+  server:
+    # 覆盖 docker-compose.yml 里的 build: 段。设了 image 后，compose 不再构建 server，
+    # 而是直接使用本地已有的 fact-check-server:latest（由上面第 1 步生成）。
+    image: fact-check-server:latest

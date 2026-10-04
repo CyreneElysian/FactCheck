@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Maven 镜像源配置（供 Docker 构建使用）—— 默认不启用，仅作备用
+
+  ⚠️ 先说结论：**本机实测 Maven Central 官方源是通的**（HEAD https://repo.maven.apache.org/maven2/ → 200），
+  因此 `docker/Dockerfile.server` **不需要**改就能构建成功，本文件保持"存在但未被引用"即可。
+
+  什么时候才需要启用它：
+    - 某次 `RUN mvn ... package` 卡在下载插件/依赖上并最终超时；
+    - 或你换到别的网络后 Central 变慢。那时按下面两步启用。
+
+      # 1) 在 Dockerfile.server 的 builder 阶段把本文件放进镜像
+      COPY docker/maven-settings.xml /root/.m2/settings.xml
+      # 2) 给两条 mvn 命令加 -s 参数
+      RUN mvn -B -s /root/.m2/settings.xml -q dependency:go-offline || true
+      RUN mvn -B -s /root/.m2/settings.xml -q clean package -DskipTests
+
+  本机实测的仓库可达性（2026-10-04，HEAD 探测）：
+      https://repo.maven.apache.org/maven2/                              200  ← Central 官方，通
+      https://mirrors.cloud.tencent.com/nexus/repository/maven-public/   200  ← 腾讯云，通
+      https://repo.spring.io/release/                                    200  ← Spring 官方，通
+      https://mirrors.huaweicloud.com/repository/maven/                  403  ← 拒绝
+      https://mirrors.tuna.tsinghua.edu.cn/maven/                        403  ← 拒绝
+      https://maven.aliyun.com/repository/public/                        不通 ← 被网络拦
+      https://maven-central.storage-download.googleapis.com/maven2/      404
+      https://mirrors.ustc.edu.cn/maven/ / mirror.nju.edu.cn/maven/      404
+
+  注意：
+    1. `mirrorOf` 用 central 而不是 *。用 * 会把 pom 里声明的其它仓库一并重定向，
+       万一某个构件只在原仓库有（中文社区镜像常有同步延迟）反而会 404。
+       本项目经核对**没有声明任何私有 `<repository>`**，全部依赖来自 Central，因此只重定向 central 足够。
+    2. 本文件只影响**容器内**构建；宿主机 `mvn` 用 `~/.m2/settings.xml`，两者互不影响。
+    3. 完全离线的场景不需要本文件：宿主机 `mvn -o` 预热过的 `~/.m2/repository`
+       可以配合"只拷 jar"的 Dockerfile 变体使用（见 Dockerfile.server 头部注释）。
+-->
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                              https://maven.apache.org/xsd/settings-1.0.0.xsd">
+
+  <mirrors>
+    <!--
+      腾讯云公共仓库：本机实测 200。放在第一位是因为它同时代理 Central 与常见第三方仓库，
+      且国内访问稳定。
+    -->
+    <mirror>
+      <id>tencent-public</id>
+      <name>Tencent Cloud Maven Public</name>
+      <url>https://mirrors.cloud.tencent.com/nexus/repository/maven-public/</url>
+      <mirrorOf>central</mirrorOf>
+    </mirror>
+  </mirrors>
+
+</settings>

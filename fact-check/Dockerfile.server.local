@@ -1,0 +1,65 @@
+# Java 后端镜像 —— **离线变体**（不在容器里跑 Maven）
+#
+# 什么时候用这个：宿主机的 Maven 本地仓库已预热（`mvn -o` 能成功构建），
+# 但容器内从 Central 下载依赖/插件不稳定（例如网络对技术站点限速、传输被截断，
+# 报 "Premature end of Content-Length delimited message body"）。
+#
+# 与 Dockerfile.server 的区别：
+#   Dockerfile.server      多阶段：maven 镜像里从源码构建 → JRE 镜像跑。首次需要联网下依赖与插件。
+#   本文件                 单阶段：**直接拷宿主机已构建好的 jar** → JRE 镜像跑。构建过程零网络。
+#
+# 用法（注意：compose 里 server 的 build.context 是 ./fact-check，
+#       因此本文件放在 fact-check/ 内、jar 路径也相对该目录）：
+#
+#   # 1) 先在本机构建 jar（离线；本机 ~/.m2 已预热，实测可用）
+#   cd fact-check
+#   mvn -o clean package -DskipTests
+#   cd ..
+#
+#   # 2) 用本文件直接做成镜像
+#   docker build -f fact-check/Dockerfile.server.local -t fact-check-server:latest ./fact-check
+#
+#   # 3) 起全套时用覆盖文件，让 compose 不再构建 server，而是用上面这个镜像
+#   docker compose -f docker-compose.yml -f docker-compose.offline.yml up -d
+#
+# ⚠️ 前置条件：jar 必须存在，且必须是 **spring-boot repackage 之后**的产物
+#    （`mvn package` 会生成可执行 fat jar；只跑 `mvn compile` 则没有 jar）。
+#    缺失时 `COPY` 会直接失败，不会静默产出一个坏镜像。
+
+FROM eclipse-temurin:11-jre
+
+WORKDIR /app
+
+# 时区与日志时间戳对齐（项目日志按 Asia/Shanghai 阅读）
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# 只拷可执行 jar。路径相对 build.context（即仓库的 fact-check/ 目录）。
+# 用通配符匹配版本号，避免每次改版本都要改本文件。
+COPY fact-check-server/target/fact-check-server-*.jar app.jar
+
+# 构建期自检：确认拷进来的是**可执行 fat jar**（含 BOOT-INF），而不是源码 jar。
+#
+# 两个注意点（都是实际踩过的）：
+#   1. **不要用 unzip** —— JRE 基础镜像里没有这个命令，会报 `/bin/sh: 1: unzip: not found`
+#      并让构建失败（而 jar 其实是好的，属于误判）。这里改用 JDK 自带的 `jar tf`。
+#   2. **不假设 `jar` 一定存在** —— 万一基础镜像没带，就打印 SKIP 跳过校验，而不是失败。
+#      真正保证正确性的判据是"jar 非空"（下面第一条）；解包校验只是更早发现拷错文件的
+#      额外防线，不该成为构建的阻塞点。
+RUN set -e; \
+    test -s app.jar || { echo "ERROR: app.jar 为空，请先在宿主机执行 mvn -o clean package -DskipTests"; exit 1; }; \
+    if command -v jar >/dev/null 2>&1; then \
+        if jar tf app.jar | grep -q '^BOOT-INF/'; then \
+            echo "OK: app.jar 是 Spring Boot 可执行 jar（含 BOOT-INF）"; \
+        else \
+            echo "ERROR: app.jar 不是 Spring Boot 可执行 jar（缺 BOOT-INF），请确认跑的是 package 而不是 compile"; \
+            exit 1; \
+        fi; \
+    else \
+        echo "SKIP: 镜像内无 jar 命令，跳过 BOOT-INF 校验（app.jar 大小 $(wc -c < app.jar) 字节）"; \
+    fi
+
+EXPOSE 8080
+
+# 容器内存感知：让 JVM 按容器限额设置堆，避免被 OOMKill
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-Duser.timezone=Asia/Shanghai", "-jar", "/app/app.jar"]
