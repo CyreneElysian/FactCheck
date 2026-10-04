@@ -46,9 +46,12 @@ public class DetectResultWriter {
     /**
      * 证据字段长度上限，必须与 sql/01_fact_check_schema.sql 的 t_evidence 列定义一致。
      * 改列定义时**同时**改这里，否则又会退化成"超长 → 整批回滚"。
+     *
+     * <p>注意 URL 只用 {@link #MAX_URL_LENGTH} 做**超限判断**（超了就置空），
+     * 不做截断 —— 原因见 {@link #keepUrlOrBlank}。</p>
      */
     static final int MAX_TITLE_LENGTH = 500;   // title  varchar(500)
-    static final int MAX_URL_LENGTH = 500;     // url    varchar(500)
+    static final int MAX_URL_LENGTH = 500;     // url    varchar(500)，仅用于判断
     static final int MAX_SOURCE_LENGTH = 100;  // source varchar(100)
 
     @Autowired
