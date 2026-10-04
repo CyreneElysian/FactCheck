@@ -180,6 +180,27 @@ class RateLimitServiceImplTest {
     }
 
     @Test
+    @DisplayName("微信绑定：按 IP 计数（该接口在鉴权白名单里且会请求微信 code2session，必须限流）")
+    void shouldLimitWechatBindByIp() {
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.increment(anyString())).thenReturn(1L);
+
+        rateLimitService.checkWechatBind("203.0.113.7");
+
+        verify(valueOperations).increment(RedisKeyConstant.RATE_LIMIT_PREFIX + "wechat:bind:ip:203.0.113.7");
+    }
+
+    @Test
+    @DisplayName("微信绑定：拿不到 IP 时直接放行（不产生 ...:null 这种无意义 key，且完全不访问 Redis）")
+    void shouldSkipWechatBindWhenIpMissing() {
+        // 故意不 stub opsForValue()：若实现真的去访问 Redis，这里会因未 stub 而失败/报错。
+        // 配合下面的 verify(never())，"身份为空直接放行"这条契约就是双向验证的。
+        rateLimitService.checkWechatBind(null);
+
+        verify(valueOperations, never()).increment(anyString());
+    }
+
+    @Test
     @DisplayName("超长身份被截断，避免伪造超长用户名/IP 造出巨型 key")
     void shouldTruncateOverlongIdentity() {
         when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);

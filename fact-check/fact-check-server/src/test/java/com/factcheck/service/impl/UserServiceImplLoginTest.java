@@ -57,7 +57,7 @@ class UserServiceImplLoginTest {
      * 用真实编码器生成口令哈希作为夹具
      *
      * <p>注意：不要硬编码别处的哈希——第一版这里抄了 sql 种子里的
-     * {@code $2a$10$HMyV...}（那其实是 admin 的 Admin@123456），
+     * {@code $2a$10$HMyV...}（那是 sql 种子脚本里 admin 的旧口令 Admin@123456），
      * 结果"登录成功"的用例一直报密码错误。夹具与被测代码共享同一算法最稳妥。</p>
      */
     private static final String PASSWORD_HASH = new BCryptPasswordEncoder().encode(RAW_PASSWORD);

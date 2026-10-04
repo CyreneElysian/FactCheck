@@ -3,6 +3,11 @@ package com.factcheck.service.impl;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -81,6 +86,13 @@ class AdminAppealServiceImplHandleTest {
     @BeforeEach
     void setUpAdminContext() {
         BaseContext.setCurrentId(ADMIN_ID);
+        // 条件更新（第 4 批并发修复）的默认返回值。
+        // 用 lenient：不少用例在校验阶段就抛异常、根本走不到条件更新，
+        // 默认严格模式下会因"桩未被使用"而报 UnnecessaryStubbing。
+        lenient().when(appealMapper.markHandledIfPending(
+                anyLong(), anyInt(), anyString(), anyLong())).thenReturn(1);
+        lenient().when(factCheckRecordMapper.updateConclusionIfStatus(
+                anyLong(), anyInt(), any(), any(), any(), anyString(), any())).thenReturn(1);
     }
 
     /** 必须清理 ThreadLocal，否则会污染同线程上的其他测试 */
@@ -213,26 +225,19 @@ class AdminAppealServiceImplHandleTest {
         assertThat(revision.getAdminId()).isEqualTo(ADMIN_ID);
         assertThat(revision.getCreateTime()).isNotNull();
 
-        // 2) 记录最新结论
-        ArgumentCaptor<FactCheckRecord> recordCaptor = ArgumentCaptor.forClass(FactCheckRecord.class);
-        verify(factCheckRecordMapper).update(recordCaptor.capture());
-        FactCheckRecord updated = recordCaptor.getValue();
-        assertThat(updated.getId()).isEqualTo(RECORD_ID);
-        assertThat(updated.getVerdict()).isEqualTo(3);
-        assertThat(updated.getVerdictSource()).isEqualTo(2);
-        assertThat(updated.getReasoningChain()).isEqualTo("新的推理依据：已核实官方通报");
-        assertThat(updated.getVersion()).isEqualTo(5);
-        assertThat(updated.getUpdateTime()).isNotNull();
+        // 2) 记录最新结论（第 4 批改为条件更新 + SQL 侧原子 version+1）
+        ArgumentCaptor<String> newChain = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Integer> newVerdict = ArgumentCaptor.forClass(Integer.class);
+        verify(factCheckRecordMapper).updateConclusionIfStatus(
+                eq(RECORD_ID), eq(2), eq(null), newVerdict.capture(), eq(2), newChain.capture(), eq(null));
+        assertThat(newVerdict.getValue()).isEqualTo(3);
+        assertThat(newChain.getValue()).isEqualTo("新的推理依据：已核实官方通报");
 
-        // 3) 申诉单
-        ArgumentCaptor<Appeal> appealCaptor = ArgumentCaptor.forClass(Appeal.class);
-        verify(appealMapper).update(appealCaptor.capture());
-        Appeal handledAppeal = appealCaptor.getValue();
-        assertThat(handledAppeal.getId()).isEqualTo(APPEAL_ID);
-        assertThat(handledAppeal.getStatus()).isEqualTo(1);
-        assertThat(handledAppeal.getHandleResult()).isEqualTo("证据补充，同意改判");
-        assertThat(handledAppeal.getHandledBy()).isEqualTo(ADMIN_ID);
-        assertThat(handledAppeal.getHandleTime()).isNotNull();
+        // 3) 申诉单：原子认领（仅当仍为待处理），status 置为 1
+        ArgumentCaptor<String> handleResult = ArgumentCaptor.forClass(String.class);
+        verify(appealMapper).markHandledIfPending(
+                eq(APPEAL_ID), eq(1), handleResult.capture(), eq(ADMIN_ID));
+        assertThat(handleResult.getValue()).isEqualTo("证据补充，同意改判");
 
         // 4) 站内信（type=4 申诉相关）
         ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
@@ -249,20 +254,12 @@ class AdminAppealServiceImplHandleTest {
     }
 
     /**
-     * 记录 version 为 null 时的兜底：新版本号取 2，而不是抛 NPE。
+     * 记录 version 为 null 的兜底已不再需要由 Java 处理：
+     * 版本号改由 SQL 侧 {@code version = version + 1} 原子自增，
+     * 因此不存在"用 Java 读到的 null 去 +1 而 NPE"的路径。
+     * 原来的 {@code shouldFallbackVersionToTwoWhenOldVersionIsNull} 已删除，
+     * 由 {@link AdminRecordServiceImplConclusionTest} 与新的事务验证覆盖。
      */
-    @Test
-    @DisplayName("采纳成功：记录 version 为 null 时新版本号兜底为 2")
-    void shouldFallbackVersionToTwoWhenOldVersionIsNull() {
-        when(appealMapper.getById(APPEAL_ID)).thenReturn(pendingAppeal());
-        when(factCheckRecordMapper.getById(RECORD_ID)).thenReturn(finishedRecord(null));
-
-        adminAppealService.handle(APPEAL_ID, acceptDto(1, "新的推理依据"));
-
-        ArgumentCaptor<FactCheckRecord> recordCaptor = ArgumentCaptor.forClass(FactCheckRecord.class);
-        verify(factCheckRecordMapper).update(recordCaptor.capture());
-        assertThat(recordCaptor.getValue().getVersion()).isEqualTo(2);
-    }
 
     /**
      * 未填写 handleResult 时，采纳的默认说明文案必须落库（前端可不传备注）。
@@ -280,9 +277,10 @@ class AdminAppealServiceImplHandleTest {
         verify(conclusionRevisionMapper).insert(revisionCaptor.capture());
         assertThat(revisionCaptor.getValue().getReason()).isEqualTo("申诉采纳，修改结论");
 
-        ArgumentCaptor<Appeal> appealCaptor = ArgumentCaptor.forClass(Appeal.class);
-        verify(appealMapper).update(appealCaptor.capture());
-        assertThat(appealCaptor.getValue().getHandleResult()).isEqualTo("已采纳并修改结论");
+        ArgumentCaptor<String> handleResult = ArgumentCaptor.forClass(String.class);
+        verify(appealMapper).markHandledIfPending(
+                eq(APPEAL_ID), eq(1), handleResult.capture(), eq(ADMIN_ID));
+        assertThat(handleResult.getValue()).isEqualTo("已采纳并修改结论");
     }
 
     // ------------------------------------------------------------------
@@ -387,11 +385,10 @@ class AdminAppealServiceImplHandleTest {
 
         adminAppealService.handle(APPEAL_ID, dto);
 
-        ArgumentCaptor<Appeal> appealCaptor = ArgumentCaptor.forClass(Appeal.class);
-        verify(appealMapper).update(appealCaptor.capture());
-        assertThat(appealCaptor.getValue().getStatus()).isEqualTo(2);
-        assertThat(appealCaptor.getValue().getHandleResult()).isEqualTo("申诉理由不成立");
-        assertThat(appealCaptor.getValue().getHandledBy()).isEqualTo(ADMIN_ID);
+        ArgumentCaptor<String> handleResult = ArgumentCaptor.forClass(String.class);
+        verify(appealMapper).markHandledIfPending(
+                eq(APPEAL_ID), eq(2), handleResult.capture(), eq(ADMIN_ID));
+        assertThat(handleResult.getValue()).isEqualTo("申诉理由不成立");
 
         ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
         verify(messageMapper).insert(messageCaptor.capture());
@@ -400,7 +397,8 @@ class AdminAppealServiceImplHandleTest {
 
         verify(operationLogMapper).insert(any(OperationLog.class));
         // 驳回绝不修改检测记录、也绝不写结论修订
-        verify(factCheckRecordMapper, never()).update(any(FactCheckRecord.class));
+        verify(factCheckRecordMapper, never()).updateConclusionIfStatus(
+                anyLong(), anyInt(), any(), any(), any(), anyString(), any());
         verify(conclusionRevisionMapper, never()).insert(any(ConclusionRevision.class));
     }
 
@@ -490,8 +488,54 @@ class AdminAppealServiceImplHandleTest {
 
         adminAppealService.handle(APPEAL_ID, dto);
 
-        ArgumentCaptor<Appeal> captor = ArgumentCaptor.forClass(Appeal.class);
-        verify(appealMapper).update(captor.capture());
-        assertThat(captor.getValue().getHandleResult()).isEqualTo("申诉理由不成立");
+        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+        verify(appealMapper).markHandledIfPending(eq(APPEAL_ID), eq(2), captor.capture(), eq(ADMIN_ID));
+        assertThat(captor.getValue()).isEqualTo("申诉理由不成立");
+    }
+
+    // ------------------------------------------------------------------
+    // 并发守卫（第 4 批）：条件更新返回 0 行 = 已被别人处理
+    // ------------------------------------------------------------------
+
+    /**
+     * 这是本批修复的核心回归：两个管理员同时点"采纳"时，
+     * 后到的那个必须**当场失败**，而不是把结论改第二遍、再写一条版本快照、再发一条站内信。
+     *
+     * <p>模拟方式：让 {@code updateConclusionIfStatus} 返回 0（表示"记录状态已变"）。
+     * 修复前的实现没有条件更新，这个场景在代码里根本不存在对应分支。</p>
+     */
+    @Test
+    @DisplayName("并发守卫：记录条件更新影响 0 行 → 抛业务异常，不再发站内信、不再写操作日志")
+    void shouldFailWhenRecordConclusionUpdateAffectsNoRow() {
+        stubPendingAppealWithFinishedRecord();
+        when(factCheckRecordMapper.updateConclusionIfStatus(
+                anyLong(), anyInt(), any(), any(), any(), anyString(), any())).thenReturn(0);
+
+        BaseException ex = assertThrows(BaseException.class,
+                () -> adminAppealService.handle(APPEAL_ID, acceptDto(3, "新的推理依据")));
+
+        assertThat(ex.getMessage()).contains("记录状态已变化");
+        verify(messageMapper, never()).insert(any(Message.class));
+        verify(operationLogMapper, never()).insert(any(OperationLog.class));
+    }
+
+    /**
+     * 申诉单被并发处理（{@code markHandledIfPending} 返回 0）→ 抛"已被处理"，
+     * 且不再给用户发通知、不写操作日志。
+     */
+    @Test
+    @DisplayName("并发守卫：申诉原子认领影响 0 行 → 抛“该申诉已被处理”，不发站内信")
+    void shouldFailWhenAppealClaimAffectsNoRow() {
+        when(appealMapper.getById(APPEAL_ID)).thenReturn(pendingAppeal());
+        AdminAppealHandleDTO dto = new AdminAppealHandleDTO();
+        dto.setAccept(false);
+        dto.setHandleResult("申诉理由不成立");
+        when(appealMapper.markHandledIfPending(anyLong(), anyInt(), anyString(), anyLong())).thenReturn(0);
+
+        BaseException ex = assertThrows(BaseException.class, () -> adminAppealService.handle(APPEAL_ID, dto));
+
+        assertThat(ex.getMessage()).contains("已被处理");
+        verify(messageMapper, never()).insert(any(Message.class));
+        verify(operationLogMapper, never()).insert(any(OperationLog.class));
     }
 }

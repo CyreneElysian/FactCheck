@@ -7,7 +7,7 @@ import com.factcheck.context.BaseContext;
 import com.factcheck.entity.FactCheckRecord;
 import com.factcheck.mapper.FactCheckRecordMapper;
 import com.factcheck.properties.JwtProperties;
-import com.factcheck.utils.JwtUtil;
+import com.factcheck.util.JwtUtil;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;

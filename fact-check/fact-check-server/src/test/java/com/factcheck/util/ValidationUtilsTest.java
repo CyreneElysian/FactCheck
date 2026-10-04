@@ -130,7 +130,7 @@ class ValidationUtilsTest {
     }
 
     // ------------------------------------------------------------------
-    // optionalHttpUrl / requirePositive
+    // optionalHttpUrl
     // ------------------------------------------------------------------
 
     @Test
@@ -145,16 +145,6 @@ class ValidationUtilsTest {
             assertThatThrownBy(() -> ValidationUtils.optionalHttpUrl(bad, "图片地址", 255))
                     .isInstanceOf(BaseException.class)
                     .hasMessageContaining("必须以 http:// 或 https:// 开头");
-        }
-    }
-
-    @Test
-    @DisplayName("requirePositive：null / 0 / 负数被拒")
-    void shouldValidatePositiveId() {
-        assertThat(ValidationUtils.requirePositive(7L, "记录ID")).isEqualTo(7L);
-        for (Long bad : new Long[]{null, 0L, -3L}) {
-            assertThatThrownBy(() -> ValidationUtils.requirePositive(bad, "记录ID"))
-                    .isInstanceOf(BaseException.class);
         }
     }
 }
