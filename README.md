@@ -296,7 +296,7 @@ Agent 未启动时加 `--skip-index` 跳过该步。
 全部测试**离线可跑**（不需要 MySQL / Redis / 网络）：
 
 ```bash
-# Java：288 个测试方法（含 13 个参数化，展开后共 319 个用例；JUnit 5 + Mockito，无 Spring 上下文）
+# Java：293 个测试方法（含 13 个参数化，展开后共 324 个用例；JUnit 5 + Mockito，无 Spring 上下文）
 cd fact-check && mvn test
 
 # Python：117 个用例（标准库 unittest，零第三方依赖）
@@ -444,6 +444,9 @@ Agent 与 Java 的**内部令牌由同一个 compose 变量提供**，不会出�
 | `fact-check.agent.exact-enabled` | `true` | 精确去重开关 |
 | `fact-check.agent.semantic-enabled` | `true` | 语义去重开关 |
 | `fact-check.agent.min-text-length` | `8` | 低于此长度只做精确去重 |
+| `fact-check.agent.detecting-stale-minutes` | `10` | "检测中"卡死多久后允许被重新认领并重跑（后端崩溃/重启会让记录停在 status=0） |
+| `fact-check.pending.timeout-hours` | `48` | 待诊断记录的处理时限（S14），决定 `deadline`；下限 1 小时，配 0/负数会归一化并打 WARN |
+| `fact-check.websocket.allowed-origins` | `*` | WebSocket 握手来源白名单；生产建议改成真实前端域名（见《部署文档》§11.10） |
 | `fact-check.ocr.app-code` | 空 | 阿里云 OCR AppCode，留空则图片检测直接报“OCR 未配置” |
 | `fact-check.jwt.user-ttl` / `admin-ttl` | `7200000` | Token 有效期（毫秒） |
 
@@ -528,7 +531,7 @@ Agent 与 Java 的**内部令牌由同一个 compose 变量提供**，不会出�
   `npm run lint`（eslint）**0 error 0 warning**、`npm run type-check`、`npm run build` 均通过，
   全仓已按 prettier 统一格式。接工具链时真抓到两个只在实跑时才暴露的问题：eslint 配置被写成 `.cjs`
   扩展名（会按 JavaScript 执行而直接语法报错）、以及一处全角空格触发 `no-irregular-whitespace`——都已修复。
-  Java（319 用例）、Python（145 用例）、小程序静态自检 [`check_mini.py`](fact-check-mini/check_mini.py)（110 项）同样在本机实跑通过。
+  Java（324 用例）、Python（157 用例）、小程序静态自检 [`check_mini.py`](fact-check-mini/check_mini.py)（110 项）同样在本机实跑通过。
 - **Docker Compose 未做过真实构建与启动**：编排文件、两个 Dockerfile 与容器版 nginx 已就位，
   `docker compose config` 校验通过、所有构建上下文/挂载源逐项校验存在、两侧内部令牌由同一变量提供；
   但本机只装了 Docker CLI（引擎未启动、零镜像），起整套需联网拉约 2–3GB 基础镜像。

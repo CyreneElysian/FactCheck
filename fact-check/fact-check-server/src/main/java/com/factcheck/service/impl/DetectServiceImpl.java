@@ -28,6 +28,7 @@ import com.factcheck.mapper.FactCheckRecordMapper;
 import com.factcheck.mapper.MessageMapper;
 import com.factcheck.properties.AgentProperties;
 import com.factcheck.properties.HotProperties;
+import com.factcheck.properties.PendingProperties;
 import com.factcheck.result.PageResult;
 import com.factcheck.service.AgentClient;
 import com.factcheck.service.ContentSafetyService;
@@ -61,10 +62,24 @@ import java.util.stream.Collectors;
 public class DetectServiceImpl implements DetectService {
 
     private static final String DEFAULT_CATEGORY = "其他";
-    private static final int PENDING_HOURS = 48;
+
+    /**
+     * 待诊断处理时限的**下限**（小时）。
+     *
+     * <p>原先是硬编码常量 {@code PENDING_HOURS = 48}，而产品文档 S14 写的是
+     * "（配置项可调）"—— 文档承诺了一个不存在的能力，已改为可配置
+     * （见 {@link PendingProperties}）。</p>
+     *
+     * <p>这里加下限保护：配置成 0 或负数会让记录一进队列就显示"已超时"，
+     * 把提示变成噪音；而这类错误不会有任何报错，只表现为"高亮到处都是"。</p>
+     */
+    private static final int MIN_PENDING_HOURS = 1;
 
     @Autowired
     private FactCheckRecordMapper factCheckRecordMapper;
+    /** 待诊断处理时限（S14）：原为硬编码 48 小时，产品文档承诺"配置项可调"故提为配置 */
+    @Autowired
+    private PendingProperties pendingProperties;
     @Autowired
     private AuthorityInfoMapper authorityInfoMapper;
     @Autowired
@@ -184,7 +199,7 @@ public class DetectServiceImpl implements DetectService {
                 .status(0)
                 .version(1)
                 .hitCount(1)
-                .deadline(LocalDateTime.now().plusHours(PENDING_HOURS))
+                .deadline(LocalDateTime.now().plusHours(pendingTimeoutHours()))
                 .createTime(LocalDateTime.now())
                 .updateTime(LocalDateTime.now())
                 .build();
@@ -214,6 +229,23 @@ public class DetectServiceImpl implements DetectService {
         // 4. 异步调用 Python Agent 检测
         detectService.asyncDetect(record.getId(), content);
         return record.getId();
+    }
+
+    /**
+     * 待诊断处理时限（小时），带下限保护。
+     *
+     * <p>配置项见 {@code fact-check.pending.timeout-hours}（默认 48）。
+     * 配置成 0 或负数时归一化为 1 并打 WARN —— 这类错误不会有异常，
+     * 只表现为"所有待诊断记录一进来就显示已超时"，不提示的话很难查。</p>
+     */
+    private int pendingTimeoutHours() {
+        int configured = pendingProperties.getTimeoutHours();
+        if (configured < MIN_PENDING_HOURS) {
+            log.warn("fact-check.pending.timeout-hours={} 非法（下限 {}），已按 {} 小时处理",
+                    configured, MIN_PENDING_HOURS, MIN_PENDING_HOURS);
+            return MIN_PENDING_HOURS;
+        }
+        return configured;
     }
 
     /**

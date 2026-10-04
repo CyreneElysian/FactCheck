@@ -72,6 +72,19 @@ fact-check:
     admin-secret-key: ${FACTCHECK_JWT_ADMIN_SECRET}
     admin-ttl: 7200000
     admin-token-name: token
+  # 待诊断队列（S14）
+  pending:
+    # 待诊断记录的处理时限（小时）。记录进入"待人工诊断"时，deadline = 当前时间 + 本值；
+    # 前端据此把超时记录高亮为「已超时」。
+    #
+    # 产品文档 S14 写的是「默认处理时限 48 小时（配置项可调）」，但原实现把它**硬编码**
+    # 在 DetectServiceImpl 里（private static final int PENDING_HOURS = 48），
+    # 文档承诺了一个不存在的能力 —— 部署方按文档去改配置会发现无处可改。
+    # 现已提为配置项（PendingProperties）。
+    #
+    # 下限 1 小时：配置成 0 或负数会让记录一进队列就显示"已超时"，
+    # 把提示变成噪音；该错误不会抛异常，只表现为"高亮到处都是"，故代码里会归一化并打 WARN。
+    timeout-hours: ${FACTCHECK_PENDING_TIMEOUT_HOURS:48}
   agent:
     base-url: ${FACTCHECK_AGENT_BASE_URL:http://127.0.0.1:8001}
     # 读超时（秒）。必须大于 Python 侧 DETECT_TOTAL_BUDGET（默认 45s），
