@@ -184,6 +184,7 @@ import {
   submitConclusion
 } from '@/api/admin'
 import { CATEGORIES } from '@/constants/categories'
+import { percent as formatPercent, percentOrEmpty } from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -204,17 +205,17 @@ const evidenceFormVisible = ref(false)
 const evidenceSubmitting = ref(false)
 const evidenceForm = reactive({ title: '', url: '', snippet: '' })
 
-const confidenceText = computed(() => {
-  const c = detail.value.confidence
-  return c === null || c === undefined || isNaN(Number(c)) ? '' : `${Math.round(Number(c) * 100)}%`
-})
+const confidenceText = computed(() => percentOrEmpty(detail.value.confidence))
 const manualCount = computed(() => evidenceList.value.filter(e => e.sourceType === 2).length)
 const isTimeout = computed(() => {
   const deadline = detail.value.deadline
   return !!deadline && new Date(String(deadline).replace(/-/g, '/')) < new Date()
 })
-const percent = (value: any) =>
-  value === null || value === undefined || isNaN(Number(value)) ? '-' : `${Math.round(Number(value) * 100)}%`
+/**
+ * 证据可信度/相关度：管理员补充的证据这两项**刻意留空**（不臆造分值），
+ * 因此空值必须显示 '-' —— 旧实现遇到空串会显示 0%，等于告诉管理员"这是 0 分"。
+ */
+const percent = (value: any) => formatPercent(value)
 
 const assigneeName = (adminId: number) => {
   const hit = admins.value.find(a => a.id === adminId)

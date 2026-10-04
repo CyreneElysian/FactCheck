@@ -125,6 +125,7 @@ import { computed, onUnmounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getDetectRecord, recognizeImage, submitDetect } from '@/api/detect'
 import { CATEGORIES } from '@/constants/categories'
+import { percent as formatPercent, percentOrEmpty } from '@/utils/format'
 import { connectDetectSocket } from '@/utils/ws'
 
 const activeTab = ref('text')
@@ -145,14 +146,10 @@ const verdictTagType = computed(() => {
   const v = result.value?.verdict
   return v === 1 ? 'success' : v === 2 ? 'danger' : 'info'
 })
-/** P3-40：置信度（后端为 0-1 的小数）显示为百分比 */
-const confidenceText = computed(() => {
-  const c = result.value?.confidence
-  return c === null || c === undefined || isNaN(Number(c)) ? '' : `${Math.round(Number(c) * 100)}%`
-})
-/** 证据可信度/相关度同样按百分比展示 */
-const percent = (value: any) =>
-  value === null || value === undefined || isNaN(Number(value)) ? '-' : `${Math.round(Number(value) * 100)}%`
+/** P3-40：置信度（后端为 0-1 的小数）显示为百分比；无数据时整行不显示 */
+const confidenceText = computed(() => percentOrEmpty(result.value?.confidence))
+/** 证据可信度/相关度同样按百分比展示（空串也要显示 '-'，不能显示 0%） */
+const percent = (value: any) => formatPercent(value)
 
 const onUploadImage = async (options: any) => {
   ocrLoading.value = true

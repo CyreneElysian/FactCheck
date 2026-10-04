@@ -73,6 +73,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { getHotRecord } from '@/api/hot'
+import { percent as formatPercent } from '@/utils/format'
 
 const route = useRoute()
 const id = route.params.id as string
@@ -91,14 +92,10 @@ const statusText = computed(() => {
   const s = record.value.status
   return s === 0 ? '检测中' : s === 1 ? '待人工诊断' : s === 3 ? '检测失败' : '已完成'
 })
-const confidenceText = computed(() =>
-  record.value.confidence === null || record.value.confidence === undefined
-    ? '-'
-    : `${Math.round(Number(record.value.confidence) * 100)}%`
-)
-
-const percent = (value: any) =>
-  value === null || value === undefined || isNaN(Number(value)) ? '-' : `${Math.round(Number(value) * 100)}%`
+/** 置信度：无数据（含空串）显示 '-'，不能显示 0% */
+const confidenceText = computed(() => formatPercent(record.value.confidence))
+/** 证据可信度/相关度同样按百分比展示 */
+const percent = (value: any) => formatPercent(value)
 
 onMounted(async () => {
   loading.value = true
