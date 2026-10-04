@@ -1,7 +1,7 @@
 # CI 流水线（P4-43 的"未接入 CI"收口）
 #
 # 四个作业对应项目的四个可测单元，全部使用本机已验证过的同一条命令：
-#   java   → 299 用例（离线，不需要 MySQL/Redis）
+#   java   → 319 用例（离线，不需要 MySQL/Redis）
 #   python → 117 用例（离线，std-lib unittest + 桩化的 requests 与 socket）
 #   web    → 类型检查 + vitest + 生产构建
 #   mini   → 小程序静态自检（110 项：语法/JSON/页面齐套/跳转目标/事件绑定）

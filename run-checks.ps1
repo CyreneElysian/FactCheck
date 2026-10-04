@@ -5,7 +5,7 @@
 .DESCRIPTION
     为什么需要它：本项目的 CI 文件是 GitHub Actions（.github/workflows/ci.yml），
     而实际托管在 Gitee 上——Gitee 不会执行 GitHub Actions。在配好 Gitee Go 之前，
-    这个脚本提供等价能力：把流水线里的八套检查按同样顺序在本地跑一遍。
+    这个脚本提供等价能力：把流水线里的九套检查按同样顺序在本地跑一遍。
 
     用法：
       .\run-checks.ps1              跑全部检查
@@ -91,10 +91,10 @@ Write-Host '事实检测平台 —— 本地全量检查' -ForegroundColor White
 Write-Host "项目根：$root"
 Write-Host "Maven 模式：$mvnHint"
 
-# 1) Java：299 个用例（268 个测试方法，含 13 个参数化；离线、不需要 MySQL/Redis）
+# 1) Java：319 个用例（288 个测试方法，含 13 个参数化；离线、不需要 MySQL/Redis）
 Invoke-Check -Name 'java' -WorkDir 'fact-check' -Action { mvn @mvnArgs }
 
-# 2) Python：117 用例，标准库 unittest，零第三方依赖
+# 2) Python：145 用例，标准库 unittest，零第三方依赖
 Invoke-Check -Name 'python' -WorkDir 'fact-agent' -Action {
     & (Join-Path $PWD '.venv\Scripts\python.exe') -m unittest discover -s tests -t .
 }
@@ -204,7 +204,58 @@ if ($OnlyList.Count -eq 0 -or $OnlyList -contains 'compose-env') {
     [void]$results.Add([pscustomobject]@{ Check = 'compose-env'; Ok = $composeEnvOk; Detail = $composeEnvDetail })
 }
 
-# 7) 密钥泄露扫描（与 CI 的 secret-scan 作业同一段正则）
+# 8) Java 源码里的"直引号"地雷（静态扫描，不需要编译）
+#
+#    为什么要有这一项：`@DisplayName("……「x」……")` 这种写法没问题，但一旦在 Java 字符串
+#    字面量里用了**直引号**，例如 @DisplayName("这就是"存了但没传出去"的回归测试")，
+#    javac 会报 `需要')'` / `需要<标识符>` —— 报错位置在注解行，与真正的问题（引号没转义）
+#    看起来关系不大，很容易反复踩。我在本会话里**连续踩了三次**，所以加一道机器检查。
+#
+#    判据：单行内 `@DisplayName("` 之后出现了 ≥2 个直引号，且该行不是合法的
+#    `@DisplayName("...")` 形式 —— 即引号数量为奇数或位置不对。
+Write-Head 'java-quotes'
+$javaQuoteHits = @()
+$javaSrcRoot = Join-Path $root 'fact-check'
+if (Test-Path $javaSrcRoot) {
+    $javaFiles = Get-ChildItem -LiteralPath $javaSrcRoot -Recurse -File -Filter '*.java' -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -notmatch '\\target\\' }
+    foreach ($file in $javaFiles) {
+        $lineNo = 0
+        foreach ($line in [System.IO.File]::ReadAllLines($file.FullName, [System.Text.Encoding]::UTF8)) {
+            $lineNo++
+            # 只看 @DisplayName 那一行里 `("` 之后的引号
+            if ($line -match '@DisplayName\s*\(\s*"') {
+                $after = $line.Substring($line.IndexOf('("') + 2)
+                # 先把**已转义**的 \" 去掉再数：`\"` 是合法写法
+                # （例如 "allowed-origins 为 \"*\""），不能算作未转义引号。
+                # 最初没做这一步，把 3 处合法写法误报成错误。
+                $unescaped = $after -replace '\\"', ''
+                $quoteCount = ($unescaped.ToCharArray() | Where-Object { $_ -eq '"' }).Count
+                # 合法写法是 `...");` —— 去掉转义引号后应恰好剩 1 个收尾引号
+                if ($quoteCount -ne 1) {
+                    $javaQuoteHits += [pscustomobject]@{
+                        File = $file.FullName.Substring($root.Length + 1)
+                        Line = $lineNo
+                        Text = $line.Trim()
+                    }
+                }
+            }
+        }
+    }
+}
+if ($javaQuoteHits.Count -gt 0) {
+    Write-Fail "发现 $($javaQuoteHits.Count) 处 @DisplayName 引号未转义（javac 会报「需要')'」）："
+    $javaQuoteHits | Select-Object -First 5 | ForEach-Object {
+        Write-Host ("    {0}:{1}  {2}" -f $_.File, $_.Line, $_.Text) -ForegroundColor DarkGray
+    }
+    Write-Host '    修法：改用中文引号「」，或把内层引号转义为 \"' -ForegroundColor DarkGray
+    [void]$results.Add([pscustomobject]@{ Check = 'java-quotes'; Ok = $false; Detail = "引号未转义 $($javaQuoteHits.Count) 处" })
+} else {
+    Write-Pass 'Java 源码中未发现未转义的 @DisplayName 引号'
+    [void]$results.Add([pscustomobject]@{ Check = 'java-quotes'; Ok = $true; Detail = '干净' })
+}
+
+# 9) 密钥泄露扫描（与 CI 的 secret-scan 作业同一段正则）
 Write-Head 'secret-scan'
 $pattern = 'LTAI[A-Za-z0-9]{8,}|tvly-[A-Za-z0-9]{10,}|sk-[A-Za-z0-9]{20,}|AKID[A-Za-z0-9]{10,}'
 Push-Location $root

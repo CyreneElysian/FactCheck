@@ -296,7 +296,7 @@ Agent 未启动时加 `--skip-index` 跳过该步。
 全部测试**离线可跑**（不需要 MySQL / Redis / 网络）：
 
 ```bash
-# Java：268 个测试方法（含 13 个参数化，展开后共 299 个用例；JUnit 5 + Mockito，无 Spring 上下文）
+# Java：288 个测试方法（含 13 个参数化，展开后共 319 个用例；JUnit 5 + Mockito，无 Spring 上下文）
 cd fact-check && mvn test
 
 # Python：117 个用例（标准库 unittest，零第三方依赖）
@@ -335,7 +335,7 @@ cd fact-check
 
 > 本项目的 CI 文件是 GitHub Actions（[`.github/workflows/ci.yml`](.github/workflows/ci.yml)），
 > 而仓库托管在 **Gitee**——Gitee 不执行 GitHub Actions，因此日常用 `run-checks.ps1` 在本地跑同样这七项
-> （实机验证：8 项全 PASS、退出码 0）。想在 Gitee 上跑托管流水线需改用 Gitee Go，
+> （实机验证：9 项全 PASS、退出码 0）。想在 Gitee 上跑托管流水线需改用 Gitee Go，
 > 具体步骤见 [`docs/环境限制与联网后待办.md`](docs/环境限制与联网后待办.md) 第三节。
 
 AI 能力评测（离线去重评测不需要任何 Key）：
@@ -528,7 +528,7 @@ Agent 与 Java 的**内部令牌由同一个 compose 变量提供**，不会出�
   `npm run lint`（eslint）**0 error 0 warning**、`npm run type-check`、`npm run build` 均通过，
   全仓已按 prettier 统一格式。接工具链时真抓到两个只在实跑时才暴露的问题：eslint 配置被写成 `.cjs`
   扩展名（会按 JavaScript 执行而直接语法报错）、以及一处全角空格触发 `no-irregular-whitespace`——都已修复。
-  Java（299 用例）、Python（117 用例）、小程序静态自检 [`check_mini.py`](fact-check-mini/check_mini.py)（110 项）同样在本机实跑通过。
+  Java（319 用例）、Python（145 用例）、小程序静态自检 [`check_mini.py`](fact-check-mini/check_mini.py)（110 项）同样在本机实跑通过。
 - **Docker Compose 未做过真实构建与启动**：编排文件、两个 Dockerfile 与容器版 nginx 已就位，
   `docker compose config` 校验通过、所有构建上下文/挂载源逐项校验存在、两侧内部令牌由同一变量提供；
   但本机只装了 Docker CLI（引擎未启动、零镜像），起整套需联网拉约 2–3GB 基础镜像。
