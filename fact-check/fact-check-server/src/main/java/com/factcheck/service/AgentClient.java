@@ -3,6 +3,7 @@ package com.factcheck.service;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.factcheck.properties.AgentProperties;
+import com.factcheck.util.LogMaskUtil;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
@@ -154,13 +155,17 @@ public class AgentClient {
             log.warn("未配置 fact-check.agent.internal-token，Agent 侧若启用了内部鉴权将返回 401");
         }
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-        log.info("调用 Python Agent：url={}, body={}", url, JSON.toJSONString(body));
+        // 日志脱敏：body 里装的是**用户提交的待核查原文**，整段打进日志等于把它复制到
+        // 长期留存、且通常会被集中采集的地方。这里只留长度与前若干字符，够定位请求即可。
+        log.info("调用 Python Agent：url={}, text={}", url,
+                LogMaskUtil.preview(body.get("text") instanceof String ? (String) body.get("text") : null));
 
         ResourceAccessException lastFailure = null;
         for (int attempt = 1; attempt <= (retryOnConnectFailure ? CONNECT_RETRY_ATTEMPTS : 1); attempt++) {
             try {
                 String response = restTemplate.postForObject(url, request, String.class);
-                log.info("Python Agent 响应：{}", response);
+                // 响应体含推理链与证据（有用户内容与来源明细），只记字段名，便于排查契约问题
+                log.info("Python Agent 响应字段：{}", LogMaskUtil.keysOfJson(response));
                 return JSONObject.parseObject(response);
             } catch (ResourceAccessException e) {
                 lastFailure = e;

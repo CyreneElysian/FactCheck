@@ -21,9 +21,7 @@ import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -99,9 +97,10 @@ public class AppealServiceImpl implements AppealService {
         if (userId == null) {
             throw new UserNotLoginException(MessageConstant.USER_NOT_LOGIN);
         }
-        int pageNum = pageQueryDTO.getPage() == null ? 1 : pageQueryDTO.getPage();
-        int pageSize = pageQueryDTO.getPageSize() == null ? 10 : pageQueryDTO.getPageSize();
-        PageHelper.startPage(pageNum, pageSize);
+        // 参数校验：未传取默认值，传了非法值（page=0 / pageSize 过大）必须拒绝
+        ValidationUtils.Paging paging = ValidationUtils.requirePagingOrDefault(
+                pageQueryDTO.getPage(), pageQueryDTO.getPageSize());
+        PageHelper.startPage(paging.getPage(), paging.getPageSize());
         List<Appeal> list = appealMapper.pageByUser(userId, pageQueryDTO.getStatus());
         Page<Appeal> pageInfo = (Page<Appeal>) list;
         List<AppealVO> records = list.stream().map(this::toVO).collect(Collectors.toList());

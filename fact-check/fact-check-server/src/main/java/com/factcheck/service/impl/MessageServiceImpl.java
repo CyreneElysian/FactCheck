@@ -8,6 +8,7 @@ import com.factcheck.exception.UserNotLoginException;
 import com.factcheck.mapper.MessageMapper;
 import com.factcheck.result.PageResult;
 import com.factcheck.service.MessageService;
+import com.factcheck.util.ValidationUtils;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import lombok.extern.slf4j.Slf4j;
@@ -36,9 +37,10 @@ public class MessageServiceImpl implements MessageService {
         if (userId == null) {
             throw new UserNotLoginException(MessageConstant.USER_NOT_LOGIN);
         }
-        int pageNum = pageQueryDTO.getPage() == null ? 1 : pageQueryDTO.getPage();
-        int pageSize = pageQueryDTO.getPageSize() == null ? 10 : pageQueryDTO.getPageSize();
-        PageHelper.startPage(pageNum, pageSize);
+        // 参数校验：未传取默认值，传了非法值（page=0 / pageSize 过大）必须拒绝
+        ValidationUtils.Paging paging = ValidationUtils.requirePagingOrDefault(
+                pageQueryDTO.getPage(), pageQueryDTO.getPageSize());
+        PageHelper.startPage(paging.getPage(), paging.getPageSize());
         List<Message> list = messageMapper.pageByUser(userId, pageQueryDTO.getIsRead());
         Page<Message> pageInfo = (Page<Message>) list;
         return new PageResult(pageInfo.getTotal(), list);

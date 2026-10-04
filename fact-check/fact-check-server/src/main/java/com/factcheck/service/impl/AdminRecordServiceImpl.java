@@ -35,10 +35,8 @@ import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -82,9 +80,10 @@ public class AdminRecordServiceImpl implements AdminRecordService {
         if (adminId == null) {
             throw new BaseException(MessageConstant.ADMIN_NOT_LOGIN);
         }
-        int pageNum = pageQueryDTO.getPage() == null ? 1 : pageQueryDTO.getPage();
-        int pageSize = pageQueryDTO.getPageSize() == null ? 10 : pageQueryDTO.getPageSize();
-        PageHelper.startPage(pageNum, pageSize);
+        // 参数校验：未传取默认值，传了非法值（page=0 / pageSize 过大）必须拒绝
+        ValidationUtils.Paging paging = ValidationUtils.requirePagingOrDefault(
+                pageQueryDTO.getPage(), pageQueryDTO.getPageSize());
+        PageHelper.startPage(paging.getPage(), paging.getPageSize());
         List<FactCheckRecord> list = factCheckRecordMapper.adminPage(
                 pageQueryDTO.getCategory(), pageQueryDTO.getStatus(),
                 pageQueryDTO.getVerdict(), pageQueryDTO.getKeyword());
@@ -127,18 +126,18 @@ public class AdminRecordServiceImpl implements AdminRecordService {
             throw new BaseException("该记录不在待诊断状态，无法人工诊断");
         }
 
-        factCheckRecordMapper.update(FactCheckRecord.builder()
-                .id(recordId)
-                .status(2)
-                .verdict(adminConclusionDTO.getVerdict())
-                .verdictSource(2)
-                .reasoningChain(adminConclusionDTO.getReasoningChain())
-                // P2-20：产品文档 §5.4 要求"记录状态=已完成（人工判定），记录版本+1"。
-                // 版本号是"结论被改过几次"的留痕，与 AI 判定、改结论、申诉采纳三条路径保持一致。
-                .version(record.getVersion() == null ? 2 : record.getVersion() + 1)
-                .completeTime(LocalDateTime.now())
-                .updateTime(LocalDateTime.now())
-                .build());
+        // 条件更新：仅当仍处于"待诊断"时才能提交，并在 SQL 里原子 version+1。
+        // 原实现是"先校验 status、再无条件下 update"，两个管理员同时点会双双通过校验，
+        // 于是写两条版本快照、发两条站内信。同时修正版本语义：原先写
+        // record.getVersion()+1，而 version 从不 null（建记录时即为 1），
+        // 导致首次人工诊断凭空把版本号从 1 推到 3；现在由 SQL 在原值上 +1，恒为 +1。
+        int affected = factCheckRecordMapper.updateConclusionIfStatus(
+                recordId, 1, 2,
+                adminConclusionDTO.getVerdict(), 2, adminConclusionDTO.getReasoningChain(),
+                LocalDateTime.now());
+        if (affected == 0) {
+            throw new BaseException("该记录已被其他管理员处理，请刷新后重试");
+        }
 
         // 通知用户
         messageMapper.insert(Message.builder()
@@ -211,15 +210,16 @@ public class AdminRecordServiceImpl implements AdminRecordService {
                 .createTime(LocalDateTime.now())
                 .build());
 
-        // 更新最新结论，版本号 +1
-        factCheckRecordMapper.update(FactCheckRecord.builder()
-                .id(recordId)
-                .verdict(adminConclusionDTO.getVerdict())
-                .verdictSource(2)
-                .reasoningChain(adminConclusionDTO.getReasoningChain())
-                .version(record.getVersion() == null ? 2 : record.getVersion() + 1)
-                .updateTime(LocalDateTime.now())
-                .build());
+        // 更新最新结论：条件更新（仅当仍为已完成）+ SQL 侧原子 version = version + 1。
+        // 若并发下状态已变，affected=0 会抛异常，连同上面刚写入的版本快照一起回滚
+        // （本方法有 @Transactional(rollbackFor = Exception.class)），不会留下"快照写了、结论没改"的脏数据。
+        int affected = factCheckRecordMapper.updateConclusionIfStatus(
+                recordId, 2, null,
+                adminConclusionDTO.getVerdict(), 2, adminConclusionDTO.getReasoningChain(),
+                null);
+        if (affected == 0) {
+            throw new BaseException("该记录状态已变化，请刷新后重试");
+        }
 
         // 通知用户
         messageMapper.insert(Message.builder()

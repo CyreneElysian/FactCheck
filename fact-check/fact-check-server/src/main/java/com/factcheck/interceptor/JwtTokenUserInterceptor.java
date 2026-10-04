@@ -3,7 +3,7 @@ package com.factcheck.interceptor;
 import com.factcheck.constant.JwtClaimsConstant;
 import com.factcheck.context.BaseContext;
 import com.factcheck.properties.JwtProperties;
-import com.factcheck.utils.JwtUtil;
+import com.factcheck.util.JwtUtil;
 import io.jsonwebtoken.Claims;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;

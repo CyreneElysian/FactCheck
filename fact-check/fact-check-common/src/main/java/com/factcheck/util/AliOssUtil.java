@@ -1,4 +1,4 @@
-package com.factcheck.utils;
+package com.factcheck.util;
 
 import com.aliyun.oss.ClientException;
 import com.aliyun.oss.OSS;

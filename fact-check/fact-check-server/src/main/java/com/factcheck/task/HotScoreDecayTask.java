@@ -39,6 +39,20 @@ public class HotScoreDecayTask {
      */
     @Scheduled(cron = "0 0 3 * * ?")
     public void decay() {
+        int remaining = decayNow();
+        log.info("热度衰减完成：处理后榜单剩余 {} 条成员", remaining);
+    }
+
+    /**
+     * 立即执行一次热度衰减，返回衰减后榜单的成员数
+     *
+     * <p>抽成 public 方法的理由：定时任务用 cron 表达式驱动，**没有办法在测试里等它三点跑**，
+     * 于是这段 Lua 逻辑长期零覆盖。现在可以（在真实 Redis 的集成测试里）直接调它并断言 ZSET 的变化。</p>
+     *
+     * <p>失败时返回 {@code -1} 并记 ERROR，不抛异常——定时任务抛异常只会污染调度日志，
+     * 下一轮仍会照常执行。</p>
+     */
+    public int decayNow() {
         log.info("开始热度衰减：key={}, decayFactor={}, minScore={}",
                 RedisKeyConstant.HOT_CLAIM_ZSET, HotScoreConstant.DECAY_FACTOR, HotScoreConstant.MIN_HOT_SCORE);
         try {
@@ -48,9 +62,10 @@ public class HotScoreDecayTask {
                     Collections.singletonList(RedisKeyConstant.HOT_CLAIM_ZSET),
                     String.valueOf(HotScoreConstant.DECAY_FACTOR),
                     String.valueOf(HotScoreConstant.MIN_HOT_SCORE));
-            log.info("热度衰减完成：处理 {} 条成员", memberCount == null ? 0 : memberCount);
+            return memberCount == null ? 0 : memberCount.intValue();
         } catch (Exception e) {
             log.error("热度衰减失败", e);
+            return -1;
         }
     }
 }

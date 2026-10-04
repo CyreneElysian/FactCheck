@@ -96,10 +96,6 @@
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-crypto</artifactId>
         </dependency>
-        <dependency>
-            <groupId>javax.xml.bind</groupId>
-            <artifactId>jaxb-api</artifactId>
-        </dependency>
         <!--
           接口文档（P2-26）：knife4j 3.0.2 基于 springfox 3.0.0，UI 在 /doc.html。
           版本必须显式指定：3.0.2 是适配 Spring Boot 2.x 的最后一个大版本，
@@ -121,14 +117,16 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
             <!--
-              surefire 版本必须显式指定：spring-boot 2.7.3 默认的 2.22.2 需要
-              surefire-junit-platform:2.22.2，本地离线仓库中没有该构件（只有 3.1.2），
-              不指定版本会导致离线环境无法执行任何 JUnit 5 测试。
+              surefire 版本由**父 pom 的 pluginManagement** 统一指定为 3.1.2（见顶层 pom.xml）。
+              此处不再重复写 <version>，避免两处版本不一致。
+
+              背景：spring-boot 2.7.3 默认的 2.22.2 需要 surefire-junit-platform:2.22.2，
+              本地离线仓库中没有该构件（只有 3.1.2），不覆盖会导致离线环境无法执行任何 JUnit 5 测试；
+              容器里构建时还会因为要从 Central 现下该构件而受网络抖动影响。
             -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.1.2</version>
             </plugin>
         </plugins>
     </build>

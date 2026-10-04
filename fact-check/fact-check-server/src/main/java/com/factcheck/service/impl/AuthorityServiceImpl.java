@@ -6,6 +6,7 @@ import com.factcheck.exception.BaseException;
 import com.factcheck.mapper.AuthorityInfoMapper;
 import com.factcheck.result.PageResult;
 import com.factcheck.service.AuthorityService;
+import com.factcheck.util.ValidationUtils;
 import com.factcheck.vo.AuthorityInfoVO;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
@@ -32,9 +33,10 @@ public class AuthorityServiceImpl implements AuthorityService {
     @Override
     public PageResult page(AuthorityPageQueryDTO pageQueryDTO) {
         log.info("用户分页查询权威信息：category={}, keyword={}", pageQueryDTO.getCategory(), pageQueryDTO.getKeyword());
-        int pageNum = pageQueryDTO.getPage() == null ? 1 : pageQueryDTO.getPage();
-        int pageSize = pageQueryDTO.getPageSize() == null ? 10 : pageQueryDTO.getPageSize();
-        PageHelper.startPage(pageNum, pageSize);
+        // 参数校验：未传取默认值，传了非法值（page=0 / pageSize 过大）必须拒绝
+        ValidationUtils.Paging paging = ValidationUtils.requirePagingOrDefault(
+                pageQueryDTO.getPage(), pageQueryDTO.getPageSize());
+        PageHelper.startPage(paging.getPage(), paging.getPageSize());
         List<AuthorityInfo> list = authorityInfoMapper.pagePublished(
                 pageQueryDTO.getCategory(), pageQueryDTO.getKeyword());
         Page<AuthorityInfo> pageInfo = (Page<AuthorityInfo>) list;

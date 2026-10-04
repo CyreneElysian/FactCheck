@@ -9,7 +9,6 @@ public class MessageConstant {
     public static final String ACCOUNT_LOCKED = "账号已禁用或已注销";
     public static final String ACCOUNT_EXISTS = "用户名已存在";
     public static final String ALREADY_EXISTS = "已存在";
-    public static final String LOGIN_FAILED = "登录失败";
     public static final String USER_NOT_LOGIN = "用户未登录";
     public static final String ADMIN_NOT_LOGIN = "管理员未登录";
     public static final String UPLOAD_FAILED = "文件上传失败";

@@ -29,6 +29,32 @@ public class HotRankServiceImpl implements HotRankService {
     private RedisTemplate redisTemplate;
 
     @Override
+    public long remove(Long... recordIds) {
+        if (recordIds == null || recordIds.length == 0) {
+            return 0;
+        }
+        Object[] members = new Object[recordIds.length];
+        for (int i = 0; i < recordIds.length; i++) {
+            if (recordIds[i] == null) {
+                return 0;
+            }
+            members[i] = String.valueOf(recordIds[i]);
+        }
+        try {
+            Long removed = redisTemplate.opsForZSet().remove(RedisKeyConstant.HOT_CLAIM_ZSET, members);
+            long count = removed == null ? 0 : removed;
+            if (count > 0) {
+                log.info("已从热度榜移除成员：count={}, recordIds={}", count, java.util.Arrays.toString(recordIds));
+            }
+            return count;
+        } catch (Exception e) {
+            log.warn("从热度榜移除成员失败（不影响主流程）：recordIds={}, error={}",
+                    java.util.Arrays.toString(recordIds), e.getMessage());
+            return 0;
+        }
+    }
+
+    @Override
     public List<HotEntry> top(int limit) {
         if (limit <= 0) {
             return Collections.emptyList();

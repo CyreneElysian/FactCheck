@@ -47,4 +47,12 @@ public interface RateLimitService {
      * 注册限流：按 IP，防止批量注册
      */
     void checkRegister(String ip);
+
+    /**
+     * 微信绑定限流：按 IP
+     *
+     * <p>该接口在鉴权白名单里（未登录可访问），且每次调用都会请求微信 code2session，
+     * 因此必须按 IP 限流，避免被当作刷第三方接口的跳板。</p>
+     */
+    void checkWechatBind(String ip);
 }

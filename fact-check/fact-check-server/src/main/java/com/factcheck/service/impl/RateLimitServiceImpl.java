@@ -32,6 +32,7 @@ public class RateLimitServiceImpl implements RateLimitService {
     static final String SCENE_LOGIN_USER = "login:user";
     static final String SCENE_LOGIN_IP = "login:ip";
     static final String SCENE_REGISTER_IP = "register:ip";
+    static final String SCENE_WECHAT_BIND_IP = "wechat:bind:ip";
 
     /**
      * 身份标识的最大长度：避免超长用户名/伪造 IP 造出巨型 Redis key
@@ -110,6 +111,12 @@ public class RateLimitServiceImpl implements RateLimitService {
     public void checkRegister(String ip) {
         check(SCENE_REGISTER_IP, ip, properties.getRegisterPerIp(),
                 windowSeconds(properties.getRegisterWindowMinutes()));
+    }
+
+    @Override
+    public void checkWechatBind(String ip) {
+        check(SCENE_WECHAT_BIND_IP, ip, properties.getWechatBindPerIp(),
+                windowSeconds(properties.getWechatBindWindowMinutes()));
     }
 
     /**

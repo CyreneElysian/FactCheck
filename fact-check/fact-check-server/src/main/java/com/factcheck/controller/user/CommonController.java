@@ -3,7 +3,7 @@ package com.factcheck.controller.user;
 import com.factcheck.constant.MessageConstant;
 import com.factcheck.result.Result;
 import com.factcheck.util.UploadValidator;
-import com.factcheck.utils.AliOssUtil;
+import com.factcheck.util.AliOssUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;

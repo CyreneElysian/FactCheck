@@ -47,4 +47,21 @@ public interface HotRankService {
      * @return 本次是否真的计了分
      */
     boolean addScoreOnce(Long recordId, double delta, String scope, int windowMinutes);
+
+    /**
+     * 从热度榜移除若干记录
+     *
+     * <p>用于"记录已不该再出现在榜上"的场景。当前没有删除记录的接口，但有两处真实需要：</p>
+     * <ul>
+     *   <li>用户注销（status=2）后，其记录仍可能占据热度榜——产品文档 §4.5 要求注销后
+     *       记录保留但脱敏展示，出现在公开的 Top10 里与"脱敏"的意图相悖；</li>
+     *   <li>运维直接清理历史数据时，ZSET 会留下指向不存在记录的成员，
+     *       虽然读取时会过滤，但"原始分数"会一直留到每日衰减。</li>
+     * </ul>
+     *
+     * <p>与其它方法一致：**不抛异常**（Redis 抖动不该影响主流程），但会记日志。</p>
+     *
+     * @return 实际移除的成员数；Redis 异常时返回 0
+     */
+    long remove(Long... recordIds);
 }

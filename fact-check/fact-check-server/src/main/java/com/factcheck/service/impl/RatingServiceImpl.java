@@ -48,7 +48,10 @@ public class RatingServiceImpl implements RatingService {
             throw new BaseException("评分只能为：1有帮助、0无帮助");
         }
         FactCheckRecord record = factCheckRecordMapper.getById(ratingSubmitDTO.getRecordId());
-        if (record == null) {
+        // 归属校验：只能给自己的记录评分。原先只判 record == null，
+        // 于是任意登录用户都能给别人的记录刷"有帮助/无帮助"（评分是模型优化的反馈信号，
+        // 被外部刷入会直接污染数据）。
+        if (record == null || !userId.equals(record.getUserId())) {
             throw new RecordNotFoundException(MessageConstant.RECORD_NOT_FOUND);
         }
 

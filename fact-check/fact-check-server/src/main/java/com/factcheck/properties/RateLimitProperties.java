@@ -49,4 +49,19 @@ public class RateLimitProperties {
      * 注册限流窗口（分钟）
      */
     private int registerWindowMinutes = 60;
+
+    /**
+     * 同一 IP 在窗口内最多尝试"微信绑定 Web 账号"多少次
+     *
+     * <p>为什么需要单独限流：{@code POST /user/wechat/bind} 是**白名单接口**（无需登录），
+     * 而它每次调用都会拿 {@code code} 去请求微信 {@code code2session}。
+     * 不限流的话，任何人都能拿这个端点当"刷微信接口"的跳板（消耗配额、可能被微信风控），
+     * 也能用来枚举/试探账号。注册已有按 IP 限流，绑定当时没有，属于同类缺口。</p>
+     */
+    private int wechatBindPerIp = 10;
+
+    /**
+     * 微信绑定限流窗口（分钟）
+     */
+    private int wechatBindWindowMinutes = 10;
 }

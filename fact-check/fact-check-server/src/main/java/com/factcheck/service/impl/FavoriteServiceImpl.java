@@ -49,7 +49,10 @@ public class FavoriteServiceImpl implements FavoriteService {
             throw new BaseException("请指定要收藏的记录");
         }
         FactCheckRecord record = factCheckRecordMapper.getById(recordId);
-        if (record == null) {
+        // 归属校验：只能收藏自己的记录。原先只判 record == null，
+        // 于是任意登录用户都能收藏/取消收藏别人的记录（同仓 AppealServiceImpl 与
+        // DetectServiceImpl.getRecord 都做了归属校验，此处是漏的）。
+        if (record == null || !userId.equals(record.getUserId())) {
             throw new RecordNotFoundException(MessageConstant.RECORD_NOT_FOUND);
         }
         if (userFavoriteMapper.countByUserAndRecord(userId, recordId) > 0) {

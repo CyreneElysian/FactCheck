@@ -49,4 +49,17 @@
         </set>
         where id = #{id}
     </update>
+
+    <!--
+      原子"认领"：where 里带上 status = 0，靠数据库行锁保证只有一个请求能成功。
+      handle_time 直接用 now()，避免"业务时间取 LocalDateTime.now()、数据库取 now()"两套来源。
+    -->
+    <update id="markHandledIfPending">
+        update t_appeal
+        set status = #{newStatus},
+            handle_result = #{handleResult},
+            handled_by = #{handledBy},
+            handle_time = now()
+        where id = #{id} and status = 0
+    </update>
 </mapper>

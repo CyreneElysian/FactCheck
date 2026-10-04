@@ -9,10 +9,12 @@ import com.factcheck.entity.User;
 import com.factcheck.exception.AccountExistsException;
 import com.factcheck.exception.AccountNotFoundException;
 import com.factcheck.exception.BaseException;
+import com.factcheck.mapper.FactCheckRecordMapper;
 import com.factcheck.mapper.OperationLogMapper;
 import com.factcheck.mapper.UserMapper;
 import com.factcheck.result.PageResult;
 import com.factcheck.service.AdminAccountService;
+import com.factcheck.service.HotRankService;
 import com.factcheck.util.ValidationUtils;
 import com.factcheck.vo.AdminBriefVO;
 import com.factcheck.vo.UserProfileVO;
@@ -41,6 +43,10 @@ public class AdminAccountServiceImpl implements AdminAccountService {
     private UserMapper userMapper;
     @Autowired
     private OperationLogMapper operationLogMapper;
+    @Autowired
+    private FactCheckRecordMapper factCheckRecordMapper;
+    @Autowired
+    private HotRankService hotRankService;
 
     /**
      * 查询管理员简要列表（P3-35：诊断转派下拉框）
@@ -72,9 +78,9 @@ public class AdminAccountServiceImpl implements AdminAccountService {
         if (!StringUtils.hasLength(adminAccountCreateDTO.getUsername())) {
             throw new BaseException("请填写用户名");
         }
-        if (!StringUtils.hasLength(adminAccountCreateDTO.getPassword())) {
-            throw new BaseException("请填写密码");
-        }
+        // 管理员账号权限更高，密码强度与普通用户同一套规则（见 ValidationUtils.requireStrongPassword）
+        ValidationUtils.requireStrongPassword(adminAccountCreateDTO.getPassword(),
+                adminAccountCreateDTO.getUsername());
 
         User exist = userMapper.getByUsername(adminAccountCreateDTO.getUsername());
         if (exist != null) {
@@ -145,8 +151,36 @@ public class AdminAccountServiceImpl implements AdminAccountService {
                 .updateTime(LocalDateTime.now())
                 .build());
 
-        saveLog(adminId, status == 1 ? "启用用户" : "禁用用户", "userId=" + userId);
+        // 注销（status=2）后把该用户的记录从公开热度榜摘下来（产品文档 §4.5：记录保留但脱敏展示，
+        // 继续占据公开 Top10 与"脱敏"的意图相悖）。只查主键，避免把大字段拉进内存。
+        if (status != null && status == 2) {
+            detachUserRecordsFromHotRank(userId);
+        }
+
+        // P2-18 修正：原先 status==2 也被记成"禁用用户"，审计日志与操作不符
+        String operation = status == 1 ? "启用用户" : (status == 2 ? "注销用户" : "禁用用户");
+        saveLog(adminId, operation, "userId=" + userId);
         log.info("用户状态修改成功：userId={}, status={}", userId, status);
+    }
+
+    /**
+     * 把某个用户的全部记录从热度榜移除
+     *
+     * <p>热度榜是**公开** Top10，用户注销后其记录不应继续出现在公开榜单里。
+     * 本方法只负责摘榜，不动数据库（记录本身按产品要求保留）。</p>
+     */
+    private void detachUserRecordsFromHotRank(Long userId) {
+        try {
+            List<Long> recordIds = factCheckRecordMapper.listIdsByUser(userId);
+            if (recordIds == null || recordIds.isEmpty()) {
+                return;
+            }
+            long removed = hotRankService.remove(recordIds.toArray(new Long[0]));
+            log.info("用户注销：已从热度榜摘除其记录 {} 条（实际命中 {} 条）", recordIds.size(), removed);
+        } catch (Exception e) {
+            // 摘榜失败不影响注销本身（热度是辅助功能）
+            log.warn("用户注销后摘除热度榜失败：userId={}, error={}", userId, e.getMessage());
+        }
     }
 
     /**

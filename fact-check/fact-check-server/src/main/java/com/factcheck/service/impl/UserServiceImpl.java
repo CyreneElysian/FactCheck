@@ -18,14 +18,17 @@ import com.factcheck.exception.AccountNotFoundException;
 import com.factcheck.exception.LoginFailedException;
 import com.factcheck.exception.PasswordErrorException;
 import com.factcheck.exception.UserNotLoginException;
+import com.factcheck.mapper.FactCheckRecordMapper;
 import com.factcheck.mapper.OperationLogMapper;
 import com.factcheck.mapper.UserMapper;
 import com.factcheck.properties.WeChatProperties;
+import com.factcheck.service.HotRankService;
 import com.factcheck.service.RateLimitService;
 import com.factcheck.service.UserService;
 import com.factcheck.util.ClientIpUtils;
+import com.factcheck.util.LogMaskUtil;
 import com.factcheck.util.ValidationUtils;
-import com.factcheck.utils.HttpClientUtil;
+import com.factcheck.util.HttpClientUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -34,6 +37,7 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -55,6 +59,10 @@ public class UserServiceImpl implements UserService {
     private RateLimitService rateLimitService;
     @Autowired
     private OperationLogMapper operationLogMapper;
+    @Autowired
+    private FactCheckRecordMapper factCheckRecordMapper;
+    @Autowired
+    private HotRankService hotRankService;
 
     /**
      * 用户注册
@@ -70,7 +78,8 @@ public class UserServiceImpl implements UserService {
         // passwordEncoder.encode(null) 抛 NPE（前端只能看到"未知错误"），
         // 超长用户名/昵称则要等到写库时才报数据完整性错误。
         String username = ValidationUtils.requireText(userRegisterDTO.getUsername(), "用户名", 50);
-        String password = ValidationUtils.requireText(userRegisterDTO.getPassword(), "密码", 64);
+        // 密码强度校验：此前只有"非空 + 长度 ≤64"，123456 / password 都能直接设置
+        String password = ValidationUtils.requireStrongPassword(userRegisterDTO.getPassword(), username);
         String nickname = ValidationUtils.optionalText(userRegisterDTO.getNickname(), "昵称", 50);
 
         User exist = userMapper.getByUsername(username);
@@ -166,7 +175,8 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public User wechatLogin(WechatLoginDTO wechatLoginDTO) {
-        log.info("微信小程序登录：code={}", wechatLoginDTO.getCode());
+        // 日志脱敏：wx.login 的 code 可被用来换取 openid/session_key，只记打码值
+        log.info("微信小程序登录：code={}", LogMaskUtil.mask(wechatLoginDTO.getCode()));
         String openid = getOpenidByCode(wechatLoginDTO.getCode());
         User user = userMapper.getByOpenid(openid);
         if (user == null) {
@@ -184,6 +194,10 @@ public class UserServiceImpl implements UserService {
     @Override
     public User bindWechat(WechatBindDTO wechatBindDTO) {
         log.info("微信绑定Web账号：username={}", wechatBindDTO.getUsername());
+        // 按 IP 限流（P2-16 同类缺口补齐）：本接口在鉴权白名单里，且每次调用都会请求微信
+        // code2session，不限流等于给外部一个"刷微信接口"的跳板。放在最前面，
+        // 与注册一致——**错误请求同样消耗配额**，否则枚举尝试不受约束。
+        rateLimitService.checkWechatBind(ClientIpUtils.currentIp());
         JSONObject session = callWechatCode2Session(wechatBindDTO.getCode());
         String openid = session.getString("openid");
         if (!StringUtils.hasLength(openid)) {
@@ -268,6 +282,9 @@ public class UserServiceImpl implements UserService {
         if (!passwordEncoder.matches(passwordEditDTO.getOldPassword(), user.getPassword())) {
             throw new PasswordErrorException(MessageConstant.PASSWORD_ERROR);
         }
+        // 密码强度校验（**只作用于设置新密码的路径，不拦登录**：
+        // 历史弱口令账号仍可登录，只在改密时被要求变强，避免"加固把用户锁在门外"）
+        ValidationUtils.requireStrongPassword(passwordEditDTO.getNewPassword(), user.getUsername());
         User update = User.builder()
                 .id(userId)
                 .password(passwordEncoder.encode(passwordEditDTO.getNewPassword()))
@@ -287,6 +304,18 @@ public class UserServiceImpl implements UserService {
             throw new UserNotLoginException(MessageConstant.USER_NOT_LOGIN);
         }
         userMapper.cancel(userId);
+        // 注销后把该用户的记录从公开热度榜摘下来（与管理员注销路径一致）：
+        // 热度榜是公开 Top10，产品文档 §4.5 要求注销用户的记录保留但脱敏展示。
+        try {
+            List<Long> recordIds = factCheckRecordMapper.listIdsByUser(userId);
+            if (recordIds != null && !recordIds.isEmpty()) {
+                long removed = hotRankService.remove(recordIds.toArray(new Long[0]));
+                log.info("用户自助注销：已从热度榜摘除其记录 {} 条（实际命中 {} 条）", recordIds.size(), removed);
+            }
+        } catch (Exception e) {
+            // 摘榜失败不影响注销本身（热度是辅助功能）
+            log.warn("用户自助注销后摘除热度榜失败：userId={}, error={}", userId, e.getMessage());
+        }
     }
 
     /**
@@ -319,7 +348,11 @@ public class UserServiceImpl implements UserService {
         params.put("js_code", code);
         params.put("grant_type", "authorization_code");
         String response = HttpClientUtil.doGet(WECHAT_CODE2SESSION_URL, params);
-        log.info("微信 code2session 响应：{}", response);
+        // 日志脱敏：code2session 响应含 openid / session_key / unionid，
+        // session_key 尤其敏感（可用于解密用户数据）。保留首尾各几个字符，
+        // 足以比对"两次调用是不是同一个用户"，但不把凭据整段留档。
+        log.info("微信 code2session 响应：{}",
+                LogMaskUtil.maskSensitiveJsonFields(response, "openid", "session_key", "unionid"));
         JSONObject json = JSONObject.parseObject(response);
         Integer errcode = json.getInteger("errcode");
         if (errcode != null && errcode != 0) {

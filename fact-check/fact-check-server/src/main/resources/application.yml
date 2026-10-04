@@ -61,7 +61,14 @@ fact-check:
     # 读超时（秒）。必须大于 Python 侧 DETECT_TOTAL_BUDGET（默认 45s），
     # 否则 Java 会先判失败，而 Agent 仍在执行（可能已写入向量索引），造成两侧状态不一致
     timeout: ${FACTCHECK_AGENT_TIMEOUT:90}
+    # ⚠️ semantic-threshold 是**占位配置，改了不生效也不会有任何告警**：
+    # 语义去重阈值的真正生效点是 Python 侧 fact-agent/.env 的 DEDUP_THRESHOLD
+    # （见《技术方案》§5.4）。保留它是为了与配置清单一致。
     semantic-threshold: 0.92
+    # 下面三项**真正生效**，由 DetectServiceImpl.submit 读取：
+    #   exact-enabled  → 是否做精确去重（content_hash 命中直接复用结论）
+    #   semantic-enabled → 是否做语义去重（调 Agent /dedup）
+    #   min-text-length  → 低于该长度只做精确去重、不做语义去重
     exact-enabled: true
     semantic-enabled: true
     min-text-length: 8
@@ -93,10 +100,22 @@ fact-check:
     # 注册：同一 IP 每小时最多 5 次，防批量注册小号
     register-per-ip: ${FACTCHECK_RATE_LIMIT_REGISTER_PER_IP:5}
     register-window-minutes: ${FACTCHECK_RATE_LIMIT_REGISTER_WINDOW_MINUTES:60}
+    # 微信绑定：该接口在鉴权白名单里且每次都会请求微信 code2session，按 IP 限流防被当跳板刷
+    wechat-bind-per-ip: ${FACTCHECK_RATE_LIMIT_WECHAT_BIND_PER_IP:10}
+    wechat-bind-window-minutes: ${FACTCHECK_RATE_LIMIT_WECHAT_BIND_WINDOW_MINUTES:10}
   hot:
     # 热度榜（技术方案 5.1）：检测 +1 / 查看详情 +0.5 / 申诉 +3 / 人工诊断 +2 / 命中权威信息 +5
     # 查看详情的去重窗口：同一用户对同一记录在该窗口内只计一次，防止刷新详情页刷榜
     view-dedup-minutes: ${FACTCHECK_HOT_VIEW_DEDUP_MINUTES:30}
+  websocket:
+    # 允许的 WebSocket 握手来源（Origin）。默认 "*" 仅为方便本地开发
+    # （前端可能来自 Vite 5173、也可能来自 nginx 的 80/8081）。
+    #
+    # ⚠️ 生产环境请改成真实前端域名，逗号分隔，例如：
+    #     FACTCHECK_WS_ALLOWED_ORIGINS=https://factcheck.example.com,https://www.factcheck.example.com
+    # 说明：本项目的手势鉴权是**显式 token 查询参数**（非 cookie），因此放开来源不构成典型
+    # CSWSH；收窄来源属于纵深防御，并能在将来鉴权方式改为 cookie 时提前拆除风险。
+    allowed-origins: ${FACTCHECK_WS_ALLOWED_ORIGINS:*}
   alioss:
     endpoint: ${fact-check.alioss.endpoint}
     access-key-id: ${fact-check.alioss.access-key-id}

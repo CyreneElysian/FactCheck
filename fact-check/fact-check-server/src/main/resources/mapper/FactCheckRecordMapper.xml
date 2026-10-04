@@ -63,6 +63,26 @@
         where id = #{id}
     </update>
 
+    <!--
+      带状态条件地改结论，并在 SQL 里原子地 version = version + 1。
+      为什么不能在 Java 里写 record.getVersion()+1：两个管理员并发改同一结论时，
+      双方都读到 version=1、都写回 2，后者覆盖前者且版本号只 +1（丢一次留痕）。
+      where 里的 status 条件同时挡住"重复提交/改到已流转记录"。
+    -->
+    <update id="updateConclusionIfStatus">
+        update t_fact_check_record
+        <set>
+            <if test="status != null">status = #{status},</if>
+            <if test="verdict != null">verdict = #{verdict},</if>
+            <if test="verdictSource != null">verdict_source = #{verdictSource},</if>
+            <if test="reasoningChain != null">reasoning_chain = #{reasoningChain},</if>
+            <if test="completeTime != null">complete_time = #{completeTime},</if>
+            version = version + 1,
+            update_time = now()
+        </set>
+        where id = #{id} and status = #{expectedStatus}
+    </update>
+
     <update id="resetToDetecting">
         update t_fact_check_record
         set status = 0,
@@ -94,6 +114,16 @@
             #{id}
         </foreach>
     </select>
+
+    <!-- 只取主键：用于"用户注销后把 TA 的记录从热度榜摘下来"，避免把 content/推理链等大字段拉进内存 -->
+    <select id="listIdsByUser" resultType="java.lang.Long">
+        select id from t_fact_check_record where user_id = #{userId}
+    </select>
+
+    <!-- 仅供测试收尾使用（业务上记录是保留的，没有删除入口） -->
+    <delete id="deleteById">
+        delete from t_fact_check_record where id = #{id}
+    </delete>
 
     <select id="adminPage" resultType="com.factcheck.entity.FactCheckRecord">
         select id, user_id, content, content_hash, category, source_type, image_url, status,

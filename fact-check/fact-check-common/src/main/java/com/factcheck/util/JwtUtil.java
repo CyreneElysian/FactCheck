@@ -1,4 +1,4 @@
-package com.factcheck.utils;
+package com.factcheck.util;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;

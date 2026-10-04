@@ -10,7 +10,6 @@ import com.factcheck.dto.DetectSubmitDTO;
 import com.factcheck.entity.AuthorityInfo;
 import com.factcheck.entity.ConclusionRevision;
 import com.factcheck.entity.DetectLog;
-import com.factcheck.entity.Evidence;
 import com.factcheck.entity.FactCheckRecord;
 import com.factcheck.entity.Message;
 import com.factcheck.entity.RecordRating;
@@ -45,17 +44,11 @@ import com.github.pagehelper.PageHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -99,14 +92,16 @@ public class DetectServiceImpl implements DetectService {
     @Autowired
     private HotProperties hotProperties;
     @Autowired
-    private RedisTemplate redisTemplate;
-    @Autowired
-    private StringRedisTemplate stringRedisTemplate;
-    @Autowired
     private DetectWebSocketHandler detectWebSocketHandler;
     @Autowired
     @Lazy
     private DetectService detectService;
+    /**
+     * 结果写回器：把"更新记录 + 存证据 + 发站内信"收进**独立短事务**，
+     * 避免 Agent 的 HTTP 调用（读超时 90s）长期占用数据库连接（详见 {@link DetectResultWriter}）
+     */
+    @Autowired
+    private DetectResultWriter resultWriter;
 
     /**
      * 提交文字/图片检测
@@ -336,7 +331,6 @@ public class DetectServiceImpl implements DetectService {
      * 异步执行 LLM 检测，并写回结果
      */
     @Async("detectExecutor")
-    @Transactional
     @Override
     public void asyncDetect(Long recordId, String content) {
         log.info("开始异步检测：recordId={}", recordId);
@@ -345,8 +339,11 @@ public class DetectServiceImpl implements DetectService {
             log.warn("异步检测：记录不存在，recordId={}", recordId);
             return;
         }
+        Long userId = record.getUserId();
 
         try {
+            // Agent 调用（读超时 90s）在**事务之外**执行：原先该方法同时标了 @Async 与 @Transactional，
+            // 整个 HTTP 往返期间都占着数据库连接（20 并发即可占满连接池），见 DetectResultWriter 的类注释。
             AgentClient.DetectResult result = agentClient.detect(content);
             log.info("Agent 检测返回：recordId={}, error={}, canJudge={}, verdict={}",
                     recordId, result.isError(), result.isCanJudge(), result.getVerdict());
@@ -362,67 +359,23 @@ public class DetectServiceImpl implements DetectService {
             boolean failed = agentFailed || verdictUnmappable;
             boolean canJudge = !failed && result.isCanJudge() && verdict != null;
 
-            FactCheckRecord.FactCheckRecordBuilder updateBuilder = FactCheckRecord.builder()
-                    .id(recordId)
-                    .updateTime(LocalDateTime.now());
-
+            // 写库走独立短事务（每类结果一个 @Transactional 方法）
             if (canJudge) {
-                updateBuilder.status(2)
-                        .verdict(verdict)
-                        .verdictSource(1)
-                        .confidence(result.getConfidence() != null ? BigDecimal.valueOf(result.getConfidence()) : null)
-                        .reasoningChain(result.getReasoningChain())
-                        .completeTime(LocalDateTime.now());
+                resultWriter.writeJudged(recordId, userId, verdict, result.getConfidence(),
+                        result.getReasoningChain(), result);
             } else if (failed) {
                 String reason = verdictUnmappable
                         ? "Agent 返回的结论无法识别（verdict=" + result.getVerdict() + "），已标记为检测失败，可重试"
-                        : (result.getHumanReason() != null ? result.getHumanReason() : "检测服务异常，请稍后重试");
+                        : result.getHumanReason();
                 log.warn("检测失败归口：recordId={}, agentFailed={}, verdictUnmappable={}, verdict={}",
                         recordId, agentFailed, verdictUnmappable, result.getVerdict());
-                updateBuilder.status(3).aiSummary(reason);
+                resultWriter.writeFailed(recordId, userId, reason);
             } else {
-                updateBuilder.status(1)
-                        .aiSummary(result.getHumanReason() != null ? result.getHumanReason() : "AI 无法判断，转人工诊断");
-            }
-            factCheckRecordMapper.update(updateBuilder.build());
-
-            // 保存证据
-            saveEvidence(recordId, result);
-
-            // 发送站内信
-            if (canJudge) {
-                messageMapper.insert(Message.builder()
-                        .userId(record.getUserId())
-                        .type(1)
-                        .title("检测完成")
-                        .content("您的消息已完成检测，点击查看结论")
-                        .relatedId(recordId)
-                        .isRead(0)
-                        .createTime(LocalDateTime.now())
-                        .build());
-            } else if (failed) {
-                messageMapper.insert(Message.builder()
-                        .userId(record.getUserId())
-                        .type(6)
-                        .title("检测失败")
-                        .content("很抱歉，检测服务暂时不可用，请稍后重新提交")
-                        .relatedId(recordId)
-                        .isRead(0)
-                        .createTime(LocalDateTime.now())
-                        .build());
-            } else {
-                messageMapper.insert(Message.builder()
-                        .userId(record.getUserId())
-                        .type(2)
-                        .title("消息已进入人工诊断队列")
-                        .content("AI 暂时无法判断您的消息，已转交管理员人工诊断，请稍后查看")
-                        .relatedId(recordId)
-                        .isRead(0)
-                        .createTime(LocalDateTime.now())
-                        .build());
+                resultWriter.writePendingHuman(recordId, userId, result.getHumanReason());
             }
 
-            // 有结论后加入语义去重索引
+            // 有结论后加入语义去重索引（放在写库之后、事务之外：
+            // 索引写入失败不应回滚已经落库的结论）
             if (canJudge) {
                 try {
                     agentClient.indexAdd(recordId, content);
@@ -435,21 +388,14 @@ public class DetectServiceImpl implements DetectService {
             pushWebSocket(recordId);
         } catch (Exception e) {
             log.error("异步检测失败：recordId={}", recordId, e);
-            factCheckRecordMapper.update(FactCheckRecord.builder()
-                    .id(recordId)
-                    .status(3)
-                    .updateTime(LocalDateTime.now())
-                    .build());
-            messageMapper.insert(Message.builder()
-                    .userId(record.getUserId())
-                    .type(6)
-                    .title("检测失败")
-                    .content("很抱歉，检测服务暂时不可用，请稍后重试")
-                    .relatedId(recordId)
-                    .isRead(0)
-                    .createTime(LocalDateTime.now())
-                    .build());
-
+            // 兜底标记各自开独立事务：即使"发站内信"这一步失败，
+            // 也必须把记录从 status=0（检测中）推进到 status=3，否则用户永远等不到结果。
+            try {
+                resultWriter.writeFailed(recordId, userId, "检测服务异常，请稍后重试");
+            } catch (Exception inner) {
+                log.error("写回检测失败结果时再次异常：recordId={}", recordId, inner);
+                resultWriter.markFailedQuietly(recordId);
+            }
             pushWebSocket(recordId);
         }
     }
@@ -475,54 +421,33 @@ public class DetectServiceImpl implements DetectService {
     }
 
     /**
-     * 保存 Agent 返回的证据
-     */
-    private void saveEvidence(Long recordId, AgentClient.DetectResult result) {
-        if (result.getEvidence() == null || result.getEvidence().isEmpty()) {
-            return;
-        }
-        evidenceMapper.deleteByRecordId(recordId);
-        List<Evidence> evidenceList = new ArrayList<>();
-        for (AgentClient.DetectEvidence e : result.getEvidence()) {
-            evidenceList.add(Evidence.builder()
-                    .recordId(recordId)
-                    .title(e.getTitle())
-                    .url(e.getUrl())
-                    .snippet(e.getSnippet())
-                    .source(e.getSource())
-                    .sourceCredibility(e.getSourceCredibility())
-                    .relevanceScore(e.getRelevanceScore())
-                    .sourceType(1)
-                    .createTime(LocalDateTime.now())
-                    .build());
-        }
-        evidenceMapper.insertBatch(evidenceList);
-    }
-
-    /**
      * 查询检测记录详情（前端轮询用）
      */
     @Override
     public DetectRecordVO getRecord(Long recordId) {
         Long userId = BaseContext.getCurrentId();
         log.info("查询检测记录详情：recordId={}, userId={}", recordId, userId);
+        // 归属校验必须 fail-closed：原先写成 `userId != null && !userId.equals(...)`，
+        // 一旦身份为空（异步线程、定时任务、将来新增的未纳入拦截器的路径），
+        // 这个条件整体为 false，校验被静默跳过，变成"人人可读任意 recordId"。
+        if (userId == null) {
+            throw new UserNotLoginException(MessageConstant.USER_NOT_LOGIN);
+        }
         FactCheckRecord record = factCheckRecordMapper.getById(recordId);
-        if (record == null || (userId != null && !userId.equals(record.getUserId()))) {
+        if (record == null || !userId.equals(record.getUserId())) {
             throw new RecordNotFoundException(MessageConstant.RECORD_NOT_FOUND);
         }
         // VIEW 权重（P2-14）：查看详情 +0.5，但同一用户对同一记录在窗口内只计一次
         // （前端等待异步检测结果时本来就会轮询该接口，不去重的话热度榜可被刷新刷上去）
         hotRankService.addScoreOnce(recordId, HotScoreConstant.VIEW_SCORE,
-                "user:" + (userId == null ? "anonymous" : userId), hotProperties.getViewDedupMinutes());
+                "user:" + userId, hotProperties.getViewDedupMinutes());
 
         DetectRecordVO vo = toVO(record, true);
         // 收藏态与我的评分（P3-30 / P3-37）：前端要据此回显"已收藏/取消收藏"与"我评过什么"，
         // 只放在详情接口（列表接口不需要，避免 N+1 查询）
-        if (userId != null) {
-            vo.setFavorited(userFavoriteMapper.countByUserAndRecord(userId, recordId) > 0);
-            RecordRating rating = recordRatingMapper.getByUserAndRecord(userId, recordId);
-            vo.setMyRating(rating == null ? null : rating.getRating());
-        }
+        vo.setFavorited(userFavoriteMapper.countByUserAndRecord(userId, recordId) > 0);
+        RecordRating rating = recordRatingMapper.getByUserAndRecord(userId, recordId);
+        vo.setMyRating(rating == null ? null : rating.getRating());
         return vo;
     }
 
@@ -557,9 +482,10 @@ public class DetectServiceImpl implements DetectService {
         if (userId == null) {
             throw new UserNotLoginException(MessageConstant.USER_NOT_LOGIN);
         }
-        int pageNum = pageQueryDTO.getPage() == null ? 1 : pageQueryDTO.getPage();
-        int pageSize = pageQueryDTO.getPageSize() == null ? 10 : pageQueryDTO.getPageSize();
-        PageHelper.startPage(pageNum, pageSize);
+        // 参数校验：未传取默认值，传了非法值（page=0 / pageSize 过大）必须拒绝
+        ValidationUtils.Paging paging = ValidationUtils.requirePagingOrDefault(
+                pageQueryDTO.getPage(), pageQueryDTO.getPageSize());
+        PageHelper.startPage(paging.getPage(), paging.getPageSize());
         List<FactCheckRecord> list = factCheckRecordMapper.page(userId, pageQueryDTO.getCategory(), pageQueryDTO.getStatus());
         Page<FactCheckRecord> pageInfo = (Page<FactCheckRecord>) list;
         List<DetectRecordVO> records = list.stream().map(r -> toVO(r, false)).collect(Collectors.toList());

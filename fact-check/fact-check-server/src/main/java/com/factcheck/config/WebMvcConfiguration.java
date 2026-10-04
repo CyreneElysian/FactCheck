@@ -38,11 +38,16 @@ public class WebMvcConfiguration implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         log.info("注册 JWT 拦截器");
         registry.addInterceptor(jwtTokenAdminInterceptor)
-                .addPathPatterns("/admin/**")
-                .excludePathPatterns("/admin/login");
+                .addPathPatterns("/admin/**");
+        // 为什么没有 excludePathPatterns("/admin/login")：全项目**不存在**该映射
+        // （管理端登录复用用户端 POST /user/login，按 role 决定签发哪套密钥的 token）。
+        // 原先写着一个不存在的排除项，会让人误以为管理端有独立的免鉴权登录入口。
         registry.addInterceptor(jwtTokenUserInterceptor)
+                // /common/** 必须包含：/common/upload 会把文件写进阿里云 OSS（计费资源），
+                // 漏掉它等于让匿名者无限上传。前端两端本来就会带鉴权头，加进来不影响正常流程。
                 .addPathPatterns("/user/**", "/detect/**", "/hot/**", "/appeal/**",
-                        "/authority/**", "/favorite/**", "/rating/**", "/message/**", "/ocr/**")
+                        "/authority/**", "/favorite/**", "/rating/**", "/message/**", "/ocr/**",
+                        "/common/**")
                 .excludePathPatterns("/user/login", "/user/register", "/user/wechat/login", "/user/wechat/bind");
     }
 

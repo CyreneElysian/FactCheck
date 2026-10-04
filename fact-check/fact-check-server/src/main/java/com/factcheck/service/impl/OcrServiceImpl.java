@@ -5,6 +5,7 @@ import com.factcheck.constant.MessageConstant;
 import com.factcheck.exception.BaseException;
 import com.factcheck.properties.OcrProperties;
 import com.factcheck.service.OcrService;
+import com.factcheck.util.LogMaskUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
@@ -70,7 +71,8 @@ public class OcrServiceImpl implements OcrService {
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
             String response = restTemplate.postForObject(ocrProperties.getEndpoint(), request, String.class);
-            log.info("阿里云 OCR 响应：{}", response != null ? response.substring(0, Math.min(response.length(), 500)) : "");
+            // 日志脱敏：OCR 响应里就是图片中的文字（用户内容），只记字段名
+            log.info("阿里云 OCR 响应字段：{}", LogMaskUtil.keysOfJson(response));
 
             String text = parseText(response);
             log.info("OCR 识别成功：textLength={}", text != null ? text.length() : 0);

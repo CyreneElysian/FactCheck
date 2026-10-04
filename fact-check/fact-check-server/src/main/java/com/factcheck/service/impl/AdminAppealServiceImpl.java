@@ -61,9 +61,10 @@ public class AdminAppealServiceImpl implements AdminAppealService {
         if (adminId == null) {
             throw new BaseException(MessageConstant.ADMIN_NOT_LOGIN);
         }
-        int pageNum = pageQueryDTO.getPage() == null ? 1 : pageQueryDTO.getPage();
-        int pageSize = pageQueryDTO.getPageSize() == null ? 10 : pageQueryDTO.getPageSize();
-        PageHelper.startPage(pageNum, pageSize);
+        // 参数校验：未传取默认值，传了非法值（page=0 / pageSize 过大）必须拒绝
+        ValidationUtils.Paging paging = ValidationUtils.requirePagingOrDefault(
+                pageQueryDTO.getPage(), pageQueryDTO.getPageSize());
+        PageHelper.startPage(paging.getPage(), paging.getPageSize());
         List<Appeal> list = appealMapper.page(pageQueryDTO.getStatus());
         Page<Appeal> pageInfo = (Page<Appeal>) list;
         List<AppealVO> records = list.stream().map(this::toVO).collect(Collectors.toList());
@@ -149,25 +150,23 @@ public class AdminAppealServiceImpl implements AdminAppealService {
                 .createTime(LocalDateTime.now())
                 .build());
 
-        // 更新记录最新结论
-        factCheckRecordMapper.update(FactCheckRecord.builder()
-                .id(record.getId())
-                .verdict(handleDTO.getNewVerdict())
-                .verdictSource(2)
-                .reasoningChain(handleDTO.getNewReasoningChain())
-                .version(record.getVersion() == null ? 2 : record.getVersion() + 1)
-                .updateTime(LocalDateTime.now())
-                .build());
+        // 更新记录最新结论：用 SQL 侧原子 version = version + 1，
+        // 并带 status=2 条件（并发改结论时不会互相覆盖、也不会丢一次版本留痕）
+        int affected = factCheckRecordMapper.updateConclusionIfStatus(
+                record.getId(), 2, null, handleDTO.getNewVerdict(), 2,
+                handleDTO.getNewReasoningChain(), null);
+        if (affected == 0) {
+            throw new BaseException("该申诉关联的记录状态已变化，请刷新后重试");
+        }
 
-        // 更新申诉单
-        appealMapper.update(Appeal.builder()
-                .id(appeal.getId())
-                .status(1)
-                .handleResult(StringUtils.hasLength(handleDTO.getHandleResult())
-                        ? handleDTO.getHandleResult() : "已采纳并修改结论")
-                .handledBy(adminId)
-                .handleTime(LocalDateTime.now())
-                .build());
+        // 更新申诉单：原子认领（仅当仍为"待处理"），否则说明已被别人处理过
+        int claimed = appealMapper.markHandledIfPending(appeal.getId(), 1,
+                StringUtils.hasLength(handleDTO.getHandleResult())
+                        ? handleDTO.getHandleResult() : "已采纳并修改结论",
+                adminId);
+        if (claimed == 0) {
+            throw new BaseException("该申诉已被处理，请勿重复操作");
+        }
 
         // 通知用户
         messageMapper.insert(Message.builder()
@@ -198,13 +197,12 @@ public class AdminAppealServiceImpl implements AdminAppealService {
         // 驳回原因列宽 VARCHAR(500)，超长必须在这里拦下（P2-17）
         ValidationUtils.requireText(handleDTO.getHandleResult(), "驳回原因", 500);
 
-        appealMapper.update(Appeal.builder()
-                .id(appeal.getId())
-                .status(2)
-                .handleResult(handleDTO.getHandleResult())
-                .handledBy(adminId)
-                .handleTime(LocalDateTime.now())
-                .build());
+        // 原子认领（仅当仍为"待处理"），否则说明已被别人处理过
+        int claimed = appealMapper.markHandledIfPending(appeal.getId(), 2,
+                handleDTO.getHandleResult(), adminId);
+        if (claimed == 0) {
+            throw new BaseException("该申诉已被处理，请勿重复操作");
+        }
 
         messageMapper.insert(Message.builder()
                 .userId(appeal.getUserId())

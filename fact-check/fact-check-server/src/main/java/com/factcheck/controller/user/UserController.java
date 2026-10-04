@@ -12,7 +12,7 @@ import com.factcheck.entity.User;
 import com.factcheck.properties.JwtProperties;
 import com.factcheck.result.Result;
 import com.factcheck.service.UserService;
-import com.factcheck.utils.JwtUtil;
+import com.factcheck.util.JwtUtil;
 import com.factcheck.vo.UserLoginVO;
 import com.factcheck.vo.UserProfileVO;
 import lombok.extern.slf4j.Slf4j;

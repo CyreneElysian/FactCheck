@@ -26,7 +26,6 @@
         <mybatis.spring>2.2.0</mybatis.spring>
         <lombok>1.18.20</lombok>
         <fastjson>1.2.76</fastjson>
-        <commons.lang>2.6</commons.lang>
         <druid>1.2.1</druid>
         <pagehelper>1.3.0</pagehelper>
         <aliyun.sdk.oss>3.10.2</aliyun.sdk.oss>
@@ -36,7 +35,6 @@
           0.12.x 强制 HMAC 密钥 ≥256 位，把"密钥太弱"变成启动即暴露的问题。
         -->
         <jjwt>0.12.5</jjwt>
-        <jaxb-api>2.3.1</jaxb-api>
         <httpclient>4.5.13</httpclient>
     </properties>
 
@@ -56,11 +54,6 @@
                 <groupId>com.alibaba</groupId>
                 <artifactId>fastjson</artifactId>
                 <version>${fastjson}</version>
-            </dependency>
-            <dependency>
-                <groupId>commons-lang</groupId>
-                <artifactId>commons-lang</artifactId>
-                <version>${commons.lang}</version>
             </dependency>
             <dependency>
                 <groupId>com.alibaba</groupId>
@@ -95,15 +88,34 @@
                 <scope>runtime</scope>
             </dependency>
             <dependency>
-                <groupId>javax.xml.bind</groupId>
-                <artifactId>jaxb-api</artifactId>
-                <version>${jaxb-api}</version>
-            </dependency>
-            <dependency>
                 <groupId>org.apache.httpcomponents</groupId>
                 <artifactId>httpclient</artifactId>
                 <version>${httpclient}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <!--
+                  surefire 版本必须在**父 pom 全局指定**（P5-74 的补充）：
+
+                  Spring Boot 2.7.3 的父 POM 默认用 maven-surefire-plugin 2.22.2，
+                  它需要 surefire-junit-platform:2.22.2 这个构件。此前只在
+                  fact-check-server/pom.xml 里显式指定了 3.1.2，于是 common / pojo
+                  两个模块仍然落到 2.22.2 —— 离线仓库里没有该构件，构建直接失败。
+
+                  容器里构建时暴露得更明显：surefire 2.22.2 的依赖要从 Central 现下，
+                  网络一抖动就报 "Premature end of Content-Length delimited message body"。
+                  放到 pluginManagement 后所有模块统一用 3.1.2，子模块无需重复声明版本。
+                -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.1.2</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
 </project>

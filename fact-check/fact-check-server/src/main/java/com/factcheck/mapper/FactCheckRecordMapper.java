@@ -41,6 +41,32 @@ public interface FactCheckRecordMapper {
     void update(FactCheckRecord record);
 
     /**
+     * 带**前置状态条件**地修改结论，并在 SQL 里原子地 {@code version = version + 1}
+     *
+     * <p>为什么需要它：</p>
+     * <ul>
+     *   <li><b>版本号</b>：原实现用 Java 侧读到的 {@code record.getVersion() + 1} 写回，
+     *       两个管理员并发改同一结论时双方都读到同一个值、都写回同一个值 ——
+     *       后者覆盖前者，而且**版本号只 +1，等于丢了一次留痕**（与"结论可追溯"的承诺冲突）。</li>
+     *   <li><b>状态流转</b>：原实现是"先 getById 校验 status，再无条件下 update"，
+     *       两个管理员同时点"人工诊断"会双双通过校验，于是写两条版本快照、发两条站内信。
+     *       {@code where status = #{expectedStatus}} 由数据库行锁保证只有一个能成功。</li>
+     * </ul>
+     *
+     * <p>{@code status} 为 null 时不改状态（例如只改结论的场景，状态本就是 2）。</p>
+     *
+     * @param expectedStatus 前置状态：只有当前状态等于它才会更新
+     * @return 影响行数：1 表示改成功，0 表示状态已变（并发或非法流转）
+     */
+    int updateConclusionIfStatus(@Param("id") Long id,
+                                 @Param("expectedStatus") Integer expectedStatus,
+                                 @Param("status") Integer status,
+                                 @Param("verdict") Integer verdict,
+                                 @Param("verdictSource") Integer verdictSource,
+                                 @Param("reasoningChain") String reasoningChain,
+                                 @Param("completeTime") LocalDateTime completeTime);
+
+    /**
      * 命中次数 +1
      * @param id 记录ID
      */
@@ -80,6 +106,30 @@ public interface FactCheckRecordMapper {
      * @return 记录列表（顺序不保证，由调用方重排）
      */
     List<FactCheckRecord> listByIds(@Param("ids") List<Long> ids);
+
+    /**
+     * 查询某个用户名下全部记录的 ID（只取主键）
+     *
+     * <p>用于"用户注销后把 TA 的记录从热度榜摘下来"：产品文档 §4.5 要求注销后
+     * 记录保留但脱敏展示，继续占据公开的 Top10 与"脱敏"的意图相悖。</p>
+     *
+     * <p>只取 id 是为了避免把大字段（content / reasoning_chain）拉进内存。</p>
+     */
+    List<Long> listIdsByUser(@Param("userId") Long userId);
+
+    /**
+     * 按主键物理删除一条检测记录
+     *
+     * <p><b>只供测试收尾使用。</b>产品上检测记录是**保留**的（用户注销后也只是脱敏展示），
+     * 因此业务代码里没有任何删除记录的入口；集成测试为了不在开发库里留残留数据，
+     * 需要一个精确删除自己造的那条记录的手段。</p>
+     *
+     * <p>如果将来要加"管理员删除记录"的功能，请勿直接复用它——那需要按业务要求
+     * 一并处理证据、收藏、评分、申诉、站内信与热度榜（参见 {@code HotRankService#remove}）。</p>
+     *
+     * @return 影响行数
+     */
+    int deleteById(@Param("id") Long id);
 
     /**
      * 管理端分页查询检测记录
