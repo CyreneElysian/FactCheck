@@ -5,7 +5,7 @@
 .DESCRIPTION
     为什么需要它：本项目的 CI 文件是 GitHub Actions（.github/workflows/ci.yml），
     而实际托管在 Gitee 上——Gitee 不会执行 GitHub Actions。在配好 Gitee Go 之前，
-    这个脚本提供等价能力：把流水线里的十套检查按同样顺序在本地跑一遍。
+    这个脚本提供等价能力：把流水线里的十一套检查按同样顺序在本地跑一遍。
 
     用法：
       .\run-checks.ps1              跑全部检查
@@ -99,7 +99,7 @@ Invoke-Check -Name 'python' -WorkDir 'fact-agent' -Action {
     & (Join-Path $PWD '.venv\Scripts\python.exe') -m unittest discover -s tests -t .
 }
 
-# 3) 小程序：静态自检 127 项（语法 / JSON / 页面齐套 / 跳转目标 / 事件绑定）
+# 3) 小程序：静态自检 142 项（语法 / JSON / 页面齐套 / 跳转目标 / 事件绑定）
 Invoke-Check -Name 'mini' -WorkDir 'fact-check-mini' -Action {
     & (Join-Path $root 'fact-agent\.venv\Scripts\python.exe') check_mini.py
 }
@@ -113,6 +113,16 @@ Invoke-Check -Name 'mini' -WorkDir 'fact-check-mini' -Action {
 #     本项用假的 wx 真实跑一遍页面加载时序，断言"带守卫会等、不带守卫会漏"。
 Invoke-Check -Name 'mini-auth' -WorkDir 'fact-check-mini' -Action {
     node scripts/test-auth-race.js
+}
+
+# 3c) 小程序管理端「申诉处理」的逻辑测试（Node，离线、确定性）
+#
+#     单列一项的原因：这页的本质是"按后端校验规则组装提交体"，
+#     字段名与必填项只能靠读后端代码确认（我自己就给另一个管理端接口
+#     传过 DTO 里根本不存在的字段，静默被忽略）。静态检查看不出来，
+#     只能靠这种"把后端校验规则逐条翻成断言"的测试守住。
+Invoke-Check -Name 'mini-admin' -WorkDir 'fact-check-mini' -Action {
+    node scripts/test-admin-appeals.js
 }
 
 # 4) 前端类型检查：vue-tsc（含模板类型检查），不需要额外依赖

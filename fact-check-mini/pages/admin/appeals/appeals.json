@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "申诉处理",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark",
+  "usingComponents": { "empty": "/components/empty/empty" }
+}

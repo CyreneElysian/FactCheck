@@ -23,6 +23,7 @@ const USER_MENUS = [
  */
 const ADMIN_MENUS = [
   { text: '待诊断队列', path: '/pages/admin/pending/pending', tab: false },
+  { text: '申诉处理', path: '/pages/admin/appeals/appeals', tab: false },
   { text: '统计概览', path: '/pages/admin/stats/stats', tab: false },
   { text: '权威信息', path: '/pages/authority/authority', tab: false },
   { text: '站内信', path: '/pages/messages/messages', tab: false, badge: true },

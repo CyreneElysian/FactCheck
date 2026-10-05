@@ -1,0 +1,98 @@
+<view class="container">
+  <!-- 状态筛选 -->
+  <picker mode="selector" range="{{filters}}" range-key="label" bindchange="onFilterChange">
+    <view class="filter-row card">
+      <text>状态：{{filters[filterIndex].label}}</text>
+      <text class="muted">共 {{total}} 条 ›</text>
+    </view>
+  </picker>
+
+  <view
+    wx:for="{{records}}"
+    wx:key="id"
+    class="card appeal-item"
+  >
+    <view class="row appeal-head">
+      <text class="reason-type">{{item.reasonText}}</text>
+      <text class="{{item.statusClass}}">{{item.statusText}}</text>
+    </view>
+
+    <!-- 被申诉的记录内容：管理员据此判断，必须显示 -->
+    <view class="muted record-content">被申诉记录：{{item.recordContent || '（记录已删除）'}}</view>
+
+    <view class="appeal-content">{{item.content}}</view>
+
+    <view class="row appeal-foot">
+      <text class="muted">{{item.createTime || ''}}</text>
+      <text
+        wx:if="{{item.actionable}}"
+        class="action"
+        bindtap="onOpenPanel"
+        data-id="{{item.id}}"
+      >处理 ›</text>
+      <text wx:else class="muted">{{item.handleResult || ''}}</text>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="muted list-tip">加载中…</view>
+  <view wx:elif="{{error}}" class="card"><text class="error">{{error}}</text></view>
+  <empty wx:if="{{!loading && !error && !records.length}}" text="暂无申诉"></empty>
+</view>
+
+<!-- 处理面板：采纳要给出新结论 + 新推理依据；驳回要给出驳回原因 -->
+<view wx:if="{{panelVisible}}" class="mask" bindtap="onClosePanel">
+  <view class="panel" catchtap="noop">
+    <view class="panel-title">处理申诉 #{{current.id}}</view>
+
+    <radio-group bindchange="onAcceptChange">
+      <label class="radio">
+        <radio value="true" checked="{{accept}}" />采纳（修改结论）
+      </label>
+      <label class="radio">
+        <radio value="false" checked="{{!accept}}" />驳回
+      </label>
+    </radio-group>
+
+    <block wx:if="{{accept}}">
+      <picker mode="selector" range="{{verdicts}}" range-key="label" bindchange="onVerdictChange">
+        <view class="picker-row">
+          <text>新结论</text>
+          <text>{{verdicts[verdictIndex].label}} ›</text>
+        </view>
+      </picker>
+
+      <view class="field-label">新的推理依据（必填，最多 {{maxReasoningLength}} 字）</view>
+      <textarea
+        class="textarea"
+        placeholder="将替换原推理链"
+        maxlength="{{maxReasoningLength}}"
+        value="{{newReasoningChain}}"
+        bindinput="onReasoningInput"
+      />
+      <view class="muted counter">{{newReasoningChain.length}}/{{maxReasoningLength}}</view>
+
+      <view class="field-label">处理说明（选填）</view>
+      <input class="input-box" placeholder="不填则记为「申诉采纳，修改结论」"
+             value="{{handleResult}}" bindinput="onResultInput" />
+    </block>
+
+    <block wx:else>
+      <view class="field-label">驳回原因（必填，最多 {{maxResultLength}} 字）</view>
+      <textarea
+        class="textarea"
+        placeholder="将发送给申诉用户"
+        maxlength="{{maxResultLength}}"
+        value="{{handleResult}}"
+        bindinput="onResultInput"
+      />
+      <view class="muted counter">{{handleResult.length}}/{{maxResultLength}}</view>
+    </block>
+
+    <view class="panel-actions">
+      <button class="btn-plain" bindtap="onClosePanel">取消</button>
+      <button class="btn-primary" loading="{{submitting}}" bindtap="onSubmit">
+        {{accept ? '确认采纳' : '确认驳回'}}
+      </button>
+    </view>
+  </view>
+</view>

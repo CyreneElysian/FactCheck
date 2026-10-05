@@ -1,0 +1,104 @@
+/* 状态标签：与用户侧 appeals.wxss 的命名保持一致（wxss 是页面级作用域，需各自定义） */
+.tag, .status-pending, .status-ok, .status-no {
+  font-size: 22rpx;
+  padding: 4rpx 14rpx;
+  border-radius: 20rpx;
+}
+.status-pending { background: #fdf6ec; color: #e6a23c; }
+.status-ok { background: #f0f9eb; color: #67c23a; }
+.status-no { background: #fef0f0; color: #f56c6c; }
+
+.filter-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 28rpx;
+  margin-bottom: 20rpx;
+}
+
+.appeal-item { margin-bottom: 20rpx; }
+.appeal-head {
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12rpx;
+}
+.reason-type {
+  font-size: 24rpx;
+  color: #409eff;
+  background: #ecf5ff;
+  border-radius: 8rpx;
+  padding: 4rpx 12rpx;
+}
+/* 被申诉的记录内容：管理员判断的依据，弱化但可读 */
+.record-content {
+  font-size: 24rpx;
+  line-height: 1.5;
+  margin-bottom: 12rpx;
+  padding-left: 16rpx;
+  border-left: 4rpx solid #e4e7ed;
+}
+.appeal-content {
+  font-size: 30rpx;
+  color: #303133;
+  line-height: 1.6;
+  margin-bottom: 12rpx;
+}
+.appeal-foot { justify-content: space-between; align-items: center; }
+.action { color: #409eff; font-size: 28rpx; }
+
+/* ---- 处理面板 ---- */
+.mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-end;
+  z-index: 100;
+}
+/* 底部弹出：手机上拇指可达，避免顶部弹窗被键盘顶飞 */
+.panel {
+  width: 100%;
+  box-sizing: border-box;
+  background: #ffffff;
+  border-radius: 24rpx 24rpx 0 0;
+  padding: 30rpx;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.panel-title { font-size: 32rpx; font-weight: bold; margin-bottom: 20rpx; }
+
+.radio { margin-right: 40rpx; font-size: 30rpx; }
+.picker-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+  font-size: 30rpx;
+}
+.field-label { margin: 24rpx 0 12rpx; font-size: 28rpx; color: #303133; }
+.textarea {
+  width: 100%;
+  min-height: 180rpx;
+  box-sizing: border-box;
+  border: 1rpx solid #dcdfe6;
+  border-radius: 12rpx;
+  padding: 20rpx;
+  font-size: 28rpx;
+}
+.input-box {
+  border: 1rpx solid #dcdfe6;
+  border-radius: 12rpx;
+  padding: 20rpx;
+  font-size: 28rpx;
+}
+.counter { text-align: right; font-size: 22rpx; margin-top: 8rpx; }
+.panel-actions {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 30rpx;
+}
+.panel-actions button { flex: 1; }
+.error { color: #f56c6c; font-size: 26rpx; }
