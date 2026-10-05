@@ -8,16 +8,43 @@
     <view wx:if="{{loginError}}" class="error">{{loginError}}</view>
     <view wx:if="{{loading}}" class="muted" style="margin-bottom: 20rpx">正在登录...</view>
 
-    <block wx:if="{{!needBind}}">
-      <button class="btn-primary" loading="{{loading}}" bindtap="onWechatLogin">微信登录</button>
-      <view class="muted" style="margin-top: 16rpx; text-align: center">未注册用户请先登录 Web 端注册</view>
+    <!-- 第一步：识别绑定状态，让用户选一条路 -->
+    <block wx:if="{{step === 'entry'}}">
+      <button class="btn-primary" loading="{{loading}}" bindtap="onWechatLogin">微信一键登录</button>
+      <view class="muted tip">已绑定过 Web 账号的用户点此直接进入</view>
     </block>
 
-    <block wx:else>
-      <view class="muted" style="margin-bottom: 20rpx">当前微信未绑定账号，请先绑定 Web 端账号</view>
-      <input class="input" placeholder="用户名" value="{{username}}" bindinput="onInput" data-field="username" />
-      <input class="input" placeholder="密码" password value="{{password}}" bindinput="onInput" data-field="password" />
-      <button class="btn-primary" loading="{{loading}}" bindtap="onBind">绑定并登录</button>
+    <!-- 第二步：该微信未绑定 → 由用户选择「创建账号」或「绑定已有账号」 -->
+    <block wx:elif="{{step === 'choose'}}">
+      <view class="muted choose-title">当前微信还没有关联账号，请选择一种方式：</view>
+
+      <view class="option {{mode === 'create' ? 'option-active' : ''}}" bindtap="onChooseCreate">
+        <view class="option-title">创建新账号</view>
+        <view class="option-desc">没有 Web 账号？在这里直接注册，微信会自动关联</view>
+      </view>
+
+      <view class="option {{mode === 'bind' ? 'option-active' : ''}}" bindtap="onChooseBind">
+        <view class="option-title">绑定已有 Web 账号</view>
+        <view class="option-desc">已在 Web 端注册过？用那个账号登录并关联微信</view>
+      </view>
+
+      <!-- 创建新账号表单 -->
+      <block wx:if="{{mode === 'create'}}">
+        <input class="input" placeholder="用户名" value="{{username}}" bindinput="onInput" data-field="username" />
+        <input class="input" placeholder="密码（至少 8 位，须含字母和数字）" password value="{{password}}"
+               bindinput="onInput" data-field="password" />
+        <input class="input" placeholder="昵称（选填，默认同用户名）" value="{{nickname}}"
+               bindinput="onInput" data-field="nickname" />
+        <button class="btn-primary" loading="{{loading}}" bindtap="onRegister">创建并登录</button>
+      </block>
+
+      <!-- 绑定已有账号表单 -->
+      <block wx:if="{{mode === 'bind'}}">
+        <input class="input" placeholder="Web 端用户名" value="{{username}}" bindinput="onInput" data-field="username" />
+        <input class="input" placeholder="Web 端密码" password value="{{password}}"
+               bindinput="onInput" data-field="password" />
+        <button class="btn-primary" loading="{{loading}}" bindtap="onBind">绑定并登录</button>
+      </block>
     </block>
   </view>
 </view>

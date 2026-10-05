@@ -44,7 +44,17 @@ function request(options) {
           wx.removeStorageSync('userInfo')
           if (!silent) {
             wx.showToast({ title: '请先登录', icon: 'none' })
-            setTimeout(() => wx.navigateTo({ url: '/pages/login/login' }), 500)
+            // 用 reLaunch 而不是 navigateTo：
+            //   navigateTo 会把登录页压进页面栈，tabBar 被盖住，用户"退不回去"；
+            //   且若当前已在登录页，navigateTo 还会重复叠栈。
+            // reLaunch 会关闭所有页面再打开，任何位置都能安全跳转。
+            setTimeout(() => {
+              const pages = getCurrentPages()
+              const current = pages.length ? pages[pages.length - 1].route : ''
+              if (current !== 'pages/login/login') {
+                wx.reLaunch({ url: '/pages/login/login' })
+              }
+            }, 500)
           }
           reject(res)
           return

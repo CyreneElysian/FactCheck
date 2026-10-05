@@ -1,4 +1,5 @@
 const { get, post, config, getAuthHeader } = require('../../utils/request')
+const { ensureLogin } = require('../../utils/auth-guard')
 
 Page({
   data: {
@@ -16,14 +17,9 @@ Page({
   },
 
   async onLoad() {
-    // 等待 app.onLaunch 的静默登录完成，避免误判为未登录
-    const app = getApp()
-    if (app && app.globalData.loginReady) {
-      await app.globalData.loginReady
-    }
-    if (!wx.getStorageSync('token')) {
-      wx.navigateTo({ url: '/pages/login/login' })
-    }
+    // 统一的登录守卫：内部会先等 app.onLaunch 的静默登录结束，
+    // 再用 reLaunch 跳登录页（不会把登录页压栈盖住 tabBar）。
+    if (!(await ensureLogin())) return
   },
 
   onContentInput(e) { this.setData({ content: e.detail.value }) },

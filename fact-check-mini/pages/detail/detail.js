@@ -1,4 +1,5 @@
 const { get, post, del } = require('../../utils/request')
+const { goLogin } = require('../../utils/auth-guard')
 
 const VERDICT_TEXT = { 1: '真', 2: '假', 3: '无法判定' }
 const VERDICT_CLASS = { 1: 'verdict-true', 2: 'verdict-false', 3: 'verdict-unknown' }
@@ -67,9 +68,10 @@ Page({
       wx.showToast({ title: '缺少记录 ID', icon: 'none' })
       return
     }
-    // 分享链接可能被未登录用户打开：先引导登录（登录后回到本页）
+    // 分享链接可能被未登录用户打开：先引导登录
+    // （用 auth-guard 的 goLogin，内部走 reLaunch，不会把登录页压栈）
     if (!wx.getStorageSync('token')) {
-      wx.navigateTo({ url: '/pages/login/login' })
+      goLogin()
     }
     // 允许"分享到朋友圈"（需要显式声明菜单项）
     if (wx.showShareMenu) {

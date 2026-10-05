@@ -1,10 +1,14 @@
 const { logout } = require('../../utils/auth')
 const { get } = require('../../utils/request')
+const { ensureLogin, goLogin } = require('../../utils/auth-guard')
 
 Page({
   data: { userInfo: {}, initial: '用', avatar: '', unread: 0, menus: [] },
 
-  onShow() {
+  async onShow() {
+    // 登录守卫：未登录直接去登录页，不再渲染半个"我的"页面
+    // （onShow 而非 onLoad：从登录页回来后要能重新渲染）
+    if (!(await ensureLogin())) return
     const userInfo = wx.getStorageSync('userInfo') || {}
     this.setData({
       userInfo,
@@ -44,6 +48,7 @@ Page({
   onLogout() {
     logout()
     this.setData({ unread: 0, avatar: '', userInfo: {} })
-    wx.navigateTo({ url: '/pages/login/login' })
+    // reLaunch 清空页面栈；navigateTo 会把登录页压栈、tabBar 被盖住
+    goLogin()
   }
 })

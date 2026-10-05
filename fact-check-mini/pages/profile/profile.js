@@ -1,4 +1,6 @@
 const { get, put, post, config, getAuthHeader } = require('../../utils/request')
+const { logout } = require('../../utils/auth')
+const { goLogin } = require('../../utils/auth-guard')
 
 Page({
   data: {
@@ -131,8 +133,8 @@ Page({
       this.setData({ pwd: { oldPassword: '', newPassword: '', confirm: '' } })
       wx.showToast({ title: '密码已修改，请重新登录', icon: 'none' })
       setTimeout(() => {
-        require('../../utils/auth').logout()
-        wx.navigateTo({ url: '/pages/login/login' })
+        logout()
+        goLogin()
       }, 1200)
     } catch (e) {
       // 提示由 request 层给出
@@ -159,8 +161,8 @@ Page({
         try {
           await post('/user/cancel')
           wx.showToast({ title: '账号已注销', icon: 'none' })
-          require('../../utils/auth').logout()
-          setTimeout(() => wx.navigateTo({ url: '/pages/login/login' }), 1200)
+          logout()
+          setTimeout(() => goLogin(), 1200)
         } catch (e) {
           // 提示由 request 层给出
         } finally {

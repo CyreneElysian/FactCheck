@@ -8,6 +8,7 @@ import com.factcheck.dto.UserProfileDTO;
 import com.factcheck.dto.UserRegisterDTO;
 import com.factcheck.dto.WechatBindDTO;
 import com.factcheck.dto.WechatLoginDTO;
+import com.factcheck.dto.WechatRegisterDTO;
 import com.factcheck.entity.User;
 import com.factcheck.properties.JwtProperties;
 import com.factcheck.result.Result;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -42,10 +44,24 @@ public class UserController {
 
     /**
      * 用户注册
+     *
+     * <p>{@code code} 为**可选**：小程序端"创建新账号"会带上 wx.login 的 code，
+     * 后端在同一事务里把该微信绑到新账号上（见 {@code UserService.registerByWechat}）。
+     * Web 端注册不带该字段，行为与原先完全一致。</p>
      */
     @PostMapping("/register")
     public Result register(@RequestBody UserRegisterDTO userRegisterDTO) {
         log.info("用户注册：{}", userRegisterDTO.getUsername());
+        if (StringUtils.hasLength(userRegisterDTO.getCode())) {
+            // 带 code = 小程序端注册并绑定
+            WechatRegisterDTO wechatDTO = new WechatRegisterDTO();
+            wechatDTO.setUsername(userRegisterDTO.getUsername());
+            wechatDTO.setPassword(userRegisterDTO.getPassword());
+            wechatDTO.setNickname(userRegisterDTO.getNickname());
+            wechatDTO.setCode(userRegisterDTO.getCode());
+            User user = userService.registerByWechat(wechatDTO);
+            return Result.success(buildLoginVO(user));   // 直接签发 token，省一次登录
+        }
         userService.register(userRegisterDTO);
         return Result.success();
     }
