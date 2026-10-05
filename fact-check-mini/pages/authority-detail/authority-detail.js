@@ -1,9 +1,11 @@
 const { get } = require('../../utils/request')
+const { ensureLogin } = require('../../utils/auth-guard')
 
 Page({
   data: { id: null, info: {}, loading: true },
 
-  onLoad(options) {
+  async onLoad(options) {
+    if (!(await ensureLogin())) return
     const id = options && options.id
     if (!id) {
       wx.showToast({ title: '缺少 ID', icon: 'none' })

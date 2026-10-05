@@ -1,4 +1,5 @@
 const { get } = require('../../utils/request')
+const { ensureLogin } = require('../../utils/auth-guard')
 
 const PAGE_SIZE = 10
 
@@ -32,7 +33,10 @@ function decorate(item) {
 Page({
   data: { records: [], page: 1, total: 0, loading: false, finished: false },
 
-  onShow() {
+  async onShow() {
+    // 登录守卫必须在这里：冷启动时 app.onLaunch 的静默登录要一次网络往返，
+    // 不等它就会在 token 写入 storage 之前发请求 → 不带鉴权头 → 后端 401 → 被踢到登录页
+    if (!(await ensureLogin())) return
     // 每次进入都重新拉第一页（检测状态可能已变化）
     this.reload()
   },

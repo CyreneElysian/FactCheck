@@ -1,4 +1,5 @@
 const { wechatLogin, shouldTrySilentLogin } = require('./utils/auth')
+const { trackLoginReady, resetLoginReadyTracking } = require('./utils/request')
 
 App({
   globalData: {
@@ -11,19 +12,27 @@ App({
   },
 
   onLaunch() {
+    // 每次启动都重新开始追踪"登录流程是否已落定"：
+    // request.js 的 401 处理靠它区分「竞态型 401」（token 马上就到，不该清）
+    // 与「真的未登录/token 已失效」（该清该跳登录页）。
+    resetLoginReadyTracking()
+
     // 已有 token：直接复用本地登录态
     if (wx.getStorageSync('token')) {
       this.globalData.userInfo = wx.getStorageSync('userInfo') || null
       this.globalData.loginReady = Promise.resolve({ cached: true })
+      trackLoginReady()
       return
     }
     // 需要绑定 Web 账号、或用户刚主动退出：不做静默登录
     if (!shouldTrySilentLogin()) {
       console.log('[app] 跳过静默登录（需绑定 Web 账号或用户已主动退出）')
       this.globalData.loginReady = Promise.resolve({ skipped: true })
+      trackLoginReady()
       return
     }
     this.globalData.loginReady = this.silentLogin()
+    trackLoginReady()
   },
 
   /**

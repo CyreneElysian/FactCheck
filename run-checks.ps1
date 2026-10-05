@@ -5,7 +5,7 @@
 .DESCRIPTION
     为什么需要它：本项目的 CI 文件是 GitHub Actions（.github/workflows/ci.yml），
     而实际托管在 Gitee 上——Gitee 不会执行 GitHub Actions。在配好 Gitee Go 之前，
-    这个脚本提供等价能力：把流水线里的九套检查按同样顺序在本地跑一遍。
+    这个脚本提供等价能力：把流水线里的十套检查按同样顺序在本地跑一遍。
 
     用法：
       .\run-checks.ps1              跑全部检查
@@ -99,9 +99,20 @@ Invoke-Check -Name 'python' -WorkDir 'fact-agent' -Action {
     & (Join-Path $PWD '.venv\Scripts\python.exe') -m unittest discover -s tests -t .
 }
 
-# 3) 小程序：静态自检 111 项（语法 / JSON / 页面齐套 / 跳转目标 / 事件绑定）
+# 3) 小程序：静态自检 113 项（语法 / JSON / 页面齐套 / 跳转目标 / 事件绑定）
 Invoke-Check -Name 'mini' -WorkDir 'fact-check-mini' -Action {
     & (Join-Path $root 'fact-agent\.venv\Scripts\python.exe') check_mini.py
+}
+
+# 3b) 小程序登录竞态的回归测试（Node，离线、确定性）
+#
+#     为什么单独一项：`check_mini.py` 是**静态**检查，看不出"页面 onShow 里
+#     没等 loginReady 就发请求"这种竞态 —— 而那正是"登录后点功能栏跳回登录页"的根因
+#     （请求发出时 token 还没写进 storage → 不带鉴权头 → 后端 401 →
+#      jjwt 报 CharSequence cannot be null or empty）。
+#     本项用假的 wx 真实跑一遍页面加载时序，断言"带守卫会等、不带守卫会漏"。
+Invoke-Check -Name 'mini-auth' -WorkDir 'fact-check-mini' -Action {
+    node scripts/test-auth-race.js
 }
 
 # 4) 前端类型检查：vue-tsc（含模板类型检查），不需要额外依赖

@@ -1,4 +1,5 @@
 const { get } = require('../../utils/request')
+const { ensureLogin } = require('../../utils/auth-guard')
 
 const PAGE_SIZE = 10
 
@@ -18,7 +19,10 @@ function decorate(item) {
 Page({
   data: { records: [], page: 1, total: 0, loading: false, finished: false },
 
-  onShow() { this.reload() },
+  async onShow() {
+    if (!(await ensureLogin())) return
+    this.reload()
+  },
 
   onPullDownRefresh() {
     this.reload().then(() => wx.stopPullDownRefresh())

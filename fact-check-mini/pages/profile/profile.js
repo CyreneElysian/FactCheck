@@ -1,6 +1,6 @@
 const { get, put, post, config, getAuthHeader } = require('../../utils/request')
 const { logout } = require('../../utils/auth')
-const { goLogin } = require('../../utils/auth-guard')
+const { ensureLogin, goLogin } = require('../../utils/auth-guard')
 
 Page({
   data: {
@@ -14,7 +14,10 @@ Page({
     cancelBusy: false
   },
 
-  onLoad() { this.load() },
+  async onLoad() {
+    if (!(await ensureLogin())) return
+    this.load()
+  },
 
   onShow() {
     // 从别处改过头像/昵称后回到本页时同步一次

@@ -1,11 +1,15 @@
 const { get } = require('../../utils/request')
+const { ensureLogin } = require('../../utils/auth-guard')
 
 const PAGE_SIZE = 10
 
 Page({
   data: { records: [], page: 1, total: 0, keyword: '', loading: false, finished: false },
 
-  onLoad() { this.reload() },
+  async onLoad() {
+    if (!(await ensureLogin())) return
+    this.reload()
+  },
 
   onPullDownRefresh() {
     this.reload().then(() => wx.stopPullDownRefresh())

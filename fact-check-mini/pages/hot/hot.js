@@ -1,4 +1,5 @@
 const { get } = require('../../utils/request')
+const { ensureLogin } = require('../../utils/auth-guard')
 
 const VERDICT_TEXT = { 1: '真', 2: '假', 3: '无法判定' }
 const VERDICT_CLASS = { 1: 'verdict-true', 2: 'verdict-false', 3: 'verdict-unknown' }
@@ -6,7 +7,11 @@ const VERDICT_CLASS = { 1: 'verdict-true', 2: 'verdict-false', 3: 'verdict-unkno
 Page({
   data: { list: [], loading: true },
 
-  onShow() { this.load() },
+  async onShow() {
+    // 同 history：必须等 loginReady，否则冷启动首屏会因为"token 还没存好"而 401
+    if (!(await ensureLogin())) return
+    this.load()
+  },
 
   onPullDownRefresh() {
     this.load().then(() => wx.stopPullDownRefresh())
