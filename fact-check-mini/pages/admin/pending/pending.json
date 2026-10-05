@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "待诊断队列",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark",
+  "usingComponents": { "empty": "/components/empty/empty" }
+}

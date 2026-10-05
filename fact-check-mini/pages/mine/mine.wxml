@@ -6,6 +6,8 @@
       <view class="nickname">{{userInfo.nickname || userInfo.username || '用户'}}</view>
       <view class="muted">{{userInfo.username}}</view>
     </view>
+    <!-- 角色标识：让管理员一眼看出自己当前是管理端视图 -->
+    <text wx:if="{{isAdmin}}" class="role-badge">管理员</text>
   </view>
 
   <view class="card">

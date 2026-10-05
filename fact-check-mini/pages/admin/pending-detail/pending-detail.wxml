@@ -1,0 +1,60 @@
+<view class="container">
+  <view wx:if="{{loading}}" class="muted list-tip">加载中…</view>
+
+  <view wx:elif="{{error}}" class="card">
+    <text class="error">{{error}}</text>
+  </view>
+
+  <block wx:else>
+    <!-- 待诊断断言 -->
+    <view class="card">
+      <view class="row">
+        <text class="category">{{categoryText}}</text>
+        <text class="muted">#{{id}}</text>
+      </view>
+      <view class="content">{{record.content}}</view>
+      <view wx:if="{{record.aiSummary}}" class="muted ai-summary">AI 摘要：{{record.aiSummary}}</view>
+    </view>
+
+    <!-- 证据：管理员据此判断，因此放正文之后、结论表单之前 -->
+    <view class="card">
+      <view class="title">证据（{{evidenceList.length}}）</view>
+      <view wx:if="{{evidenceList.length === 0}}" class="muted">暂无证据（未联网核查或未检索到相关来源）</view>
+      <view wx:for="{{evidenceList}}" wx:key="id" class="evidence">
+        <view class="evidence-title">{{item.title || '（无标题）'}}</view>
+        <view wx:if="{{item.snippet}}" class="muted snippet">{{item.snippet}}</view>
+        <view class="row evidence-meta">
+          <text class="muted">{{item.source || '未知来源'}}</text>
+          <text class="muted">可信 {{item.credibilityText}}　相关 {{item.relevanceText}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 人工诊断 -->
+    <view class="card">
+      <view class="title">人工诊断</view>
+
+      <picker mode="selector" range="{{verdicts}}" range-key="label" bindchange="onVerdictChange">
+        <view class="picker-row">
+          <text>结论</text>
+          <text class="{{verdictIndex < 0 ? 'muted' : ''}}">
+            {{verdictIndex < 0 ? '请选择' : verdicts[verdictIndex].label}} ›
+          </text>
+        </view>
+      </picker>
+
+      <view class="field-label">推理依据（必填，最多 {{maxReasoningLength}} 字）</view>
+      <textarea
+        class="textarea"
+        placeholder="说明判定理由与依据来源"
+        maxlength="{{maxReasoningLength}}"
+        value="{{reasoningChain}}"
+        bindinput="onReasoningInput"
+      />
+      <view class="muted counter">{{reasoningChain.length}}/{{maxReasoningLength}}</view>
+
+      <button class="btn-primary" loading="{{submitting}}" bindtap="onSubmit">提交结论</button>
+      <view class="muted hint">提交后该记录转为「已完成」，并向提问用户发送站内信。</view>
+    </view>
+  </block>
+</view>

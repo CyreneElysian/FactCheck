@@ -1,0 +1,27 @@
+<view class="container">
+  <view
+    wx:for="{{list}}"
+    wx:key="recordId"
+    class="card pending-item"
+    bindtap="onOpen"
+    data-id="{{item.recordId}}"
+  >
+    <view class="row pending-head">
+      <text class="category">{{item.category || '未分类'}}</text>
+      <text wx:if="{{item.timeout}}" class="tag-timeout">已超时</text>
+      <text class="muted record-id">#{{item.recordId}}</text>
+    </view>
+
+    <view class="content">{{item.content}}</view>
+
+    <view class="row pending-meta">
+      <text class="muted">请求 {{item.requestCountText}}</text>
+      <text class="muted">证据 {{item.evidenceText}}</text>
+      <text class="muted">置信 {{item.confidenceText}}</text>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="muted list-tip">加载中…</view>
+  <view wx:elif="{{error}}" class="card"><text class="error">{{error}}</text></view>
+  <empty wx:if="{{!loading && !error && !list.length}}" text="暂无待诊断消息"></empty>
+</view>

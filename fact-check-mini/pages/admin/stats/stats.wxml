@@ -1,0 +1,19 @@
+<view class="container">
+  <view wx:if="{{loading}}" class="muted list-tip">加载中…</view>
+
+  <view wx:elif="{{error}}" class="card">
+    <text class="error">{{error}}</text>
+  </view>
+
+  <block wx:else>
+    <view class="grid">
+      <view wx:for="{{metrics}}" wx:key="label" class="card metric">
+        <view class="metric-value">{{item.value}}</view>
+        <view class="metric-label">{{item.label}}</view>
+        <view class="muted metric-hint">{{item.hint}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{updatedAt}}" class="muted list-tip">更新于 {{updatedAt}}，下拉可刷新</view>
+  </block>
+</view>

@@ -1,0 +1,30 @@
+.pending-item { margin-bottom: 20rpx; }
+.pending-head {
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12rpx;
+}
+.category {
+  font-size: 24rpx;
+  color: #409eff;
+  background: #ecf5ff;
+  border-radius: 8rpx;
+  padding: 4rpx 12rpx;
+}
+/* 超时高亮：与 Web 管理端 PendingView 的 el-tag type=danger 对应 */
+.tag-timeout {
+  font-size: 22rpx;
+  color: #f56c6c;
+  border: 1rpx solid #f56c6c;
+  border-radius: 8rpx;
+  padding: 2rpx 10rpx;
+}
+.record-id { font-size: 22rpx; }
+.content {
+  font-size: 30rpx;
+  color: #303133;
+  line-height: 1.6;
+  margin-bottom: 12rpx;
+}
+.pending-meta { justify-content: space-between; }
+.error { color: #f56c6c; font-size: 26rpx; }

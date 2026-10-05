@@ -99,12 +99,12 @@ Invoke-Check -Name 'python' -WorkDir 'fact-agent' -Action {
     & (Join-Path $PWD '.venv\Scripts\python.exe') -m unittest discover -s tests -t .
 }
 
-# 3) 小程序：静态自检 113 项（语法 / JSON / 页面齐套 / 跳转目标 / 事件绑定）
+# 3) 小程序：静态自检 127 项（语法 / JSON / 页面齐套 / 跳转目标 / 事件绑定）
 Invoke-Check -Name 'mini' -WorkDir 'fact-check-mini' -Action {
     & (Join-Path $root 'fact-agent\.venv\Scripts\python.exe') check_mini.py
 }
 
-# 3b) 小程序登录竞态的回归测试（Node，离线、确定性）
+# 3b) 小程序登录守卫与角色分支的回归测试（Node，离线、确定性）
 #
 #     为什么单独一项：`check_mini.py` 是**静态**检查，看不出"页面 onShow 里
 #     没等 loginReady 就发请求"这种竞态 —— 而那正是"登录后点功能栏跳回登录页"的根因

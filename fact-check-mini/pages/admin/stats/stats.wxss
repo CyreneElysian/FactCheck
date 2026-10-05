@@ -1,0 +1,20 @@
+/* 两列网格：6 个指标刚好 3 行 */
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+.metric {
+  width: 48%;
+  box-sizing: border-box;
+  margin-bottom: 20rpx;
+}
+.metric-value {
+  font-size: 48rpx;
+  font-weight: bold;
+  color: #409eff;
+  line-height: 1.2;
+}
+.metric-label { font-size: 28rpx; color: #303133; margin-top: 8rpx; }
+.metric-hint { font-size: 22rpx; margin-top: 4rpx; }
+.error { color: #f56c6c; font-size: 26rpx; }

@@ -21,6 +21,17 @@
   margin-right: 24rpx;
 }
 .nickname { font-size: 34rpx; font-weight: bold; }
+
+/* 管理员角色标识（放在头像区右侧，让管理员一眼看出当前是管理端视图） */
+.role-badge {
+  margin-left: auto;
+  padding: 6rpx 18rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.25);
+  border: 1rpx solid rgba(255, 255, 255, 0.6);
+  font-size: 22rpx;
+  color: #ffffff;
+}
 .menu-item {
   display: flex;
   justify-content: space-between;

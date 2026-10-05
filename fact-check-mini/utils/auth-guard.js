@@ -19,6 +19,21 @@
  * 于是每次冷启动都先停在登录页 —— 即使本地已有 token，也要等 `onLoad` 里
  * 再 `switchTab` 跳走，表现为"启动时闪一下登录页"。
  * 现已把 `pages/index/index` 提为第一项，登录页不再是启动页。
+ *
+ * ---
+ *
+ * ## 角色守卫（管理员视图）
+ *
+ * 小程序端原先是"所有角色同一套界面"。现在按角色渲染：「我的」页在
+ * `role === 1` 时展示管理端入口，另有若干**非 tab 的管理页面**。
+ *
+ * 那些管理页面必须自己挡一道 —— 小程序没有 Web 那样的路由中间件
+ * （Web 用 `meta.requiresAdmin` + `router.beforeEach`），
+ * 只能每个页面在 `onLoad` 里调用 {@link ensureAdmin}。
+ *
+ * ⚠️ **这只是 UX 层**：拦的是"普通用户误入 → 白屏/报错"的难看体验。
+ * 真正的权限判定在**后端的 JwtTokenAdminInterceptor**（`/admin/**` 全部要管理端 token），
+ * 客户端隐藏入口不能当作安全边界。
  */
 
 /** 登录页路径（唯一真源，避免各处拼错） */
@@ -29,6 +44,17 @@ const LOGIN_PAGE = '/pages/login/login'
  */
 function hasToken() {
   return !!wx.getStorageSync('token')
+}
+
+/**
+ * 当前是否为管理员。
+ *
+ * 统一 `String()` 后比较：登录时写入的是字符串，但任何一处写入数字 1
+ * 都会让 `=== 1` 判false → 管理员被当成普通用户（`request.js` 的鉴权头
+ * 也踩过同一个坑）。角色只从 storage 读，因此**冷启动复用缓存 token 时同样有效**。
+ */
+function isAdmin() {
+  return String(wx.getStorageSync('role')) === '1'
 }
 
 /**
@@ -87,4 +113,40 @@ function goHome() {
   wx.reLaunch({ url: '/pages/index/index' })
 }
 
-module.exports = { LOGIN_PAGE, hasToken, waitLoginReady, ensureLogin, goLogin, goHome }
+/**
+ * 管理员守卫：未登录 → 登录页；已登录但非管理员 → 回首页。
+ *
+ * 用法（管理页面 onLoad 里）：
+ *     const { ensureAdmin } = require('../../utils/auth-guard')
+ *     async onLoad() {
+ *       if (!(await ensureAdmin())) return
+ *       ...
+ *     }
+ *
+ * @returns {Promise<boolean>} true = 是管理员可继续渲染；false = 已跳走，调用方应 return
+ */
+async function ensureAdmin() {
+  if (!(await ensureLogin())) {
+    return false
+  }
+  if (!isAdmin()) {
+    // 已登录但不是管理员：不跳登录页（他是登录着的），回首页并明确提示，
+    // 否则用户只会看到一个空白的"待诊断"页，不知道发生了什么。
+    console.warn('[auth-guard] 非管理员访问管理页面，已回首页')
+    wx.showToast({ title: '仅管理员可访问', icon: 'none' })
+    setTimeout(() => goHome(), 800)
+    return false
+  }
+  return true
+}
+
+module.exports = {
+  LOGIN_PAGE,
+  hasToken,
+  isAdmin,
+  waitLoginReady,
+  ensureLogin,
+  ensureAdmin,
+  goLogin,
+  goHome
+}

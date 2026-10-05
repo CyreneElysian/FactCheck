@@ -11,7 +11,10 @@
     "pages/messages/messages",
     "pages/favorites/favorites",
     "pages/appeals/appeals",
-    "pages/profile/profile"
+    "pages/profile/profile",
+    "pages/admin/pending/pending",
+    "pages/admin/pending-detail/pending-detail",
+    "pages/admin/stats/stats"
   ],
   "window": {
     "navigationBarTextStyle": "white",
