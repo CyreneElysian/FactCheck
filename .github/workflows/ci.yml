@@ -60,11 +60,20 @@ jobs:
       - name: 安装测试所需依赖
         working-directory: fact-agent
         # 只装测试真正用到的：sentence-transformers / torch 仅在建索引加载模型时才需要，
-        # 未装时 embedding 模块延迟导入，测试不会触发（本机实测 117 用例 <0.5s）。
+        # 未装时 embedding 模块延迟导入，测试不会触发。
         # 若要跑评测脚本（eval/），请改为 `pip install -r requirements.txt`。
+        #
+        # ⚠️ httpx 是**必需**的，不是可选：
+        #   tests/test_internal_auth_and_rules.py 用 `fastapi.testclient.TestClient`
+        #   走真实 HTTP 层验证内部鉴权的 401 契约，而它需要 httpx。
+        #
+        #   注意报错文案会**误导**你：starlette 1.x 的 testclient 先试 `httpx2`、
+        #   失败再回落 `httpx`，两个都没有时才抛错，但错误信息只提 httpx2
+        #   （"requires the httpx2 package ... pip install httpx2"）。
+        #   实测确认：装 `httpx` 即可，**不要**照那条文案去装 httpx2。
         run: |
           python -m pip install --upgrade pip
-          pip install fastapi "uvicorn[standard]" pydantic requests python-dotenv numpy faiss-cpu
+          pip install fastapi "uvicorn[standard]" pydantic requests python-dotenv numpy faiss-cpu httpx
 
       - name: 运行测试
         working-directory: fact-agent

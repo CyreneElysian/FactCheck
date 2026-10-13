@@ -17,8 +17,16 @@
 #   - requests          → app/services/search.py、llm.py、detect_service.py（必装）
 #   - numpy             → app/services/embedding.py、dedup_service.py（必装）
 #   - faiss-cpu         → app/services/dedup_service.py（必装）
-# 测试**不需要**的运行时依赖：
-#   - fastapi / uvicorn        → 只有 app/main.py 用；测试不导入 FastAPI 应用
+# 测试**需要的**运行时依赖（原先这里写"测试不需要 fastapi"，导致 CI 红过一次）：
+#   - fastapi + httpx          → tests/test_internal_auth_and_rules.py 用
+#                                fastapi.testclient.TestClient 走真实 HTTP 层
+#                                验证内部鉴权的 401 契约，而 TestClient 需要 httpx。
+#
+#     ⚠️ 报错文案会误导：starlette 1.x 的 testclient 先试 `httpx2`，失败再回落
+#     `httpx`，两个都没有时才抛错，但错误信息**只说 httpx2**：
+#       "The starlette.testclient module requires the httpx2 package ... install httpx2"
+#     **实测结论：装 `httpx` 就够，不要照那条文案去装 httpx2。**
+#   - uvicorn                  → 不需要（只有启动服务时才用）
 #   - python-dotenv            → 可选（没装也能跑，只是不读 .env）
 #   - sentence-transformers    → 测试用假 embedding，从不加载真实模型
 #
