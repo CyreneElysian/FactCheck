@@ -54,7 +54,18 @@
 
 结果：
     eval/results/unverified_ab.json
-    docs/不可证伪断言提示词对照报告.md
+    docs/不可证伪断言提示词对照报告.md   （生成物；当前仓库未收录，跑本脚本会重新生成）
+
+## ⚠️ 这是一个**留档工具**，结论已经落地
+
+本脚本用来验证"给系统提示词加规则 6/7 能否修掉 UNVERIFIED 的判错"，**结论是负向的**：
+UNVERIFIED 命中从 9/15 掉到 8/15（总准确率不变 52/60，McNemar p=1.0000），
+因此**规则 6/7 已回退**。
+
+它比"没效果"还有价值的一点：它顺带**推翻了我最初对根因的判断** ——
+原以为"15 条 UNVERIFIED 几乎全被判成 FALSE"，那是因为只看了一个只含 3 条
+UNVERIFIED 的子集；扩大到全部 60 条后基线本来就命中 9/15。
+`tests/test_unfalsifiable_rules.py` 记着这个回退状态。
 """
 import argparse
 import io

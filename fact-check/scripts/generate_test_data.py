@@ -330,8 +330,12 @@ def ensure_detect_log(cursor, user_id, content, category, source_type,
 def ensure_content_safety_log(cursor, user_id, content, source_type, check_type, result, reason=None):
     """内容安全审核日志（幂等：按 user_id + content_hash + result 判重）
 
-    注意：S2 内容安全审核目前是空实现（见项目改进清单 P2-13），
-    这里写入的是**演示数据**，用于让审核日志页面/统计有数据可看。
+    内容安全审核**已实现**（`ContentSafetyServiceImpl` +
+    `LocalRuleContentSafetyChecker`：命中违法交易/招揽类规则拒绝提交，
+    命中敏感话题仅记录日志；provider 可配，配错会在启动时 ERROR 告警）。
+
+    这里写入的是**演示数据**，用于让审核日志页面/统计有数据可看 ——
+    不是"因为功能没做才造数据"。
     """
     content_hash = sha256(content) if content else None
     cursor.execute(

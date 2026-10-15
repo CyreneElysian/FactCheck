@@ -125,7 +125,7 @@ services:
       # application.yml 的默认值是 `dev,local`：本机跑时 local 用 application-local.yml 覆盖 dev（方便），
       # 但该文件里写的是 `localhost` / `root` / `1234`，在容器里会把下面这些变量全部覆盖掉，
       # 于是后端去连 `localhost:3306`（= 它自己）而不是 `mysql` 服务 → 启动即失败。
-      # application-local.yml 默认会打进 jar（P3-36 的取舍，见 docs/项目改进清单.md §3.1），
+      # application-local.yml 默认会打进 jar（打包脚本只在 -Pdist 时排除它），
       # 所以必须在环境里显式排除它。
       FACTCHECK_PROFILE: dev
       # 变量名必须与 application-dev.yml 里 `fact-check.datasource.*` 的占位符一致：

@@ -75,7 +75,7 @@
   改由确定性规则（域名规则表、位置启发式）计算，模型只负责"判断"这件事本身；
 - **提示词改动必须用 A/B 对照验证**：`fact-agent/eval/` 里有配对对照工具。
   两次提示词优化实测都是**负向**的，因此都已回退，并把结论与教训留档在
-  [`docs/项目改进清单.md`](docs/项目改进清单.md) —— 连同一次**我自己写错的根因判断**；
+  两次改动实测都是负向、因此都已回退，结论与教训写在报告里 —— 连同一次**我自己写错的根因判断**；
 - **安全边界写在服务端**：客户端的角色判断只做体验，权限判定一律在后端拦截器；
 - **已知不足主动写进文档**：见 [项目状态与已知不足](#项目状态与已知不足)。
 
@@ -186,11 +186,11 @@
 
 ```
 fact-check/
-├── docs/                     设计与过程文档
+├── docs/                     设计文档
 │   ├── 产品文档.md            需求、角色权限、页面清单、验收标准（14 条）
 │   ├── 技术方案.md            架构、数据库、Redis、接口、Python Agent、部署
-│   ├── 部署文档.md            两条部署路线（容器 / 裸机）、迁移、验收与故障排查
-│   └── 项目改进清单.md        代码审计结果与按优先级排序的待办（75 项）
+│   ├── 部署文档.md            两条部署路线（容器 / 裸机）、迁移、验收、故障排查、验证边界
+│   └── 评测报告.md            AI 能力评测：去重阈值敏感性 + 联网判定结果
 ├── sql/
 │   ├── 01_fact_check_schema.sql  建库建表（12 张表，可重复执行，会清空数据）
 │   ├── 02_fact_check_init.sql    初始化数据（创建第一个管理员，可重复执行）
@@ -399,19 +399,21 @@ cd fact-check-web && npm run lint          # eslint（当前 0 error 0 warning�
 两者都不传对应 `-Dfactcheck.it.*` 参数时**整类跳过**，因此离线 CI 不受影响。
 （数据库密码用 `FACTCHECK_DB_PASSWORD` 环境变量传入。）两个类都会清理自己造的数据，可反复执行。
 
-**一条命令跑完全部检查**（等价于 CI 流水线，可直接当提交前钩子）：
+**一条命令跑完全部检查**（11 项，可直接当提交前钩子）：
 
 ```powershell
-cd fact-check
-.\run-checks.ps1              # java / python / mini / web-type / web-test / compose / secret-scan
+.\run-checks.ps1              # java / python / mini / mini-auth / mini-admin / web-type / web-test / compose / compose-env / syntax / secret-scan
 .\run-checks.ps1 -Only java,web
 .\run-checks.ps1 -Online      # Maven 走在线仓库（默认 -o 离线）
 ```
 
-> 本项目的 CI 文件是 GitHub Actions（[`.github/workflows/ci.yml`](.github/workflows/ci.yml)），
-> 而仓库托管在 **Gitee**——Gitee 不执行 GitHub Actions，因此日常用 `run-checks.ps1` 在本地跑同样这七项
-> （实机验证：10 项全 PASS、退出码 0）。想在 Gitee 上跑托管流水线需改用 Gitee Go，
-> 具体步骤见 [`docs/环境限制与联网后待办.md`](docs/环境限制与联网后待办.md) 第三节。
+> **CI 是 GitHub Actions**（[`.github/workflows/ci.yml`](.github/workflows/ci.yml)，5 个作业：
+> java / python / web / mini / secret-scan）。仓库已镜像到 GitHub，**Actions 会真实运行**；
+> Gitee 作为备份远端同时接收推送。
+> 本机实跑：**11 项全 PASS、退出码 0** —— 与 CI 跑的是同一批检查。
+>
+> 踩过两个 CI 专属的坑，都已修并写在 workflow 注释里：Python 作业缺 `httpx`
+> （报错文案会误导你去装 `httpx2`，实际要装 `httpx`）、web 作业的生产依赖有高危漏洞。
 
 AI 能力评测（离线去重评测不需要任何 Key）：
 
@@ -492,8 +494,9 @@ Agent 与 Java 的**内部令牌由同一个 compose 变量提供**，不会出�
 | `demo_admin` | `123456` | 管理员 | 正常 | `scripts/generate_test_data.py` |
 
 > ⚠️ **所有账号统一为弱口令 `123456`**，仅用于本地开发/演示，首次登录后请立即修改。
-> 项目目前**没有密码强度校验**（见 `docs/项目改进清单.md` 的「弱口令策略」待办），
-> 因此弱口令不会被系统拦下，只能靠部署时自觉更换。
+> 项目**已有密码强度校验**（`ValidationUtils.requireStrongPassword`：≥8 位、须含字母与数字、
+> 拒绝常见弱口令），但它**只在注册与改密时生效**，不会校验直接写进库的初始数据 ——
+> 所以这里的弱口令不会被系统拦下，只能靠部署时自觉更换。
 > 管理员账号不能自行注册，只能由已有管理员在「账号管理」中创建。
 
 ---
@@ -600,7 +603,8 @@ Agent 与 Java 的**内部令牌由同一个 compose 变量提供**，不会出�
 - 真实联网核查已验证：`SEARCH_TOOL=tavily` 时，检索 → 抓取正文 → LLM 判定（`FALSE`，confidence 0.91–0.95）→ 返回 6–7 条带真实域名与可信度的证据，单次耗时约 15s（预算 45s）。
 - 历史上还有：检测提交 → 轮询拿到结论 → 站内信/热度榜/权威信息均为 200（见 nginx 访问日志）。
 
-作为作品集项目，原本的短板已逐项处理完毕：**[`docs/项目改进清单.md`](docs/项目改进清单.md) 中的 75 项全部处理完毕（74 项实现 + 1 项经决策明确不做）**。当前仍有以下限制与取舍，如实列出；每项的**具体补做步骤**见 [`docs/环境限制与联网后待办.md`](docs/环境限制与联网后待办.md)：
+作为作品集项目，代码审计发现的问题已逐项处理完毕（75 项：74 项实现 + 1 项经决策明确不做）。
+当前仍有以下限制与取舍，如实列出；每项的**验证状态与补做条件**见 [`docs/部署文档.md`](docs/部署文档.md) §10：
 
 - **前端工具链已全部跑通**：`npm i` 之后 `npm run test:run`（vitest）**3 个文件 / 12 个用例全通过**、
   `npm run lint`（eslint）**0 error 0 warning**、`npm run type-check`、`npm run build` 均通过，
@@ -620,7 +624,7 @@ Agent 与 Java 的**内部令牌由同一个 compose 变量提供**，不会出�
   （`npm audit --omit=dev --audit-level=high`），开发链的公告保持可见但不阻断流水线。
 - **分享卡片不含二维码（已决策不做）**：记录详情仅归属者可见，扫码的人打开仍是登录页，与直接收到链接相比没有增量价值；
   小程序端已有微信原生分享。产品文档 §4.13 已同步修订，理由与"将来要补做"的方案见
-  [`docs/决策-分享卡片不生成二维码.md`](docs/决策-分享卡片不生成二维码.md)。
+  理由见 [`docs/产品文档.md`](docs/产品文档.md) §4 的「分享」条目。
 - **前端主包体积已优化（2026-10-04 完成）**：`vite.config.ts` 加了 `manualChunks`，
   把 element-plus 与 vue 拆成独立 chunk。实测业务主包 `index-*.js` 从 **1,093 kB 降到 67.2 kB**
   （gzip 26.2 kB），`element-*.js` 938.9 kB 与 `vue-*.js` 110.9 kB 各自长期缓存。
@@ -643,7 +647,6 @@ Agent 与 Java 的**内部令牌由同一个 compose 变量提供**，不会出�
 | --- | --- |
 | [`docs/产品文档.md`](docs/产品文档.md) | 产品定位、角色权限矩阵、功能需求、核心流程、页面清单、验收标准 |
 | [`docs/技术方案.md`](docs/技术方案.md) | 架构、技术选型、数据库设计（12 张表）、Redis 设计、接口清单、Python Agent 设计、安全设计、部署架构 |
-| [`docs/项目改进清单.md`](docs/项目改进清单.md) | 已收口的审计记录：原始现状基线、75 项优先级总览、仍未采纳的备选方案、环境约束与无法验证的项 |
 | [`fact-agent/README.md`](fact-agent/README.md) | Python Agent 的接口、环境变量与启动说明 |
 
 ---
